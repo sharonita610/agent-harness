@@ -98,3 +98,41 @@ def test_max_steps_triggers_wrap_up_without_tools():
     res = Agent(p, make_registry(), "sys", max_steps=3).run("q")
     assert res.stopped_reason == "max_steps" and res.answer == "정리"
     assert p.seen[-1][-1]["role"] == "user" and "도구는 더 쓰지" in p.seen[-1][-1]["content"]
+
+
+def test_nudges_when_model_writes_sql_as_text_then_calls_tool():
+    p = FakeProvider([LLMResponse(text="먼저 이렇게 조회합니다:\n```sql\nSELECT COUNT(*) FROM orders\n```"),
+                      LLMResponse(tool_calls=[tc("add", a=1, b=2)]), LLMResponse(text="3")])
+    res = Agent(p, make_registry(), "sys").run("q")
+    kinds = [e.kind for e in res.events]
+    assert "nudge" in kinds and res.answer == "3" and res.tool_calls[0]["status"] == "ok"
+    assert "실제 함수 호출" in p.seen[1][-1]["content"]
+
+
+def test_nudge_only_once():
+    p = FakeProvider([LLMResponse(text="```sql\nSELECT 1 FROM x\n```"), LLMResponse(text="```sql\nSELECT 2 FROM y\n```")])
+    res = Agent(p, make_registry(), "sys").run("q")
+    assert [e.kind for e in res.events].count("nudge") == 1 and res.stopped_reason == "final"
+
+
+def test_garbage_duplicate_call_is_dropped_when_valid_call_exists():
+    bad = ToolCall(id="x", name="add", arguments={}, parse_error="인자 JSON 파싱 실패: {")
+    p = FakeProvider([LLMResponse(tool_calls=[tc("add", a=1, b=1), bad]), LLMResponse(text="2")])
+    res = Agent(p, make_registry(), "sys").run("q")
+    assert [t["name"] for t in res.tool_calls] == ["add"] and res.answer == "2"
+
+
+def test_duplicate_calls_execute_once_and_are_capped():
+    dup = [tc("add", a=1, b=1) for _ in range(25)]
+    p = FakeProvider([LLMResponse(tool_calls=dup, finish_reason="length"), LLMResponse(text="2")])
+    res = Agent(p, make_registry(), "sys").run("q")
+    assert len(res.tool_calls) == 1 and res.answer == "2"
+    assert "24번 반복" in p.seen[1][-1]["content"]
+
+
+def test_cap_per_step_keeps_first_n_distinct():
+    calls = [ToolCall(id=f"c{i}", name="add", arguments={"a": i, "b": 1}) for i in range(7)]
+    p = FakeProvider([LLMResponse(tool_calls=calls), LLMResponse(text="ok")])
+    res = Agent(p, make_registry(), "sys", max_calls_per_step=4).run("q")
+    assert [t["arguments"]["a"] for t in res.tool_calls] == [0, 1, 2, 3]
+    assert "최대 4개" in p.seen[1][-1]["content"]

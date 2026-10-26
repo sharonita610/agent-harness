@@ -61,7 +61,7 @@ def build_server(registry: ToolRegistry | None = None, policy: Policy | None = N
         server.add_tool(
             _wrap(tool), name=tool.name,
             description=tool.description + ("" if read_only else " [변경 작업: 실행 전 사용자 확인 필요]"),
-            annotations=ToolAnnotations(readOnlyHint=read_only, destructiveHint=False, idempotentHint=read_only, openWorldHint=False),
+            annotations=ToolAnnotations(read_only_hint=read_only, destructive_hint=False, idempotent_hint=read_only, open_world_hint=False),
         )
 
     @server.resource("docs://{name}", name="regulation_doc", description="사내 규정 문서 원문(마크다운). name 은 파일명(확장자 제외).", mime_type="text/markdown")
