@@ -1,0 +1,170 @@
+"""LLM 프로바이더 추상화. 설정 한 줄로 로컬(llama.cpp) / OpenAI / Anthropic 교체."""
+from __future__ import annotations
+
+import json
+import os
+import re
+from typing import Any, Protocol
+
+from .types import LLMResponse, ToolCall, Usage
+
+DEFAULT_LOCAL_BASE_URL = "http://127.0.0.1:8080/v1"
+DEFAULT_LOCAL_MODEL = "local-llm"
+
+_TOOL_CALL_TAG = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.S)
+
+
+class Provider(Protocol):
+    name: str
+    model: str
+
+    def complete(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None) -> LLMResponse: ...
+
+
+def _parse_args(raw: Any) -> tuple[dict[str, Any], str | None]:
+    if isinstance(raw, dict):
+        return raw, None
+    if raw is None or raw == "":
+        return {}, None
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict):
+            return parsed, None
+        return {}, f"인자가 JSON 객체가 아님: {str(raw)[:200]}"
+    except json.JSONDecodeError as e:
+        return {}, f"인자 JSON 파싱 실패({e.msg}): {str(raw)[:200]}"
+
+
+def salvage_text_tool_calls(text: str | None) -> list[ToolCall]:
+    """소형 모델이 툴콜을 본문 텍스트(<tool_call>{...}</tool_call>)로 뱉은 경우 건져낸다."""
+    if not text:
+        return []
+    calls: list[ToolCall] = []
+    for i, m in enumerate(_TOOL_CALL_TAG.finditer(text)):
+        try:
+            obj = json.loads(m.group(1))
+        except json.JSONDecodeError:
+            continue
+        name = obj.get("name")
+        if not name:
+            continue
+        args, err = _parse_args(obj.get("arguments", {}))
+        calls.append(ToolCall(id=f"salvaged_{i}", name=name, arguments=args, parse_error=err))
+    return calls
+
+
+class OpenAICompatProvider:
+    """OpenAI 호환 /v1/chat/completions. llama-server, vLLM, LM Studio, OpenAI 모두 여기로."""
+
+    def __init__(self, model: str, base_url: str | None = None, api_key: str | None = None,
+                 temperature: float = 0.2, max_tokens: int = 1024, extra_body: dict | None = None, name: str = "openai-compat"):
+        from openai import OpenAI
+
+        self.name = name
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.extra_body = extra_body or {}
+        self._client = OpenAI(base_url=base_url, api_key=api_key or os.getenv("OPENAI_API_KEY") or "no-key", timeout=300)
+
+    def complete(self, messages, tools=None) -> LLMResponse:
+        from openai import NOT_GIVEN
+
+        resp = self._client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            tools=tools if tools else NOT_GIVEN,
+            tool_choice="auto" if tools else NOT_GIVEN,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            extra_body=self.extra_body or None,
+        )
+        choice = resp.choices[0]
+        msg = choice.message
+        calls: list[ToolCall] = []
+        for tc in msg.tool_calls or []:
+            args, err = _parse_args(tc.function.arguments)
+            calls.append(ToolCall(id=tc.id or f"call_{len(calls)}", name=tc.function.name, arguments=args, parse_error=err))
+        usage = Usage()
+        if resp.usage:
+            usage = Usage(prompt_tokens=resp.usage.prompt_tokens or 0, completion_tokens=resp.usage.completion_tokens or 0)
+        return LLMResponse(text=msg.content, tool_calls=calls, usage=usage, finish_reason=choice.finish_reason)
+
+
+class AnthropicProvider:
+    """Anthropic Messages API. OpenAI 형식 메시지/툴 스키마를 변환해서 보낸다."""
+
+    def __init__(self, model: str, api_key: str | None = None, temperature: float = 0.2, max_tokens: int = 1024):
+        import anthropic
+
+        self.name = "anthropic"
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self._client = anthropic.Anthropic(api_key=api_key or os.getenv("ANTHROPIC_API_KEY"))
+
+    @staticmethod
+    def _convert(messages: list[dict[str, Any]]) -> tuple[str | None, list[dict[str, Any]]]:
+        system = None
+        out: list[dict[str, Any]] = []
+        for m in messages:
+            role = m["role"]
+            if role == "system":
+                system = (system + "\n\n" if system else "") + m["content"]
+            elif role == "user":
+                out.append({"role": "user", "content": m["content"]})
+            elif role == "assistant":
+                blocks: list[dict[str, Any]] = []
+                if m.get("content"):
+                    blocks.append({"type": "text", "text": m["content"]})
+                for tc in m.get("tool_calls", []) or []:
+                    fn = tc["function"]
+                    try:
+                        inp = json.loads(fn.get("arguments") or "{}")
+                    except json.JSONDecodeError:
+                        inp = {}
+                    blocks.append({"type": "tool_use", "id": tc["id"], "name": fn["name"], "input": inp})
+                out.append({"role": "assistant", "content": blocks or [{"type": "text", "text": ""}]})
+            elif role == "tool":
+                block = {"type": "tool_result", "tool_use_id": m["tool_call_id"], "content": m.get("content") or ""}
+                if out and out[-1]["role"] == "user" and isinstance(out[-1]["content"], list):
+                    out[-1]["content"].append(block)
+                else:
+                    out.append({"role": "user", "content": [block]})
+        return system, out
+
+    def complete(self, messages, tools=None) -> LLMResponse:
+        system, converted = self._convert(messages)
+        a_tools = [{"name": t["function"]["name"], "description": t["function"].get("description", ""),
+                    "input_schema": t["function"].get("parameters", {"type": "object", "properties": {}})} for t in (tools or [])]
+        kwargs: dict[str, Any] = dict(model=self.model, max_tokens=self.max_tokens, temperature=self.temperature, messages=converted)
+        if system:
+            kwargs["system"] = system
+        if a_tools:
+            kwargs["tools"] = a_tools
+        resp = self._client.messages.create(**kwargs)
+        text_parts, calls = [], []
+        for block in resp.content:
+            if block.type == "text":
+                text_parts.append(block.text)
+            elif block.type == "tool_use":
+                calls.append(ToolCall(id=block.id, name=block.name, arguments=dict(block.input or {})))
+        usage = Usage(prompt_tokens=resp.usage.input_tokens, completion_tokens=resp.usage.output_tokens)
+        return LLMResponse(text="\n".join(text_parts) or None, tool_calls=calls, usage=usage, finish_reason=resp.stop_reason)
+
+
+def make_provider(spec: str | None = None, **kw) -> Provider:
+    """spec 예: "local" | "local:모델별칭" | "openai:gpt-5-mini" | "anthropic:claude-sonnet-4-5" | "compat:http://host:port/v1|model" """
+    spec = spec or os.getenv("HARNESS_PROVIDER", "local")
+    kind, _, rest = spec.partition(":")
+    if kind == "local":
+        return OpenAICompatProvider(model=rest or os.getenv("LLM_MODEL", DEFAULT_LOCAL_MODEL),
+                                    base_url=os.getenv("LLM_BASE_URL", DEFAULT_LOCAL_BASE_URL), api_key="llama.cpp", name="local", **kw)
+    if kind == "openai":
+        return OpenAICompatProvider(model=rest or "gpt-5-mini", name="openai", **kw)
+    if kind == "anthropic":
+        return AnthropicProvider(model=rest or "claude-sonnet-4-5", **kw)
+    if kind == "compat":
+        base_url, _, model = rest.partition("|")
+        return OpenAICompatProvider(model=model or DEFAULT_LOCAL_MODEL, base_url=base_url, api_key="no-key", name="compat", **kw)
+    raise ValueError(f"알 수 없는 프로바이더: {spec}")
