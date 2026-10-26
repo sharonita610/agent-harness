@@ -12,6 +12,7 @@ DEFAULT_LOCAL_BASE_URL = "http://127.0.0.1:8080/v1"
 DEFAULT_LOCAL_MODEL = "local-llm"
 
 _TOOL_CALL_TAG = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.S)
+_JSON_FENCE = re.compile(r"```(?:json)?\s*(\{.*?\}|\[.*?\])\s*```", re.S)
 
 
 class Provider(Protocol):
@@ -35,21 +36,44 @@ def _parse_args(raw: Any) -> tuple[dict[str, Any], str | None]:
         return {}, f"인자 JSON 파싱 실패({e.msg}): {str(raw)[:200]}"
 
 
+def _calls_from_obj(obj: Any, start: int) -> list[ToolCall]:
+    """{"name","arguments"} 객체, 그 리스트, 또는 {"tool_call(s)": [...]} 래퍼에서 호출을 뽑는다."""
+    if isinstance(obj, dict):
+        for key in ("tool_calls", "tool_call", "calls"):
+            if isinstance(obj.get(key), list):
+                return _calls_from_obj(obj[key], start)
+            if isinstance(obj.get(key), dict):
+                return _calls_from_obj([obj[key]], start)
+        obj = [obj]
+    out: list[ToolCall] = []
+    if isinstance(obj, list):
+        for i, item in enumerate(obj):
+            if isinstance(item, dict) and isinstance(item.get("name"), str):
+                args, err = _parse_args(item.get("arguments", item.get("parameters", {})))
+                out.append(ToolCall(id=f"salvaged_{start + i}", name=item["name"], arguments=args, parse_error=err))
+    return out
+
+
 def salvage_text_tool_calls(text: str | None) -> list[ToolCall]:
-    """소형 모델이 툴콜을 본문 텍스트(<tool_call>{...}</tool_call>)로 뱉은 경우 건져낸다."""
+    """소형 모델이 툴콜을 본문 텍스트로 뱉은 경우 건져낸다.
+    형태 1: <tool_call>{"name":..,"arguments":..}</tool_call>
+    형태 2: ```json {"tool_call":[{"name":..,"arguments":..}]} ``` 또는 ```json {"name":..,"arguments":..} ```
+    """
     if not text:
         return []
     calls: list[ToolCall] = []
-    for i, m in enumerate(_TOOL_CALL_TAG.finditer(text)):
+    for m in _TOOL_CALL_TAG.finditer(text):
         try:
-            obj = json.loads(m.group(1))
+            calls += _calls_from_obj(json.loads(m.group(1)), len(calls))
         except json.JSONDecodeError:
             continue
-        name = obj.get("name")
-        if not name:
+    if calls:
+        return calls
+    for m in _JSON_FENCE.finditer(text):
+        try:
+            calls += _calls_from_obj(json.loads(m.group(1)), len(calls))
+        except json.JSONDecodeError:
             continue
-        args, err = _parse_args(obj.get("arguments", {}))
-        calls.append(ToolCall(id=f"salvaged_{i}", name=name, arguments=args, parse_error=err))
     return calls
 
 

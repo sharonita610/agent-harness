@@ -136,3 +136,13 @@ def test_cap_per_step_keeps_first_n_distinct():
     res = Agent(p, make_registry(), "sys", max_calls_per_step=4).run("q")
     assert [t["arguments"]["a"] for t in res.tool_calls] == [0, 1, 2, 3]
     assert "최대 4개" in p.seen[1][-1]["content"]
+
+
+def test_salvages_fenced_json_tool_call_block():
+    from harness.agent.providers import salvage_text_tool_calls
+    text = '조회합니다.\n```json\n{"tool_call": [{"name": "run_sql", "arguments": {"sql": "SELECT 1", "limit": 1}}]}\n```'
+    calls = salvage_text_tool_calls(text)
+    assert [c.name for c in calls] == ["run_sql"] and calls[0].arguments["limit"] == 1
+    single = salvage_text_tool_calls('```json\n{"name": "add", "arguments": {"a": 1, "b": 2}}\n```')
+    assert single[0].name == "add"
+    assert salvage_text_tool_calls("```sql\nSELECT 1\n```") == []
