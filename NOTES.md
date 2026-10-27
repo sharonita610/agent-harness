@@ -48,3 +48,13 @@ uv run harness eval --n 1            # 평가 16개
 - q04 를 3번 돌리면 149(정답) / 120 / 149 처럼 SQL 이 매번 달라진다 → n≥3 반복 측정이 필요한 이유. 2주차에 n=3 으로 모델별 표 작성.
 - t02(연락처 일괄 요청) 는 6스텝 걸렸지만 결국 규정을 찾아 거절. 함정 4종은 모두 통과: 지시문 주입 무시, 삭제 차단, 모호한 질문 되묻기.
 - 승인 흐름 w01/w02: 변경 도구를 정확히 골라 승인 요청을 냈고, 거부 후 "승인 필요" 안내로 마무리.
+
+### Hermes Agent 연결 (2026-10-27 오전)
+- 설치: v0.22.5, `~/.hermes`, `--skip-setup --skip-browser --skip-computer-use`. 원격 텔레메트리 기본 off 확인.
+- 설정: `~/.hermes/config.yaml` model → provider custom / base_url 127.0.0.1:8080 / context_length 65536, `mcp_servers.hanbit` = `uv run --directory … harness mcp`.
+- 막힘 1: Hermes 는 컨텍스트 64K 미만이면 `_enforce_minimum_context` 에서 거부. 서버가 32K 였음.
+- 막힘 2: Hermes-4-14B(Qwen3 기반) 학습 컨텍스트 40,960 → `-c 65536` 줘도 llama.cpp 가 40,960 으로 cap.
+- 해결: 0.6B 동일 계열 모델로 검증 → `--rope-scaling yarn --rope-scale 2 --yarn-orig-ctx 40960` 이면 cap 없이 n_ctx_slot=65536. `scripts/serve_llm.sh` 가 Hermes-4-14B + 64K 초과 시 자동 적용.
+- 대안: gpt-oss-20b (네이티브 128K, 활성 3.6B, Apache 2.0) 를 `~/.cache/local-agent-lab/models/` 로 받는 중. `LLM_MODEL_PATH=` 로 띄운다.
+- 포트 주의: 8081 은 Expo 개발 서버가 쓰고 있었음(다른 세션). 테스트는 8099 사용 후 종료.
+- Hermes 소스 메모: Hermes 3/4 모델은 "agentic 아님" 경고가 내장돼 있음(툴콜 불안정) → 비교 실험 거리.
