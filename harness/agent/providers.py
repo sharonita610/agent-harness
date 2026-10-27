@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
+import urllib.request
 from typing import Any, Protocol
 
 from .types import LLMResponse, ToolCall, Usage
@@ -20,6 +22,25 @@ class Provider(Protocol):
     model: str
 
     def complete(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None) -> LLMResponse: ...
+
+
+def wait_ready(base_url: str = DEFAULT_LOCAL_BASE_URL, timeout_s: float = 180, on_wait=None) -> bool:
+    """llama-server 류 로컬 서버의 /health 가 ok 가 될 때까지 기다린다. 모델 로딩(503) 중 호출하는 실수를 막는다."""
+    health = base_url.rstrip("/").removesuffix("/v1") + "/health"
+    t0 = time.monotonic()
+    notified = False
+    while time.monotonic() - t0 < timeout_s:
+        try:
+            with urllib.request.urlopen(health, timeout=3) as r:
+                if json.load(r).get("status") == "ok":
+                    return True
+        except Exception:
+            pass
+        if on_wait and not notified:
+            on_wait()
+            notified = True
+        time.sleep(2)
+    return False
 
 
 def _parse_args(raw: Any) -> tuple[dict[str, Any], str | None]:
@@ -92,17 +113,17 @@ class OpenAICompatProvider:
         self._client = OpenAI(base_url=base_url, api_key=api_key or os.getenv("OPENAI_API_KEY") or "no-key", timeout=300)
 
     def complete(self, messages, tools=None) -> LLMResponse:
-        from openai import NOT_GIVEN
+        from openai import NOT_GIVEN, APIStatusError
 
-        resp = self._client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            tools=tools if tools else NOT_GIVEN,
-            tool_choice="auto" if tools else NOT_GIVEN,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            extra_body=self.extra_body or None,
-        )
+        for attempt in range(60):  # 모델 로딩 중(503) 이면 최대 ~2분 기다린다
+            try:
+                resp = self._create(messages, tools, NOT_GIVEN)
+                break
+            except APIStatusError as e:
+                if e.status_code == 503 and attempt < 59:
+                    time.sleep(2)
+                    continue
+                raise
         choice = resp.choices[0]
         msg = choice.message
         calls: list[ToolCall] = []
@@ -113,6 +134,18 @@ class OpenAICompatProvider:
         if resp.usage:
             usage = Usage(prompt_tokens=resp.usage.prompt_tokens or 0, completion_tokens=resp.usage.completion_tokens or 0)
         return LLMResponse(text=msg.content, tool_calls=calls, usage=usage, finish_reason=choice.finish_reason)
+
+
+    def _create(self, messages, tools, NOT_GIVEN):
+        return self._client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            tools=tools if tools else NOT_GIVEN,
+            tool_choice="auto" if tools else NOT_GIVEN,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            extra_body=self.extra_body or None,
+        )
 
 
 class AnthropicProvider:

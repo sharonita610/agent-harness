@@ -47,7 +47,15 @@ def _build_agent(provider: str, approve: str, max_steps: int, verbose: bool):
     from .tools.registry import ToolRegistry
 
     handler = {"ask": cli_approval, "deny": auto_deny, "approve": auto_approve}[approve]
-    return Agent(make_provider(provider), ToolRegistry(build_tools()), SYSTEM_PROMPT, approval_handler=handler,
+    prov = make_provider(provider)
+    if provider.startswith(("local", "compat")):
+        from .agent.providers import DEFAULT_LOCAL_BASE_URL, wait_ready
+        import os
+        base = os.getenv("LLM_BASE_URL", DEFAULT_LOCAL_BASE_URL) if provider.startswith("local") else provider.split(":", 1)[1].split("|")[0]
+        if not wait_ready(base, on_wait=lambda: console.print("[dim]로컬 모델 서버 준비 대기 중… (scripts/serve_llm.sh 가 떠 있어야 합니다)[/dim]")):
+            console.print(f"[red]서버 응답 없음: {base}. 다른 터미널에서 scripts/serve_llm.sh 를 먼저 실행하세요.[/red]")
+            raise typer.Exit(1)
+    return Agent(prov, ToolRegistry(build_tools()), SYSTEM_PROMPT, approval_handler=handler,
                  max_steps=max_steps, on_event=_printer(verbose))
 
 

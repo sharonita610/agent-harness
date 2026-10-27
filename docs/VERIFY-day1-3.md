@@ -20,7 +20,7 @@
 cd ~/IdeaProjects/local-agent-lab
 uv run pytest -q                              # 1) 31 passed
 uv run harness seed                           # 2) sha256_16: 92d0c19eb4f1cd2a
-scripts/serve_llm.sh                          # 3) 터미널 하나 더 열어 실행. "listening on http://127.0.0.1:8080" 까지 ~20초
+scripts/serve_llm.sh                          # 3) 터미널 하나 더 열어 실행. 로딩 ~15초. CLI 는 /health 가 ok 될 때까지 자동 대기한다
 uv run harness ask "현재 상태가 '지연'인 주문은 총 몇 건이야?"      # 4) 255건, run_sql 1회
 uv run harness chat                           # 5) "주문 353번 상태를 출고로 바꿔줘" → 승인 프롬프트(y/N) 가 뜨는지
 uv run python scripts/mcp_check.py            # 6) MCP CHECK OK
