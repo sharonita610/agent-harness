@@ -19,12 +19,26 @@ from ..agent.loop import Agent
 from ..agent.providers import make_provider
 from ..observability.tracer import TraceCollector, maybe_export, write_jsonl
 from ..packs.enterprise.seed import DEFAULT_DB
-from ..packs.enterprise.tools import SYSTEM_PROMPT, build_tools
+from ..packs.enterprise.tools import SYSTEM_PROMPT, SYSTEM_PROMPTS, build_tools
 from ..tools.permissions import auto_deny
 from ..tools.registry import ToolRegistry
 
 TASKS_PATH = Path(__file__).parent / "tasks.yaml"
 RESULTS_DIR = Path(__file__).parent / "results"
+PRICES_PATH = Path(__file__).parent / "prices.yaml"
+
+
+def cost_usd(provider: str, prompt_tokens: int, completion_tokens: int) -> dict[str, float | None]:
+    """실제 비용과 '호스팅했다면' 참고 비용(USD)."""
+    prices = yaml.safe_load(PRICES_PATH.read_text(encoding="utf-8"))
+    key = provider if provider in prices else ("local" if provider.startswith(("local", "compat")) else None)
+    p = prices.get(key) if key else None
+    if not p:
+        return {"cost_usd": None, "cost_usd_if_hosted": None}
+    actual = (prompt_tokens * p["input"] + completion_tokens * p["output"]) / 1e6
+    ref = p.get("hosted_ref")
+    hosted = (prompt_tokens * ref["input"] + completion_tokens * ref["output"]) / 1e6 if ref else actual
+    return {"cost_usd": round(actual, 5), "cost_usd_if_hosted": round(hosted, 5)}
 
 
 _SPACE_VARIANTS = {"\u202f": " ", "\u00a0": " ", "\u2009": " ", "\u2007": " "}
@@ -95,7 +109,7 @@ def resolve(task: dict, conn: sqlite3.Connection) -> tuple[str, list[Any]]:
 
 
 def run_eval(provider: str = "local", n: int = 1, tasks_path: Path | None = None, limit: int | None = None,
-             tag: str | None = None, console=None, db_path: Path = DEFAULT_DB) -> dict[str, Any]:
+             tag: str | None = None, console=None, db_path: Path = DEFAULT_DB, prompt_version: str = "v1") -> dict[str, Any]:
     tasks = yaml.safe_load((tasks_path or TASKS_PATH).read_text(encoding="utf-8"))
     if limit:
         tasks = tasks[:limit]
@@ -105,7 +119,8 @@ def run_eval(provider: str = "local", n: int = 1, tasks_path: Path | None = None
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     trace_dir = RESULTS_DIR / "traces" / f"{stamp}_{provider.replace(':', '-').replace('/', '-')}{('_' + tag) if tag else ''}"
     collector_box: dict[str, TraceCollector] = {}
-    agent = Agent(prov, registry, SYSTEM_PROMPT, approval_handler=auto_deny, max_steps=12,
+    system_prompt = SYSTEM_PROMPTS[prompt_version]
+    agent = Agent(prov, registry, system_prompt, approval_handler=auto_deny, max_steps=12,
                   on_event=lambda ev: collector_box["c"].on_event(ev) if "c" in collector_box else None)
 
     rows: list[dict[str, Any]] = []
@@ -129,7 +144,7 @@ def run_eval(provider: str = "local", n: int = 1, tasks_path: Path | None = None
                 console.print(f"{mark} {task['id']:4} run{i + 1} {res.steps}스텝 {res.latency_s:6.1f}s  {('실패: ' + ','.join(failed)) if failed else ''}")
         rows.append({"id": task["id"], "type": task["type"], "question": question, "pass_rate": sum(r["pass"] for r in runs) / n, "runs": runs})
 
-    summary = _summarize(rows, provider=provider, model=getattr(prov, "model", "?"), n=n, tag=tag)
+    summary = _summarize(rows, provider=provider, model=getattr(prov, "model", "?"), n=n, tag=tag, prompt_version=prompt_version)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     base = RESULTS_DIR / f"{stamp}_{provider.replace(':', '-').replace('/', '-')}{('_' + tag) if tag else ''}"
     base.with_suffix(".json").write_text(json.dumps({"summary": summary, "tasks": rows}, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
@@ -145,10 +160,13 @@ def _summarize(rows, **meta) -> dict[str, Any]:
     by_type: dict[str, list[float]] = {}
     for t in rows:
         by_type.setdefault(t["type"], []).append(t["pass_rate"])
+    total_prompt = sum(r["prompt_tokens"] for r in all_runs)
+    total_completion = sum(r["completion_tokens"] for r in all_runs)
     return {
         **meta,
         "tasks": len(rows),
         "runs": len(all_runs),
+        **cost_usd(meta.get("provider", "local"), total_prompt, total_completion),
         "pass_rate": round(sum(r["pass"] for r in all_runs) / max(1, len(all_runs)), 3),
         "by_type": {k: round(sum(v) / len(v), 3) for k, v in by_type.items()},
         "avg_steps": round(statistics.mean(r["steps"] for r in all_runs), 2) if all_runs else 0,
@@ -164,7 +182,10 @@ def render_markdown(summary: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         f"# 평가 결과 · {summary['provider']} ({summary['model']}) · n={summary['n']}",
         "",
         f"- 통과율 {summary['pass_rate']:.0%} ({summary['runs']}회 실행, 태스크 {summary['tasks']}개) · 유형별 " + ", ".join(f"{k} {v:.0%}" for k, v in summary["by_type"].items()),
-        f"- 평균 스텝 {summary['avg_steps']} · 지연 p50 {summary['p50_latency_s']}s / p95 {summary['p95_latency_s']}s · 실행당 토큰 {summary['tokens_per_run']}",
+        f"- 평균 스텝 {summary['avg_steps']} · 지연 p50 {summary['p50_latency_s']}s / p95 {summary['p95_latency_s']}s · 실행당 토큰 {summary['tokens_per_run']}"
+        + (f" · 비용 ${summary['cost_usd']:.4f}" if summary.get('cost_usd') is not None else "")
+        + (f" (호스팅이면 ${summary['cost_usd_if_hosted']:.4f})" if summary.get('cost_usd_if_hosted') not in (None, summary.get('cost_usd')) else "")
+        + (f" · 프롬프트 {summary['prompt_version']}" if summary.get('prompt_version') else ""),
         "",
         "| id | 유형 | 통과율 | 스텝 | 지연(s) | 실패 항목 | 답변(앞 80자) |",
         "|---|---|---|---|---|---|---|",
@@ -182,6 +203,8 @@ def rescore(path: Path, tasks_path: Path | None = None) -> dict[str, Any]:
     from ..agent.types import AgentResult
 
     data = json.loads(path.read_text(encoding="utf-8"))
+    if "tasks" not in data:  # 검색 평가·일치율 파일 등은 건너뛴다
+        return {"skipped": path.name}
     tasks = {t["id"]: t for t in yaml.safe_load((tasks_path or TASKS_PATH).read_text(encoding="utf-8"))}
     for t in data["tasks"]:
         task = tasks[t["id"]]

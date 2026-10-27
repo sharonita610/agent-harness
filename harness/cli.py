@@ -132,10 +132,11 @@ def chat(provider: str = "local", approve: str = "ask", max_steps: int = 12, ver
 
 @app.command("eval")
 def eval_cmd(provider: str = "local", n: int = typer.Option(1, help="태스크당 반복 횟수"),
-             tasks: Optional[Path] = None, limit: Optional[int] = None, tag: Optional[str] = None):
+             tasks: Optional[Path] = None, limit: Optional[int] = None, tag: Optional[str] = None,
+             prompt: str = typer.Option("v1", help="시스템 프롬프트 버전: v1 | v2")):
     """평가 태스크를 돌리고 성적표를 저장한다."""
     from .evals.runner import run_eval
-    run_eval(provider=provider, n=n, tasks_path=tasks, limit=limit, tag=tag, console=console)
+    run_eval(provider=provider, n=n, tasks_path=tasks, limit=limit, tag=tag, console=console, prompt_version=prompt)
 
 
 @app.command("retrieval-eval")
@@ -146,12 +147,38 @@ def retrieval_eval():
 
 
 @app.command()
+def judge(results: Path, provider: str = "local", limit: Optional[int] = None):
+    """저장된 평가 결과를 LLM 판정자가 다시 채점해 judge 필드를 채운다(에이전트 재실행 없음)."""
+    from .evals.judge import judge_results
+    judge_results(results, provider_spec=provider, limit=limit, console=console)
+
+
+@app.command("grade-sheet")
+def grade_sheet(results: Path, n: int = 20):
+    """사람 채점용 HTML 을 results/grading/ 에 만든다. 브라우저에서 채점하고 JSON 을 내보낸다."""
+    from .evals.agreement import grading_page
+    out = results.parent / "grading" / f"{results.stem}.html"
+    grading_page(results, out, n=n)
+    console.print(f"채점표: {out}\n열기: uv run python -m http.server 8765 --directory {results.parent}  → http://127.0.0.1:8765/grading/{out.name}")
+
+
+@app.command()
+def agreement(results: Path, human: Path):
+    """규칙 채점 · 판정자 · 사람 채점의 일치율과 kappa."""
+    import json as _json
+    from .evals.agreement import compute_agreement
+    out = compute_agreement(_json.loads(results.read_text(encoding="utf-8")), _json.loads(human.read_text(encoding="utf-8")))
+    console.print(_json.dumps(out, ensure_ascii=False, indent=2))
+    (results.parent / f"agreement_{results.stem}.json").write_text(_json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+@app.command()
 def rescore(results: list[Path]):
     """저장된 평가 결과를 현재 채점 로직으로 다시 채점한다(모델 재호출 없음)."""
     from .evals.runner import rescore as _rescore
     for r in results:
         s = _rescore(r)
-        console.print(f"{r.name}: 통과율 {s['pass_rate']:.0%}")
+        console.print(f"{r.name}: " + (f"통과율 {s['pass_rate']:.0%}" if "pass_rate" in s else "건너뜀"))
 
 
 users_app = typer.Typer(help="서비스 사용자(API 키)와 역할 관리. 키는 해시로만 저장되고 발급 때 한 번만 보인다.")

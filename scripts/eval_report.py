@@ -7,7 +7,7 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 res_dir = root / "harness/evals/results"
-jsons = sorted(res_dir.glob("*.json"))
+jsons = sorted(p for p in res_dir.glob("*.json") if not p.name.startswith(("retrieval_", "agreement_", "human-")))
 runs = []
 for p in jsons:
     d = json.loads(p.read_text(encoding="utf-8"))

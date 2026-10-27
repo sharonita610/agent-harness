@@ -1,0 +1,6 @@
+# 1M 토큰당 USD. 로컬은 0 (전기만). hosted_ref 는 "같은 오픈 모델을 호스팅 API 로 썼다면" 의 참고 단가(OpenRouter, 2026-10).
+local: {input: 0, output: 0, hosted_ref: {input: 0.018, output: 0.09, name: "openai/gpt-oss-20b @ OpenRouter"}}
+openai:gpt-5-mini: {input: 0.25, output: 2.0}
+openai:gpt-5: {input: 1.25, output: 10.0}
+anthropic:claude-sonnet-4-5: {input: 3.0, output: 15.0}
+anthropic:claude-haiku-4-5: {input: 1.0, output: 5.0}
