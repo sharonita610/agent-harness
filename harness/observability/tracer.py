@@ -88,8 +88,8 @@ class TraceCollector:
                     sp.status = "denied"
                     sp.attrs["tier"] = d.get("tier")
         elif kind == "approval_request":
-            parent = self._open_tools[-1].span_id if self._open_tools else self.root.span_id
-            self._open_approval = Span(_sid(), parent, f"approval.{d.get('name')}", "approval", now,
+            # 사람 결재 대기는 도구 실행이 아니다: run 바로 아래에 별도 스팬으로 두고, 도구 스팬은 결재 뒤에 시작한 것으로 본다.
+            self._open_approval = Span(_sid(), self.root.span_id, f"human.approval.{d.get('name')}", "approval", now,
                                        attrs={"step": step, "tool": d.get("name"), "arguments": d.get("arguments"), "tier": d.get("tier")})
             self.spans.append(self._open_approval)
         elif kind == "approval_result":
@@ -97,10 +97,15 @@ class TraceCollector:
                 self._open_approval.end = now
                 self._open_approval.status = "ok" if d.get("approved") else "not_approved"
                 self._open_approval.attrs["approved"] = d.get("approved")
+                waited = now - self._open_approval.start
                 self._open_approval = None
-                if not d.get("approved"):
-                    sp = self._pop_tool(d.get("name"))
-                    if sp:
+                sp = next((t for t in reversed(self._open_tools) if t.attrs.get("tool") == d.get("name")), None)
+                if sp:
+                    sp.attrs["waited_for_approval_s"] = round(waited, 3)
+                    if d.get("approved"):
+                        sp.start = now  # 실제 실행은 승인 뒤부터
+                    else:
+                        self._open_tools.remove(sp)
                         sp.end = now
                         sp.status = "not_approved"
         elif kind == "final":
@@ -140,9 +145,11 @@ class TraceCollector:
     def summary(self) -> dict[str, Any]:
         tools = [s for s in self.spans if s.kind == "tool"]
         llms = [s for s in self.spans if s.kind == "llm"]
+        humans = [s for s in self.spans if s.kind == "approval"]
+        dur = lambda xs: round(sum((s.end or s.start) - s.start for s in xs) * 1000)
         return {"run_id": self.run_id, "spans": len(self.spans), "llm_calls": len(llms), "tool_calls": len(tools),
-                "tool_errors": sum(1 for s in tools if s.status == "error"),
-                "llm_ms": round(sum((s.end or s.start) - s.start for s in llms) * 1000), "tool_ms": round(sum((s.end or s.start) - s.start for s in tools) * 1000),
+                "tool_errors": sum(1 for s in tools if s.status == "error"), "approvals": len(humans),
+                "llm_ms": dur(llms), "tool_ms": dur(tools), "human_ms": dur(humans),
                 "total_ms": round(((self.root.end or time.time()) - self.root.start) * 1000)}
 
 

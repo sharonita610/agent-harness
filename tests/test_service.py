@@ -183,3 +183,14 @@ def test_stale_runs_are_failed_on_startup(tmp_path, seeded_db):
     assert s.get_run(r1)["status"] == "failed" and s.get_run(r2)["status"] == "failed"
     assert s.get_approval(aid)["status"] == "expired"
     assert s.list_approvals("pending") == []
+
+
+def test_health_reports_model_server_status(tmp_path, seeded_db):
+    db, _ = seeded_db
+    from harness.service.auth import UserStore
+    state = {"ok": False}
+    app = create_app(db_path=tmp_path / "svc.db", registry=ToolRegistry(build_tools(db)), system_prompt=SYSTEM_PROMPT,
+                     users=UserStore(path=tmp_path / "none.json"), model_probe=lambda: state["ok"], default_provider="local")
+    with TestClient(app) as c:
+        m = c.get("/health").json()["model"]
+        assert m == {"provider": "local", "reachable": False, "hosted": False}

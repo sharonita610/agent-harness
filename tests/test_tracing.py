@@ -18,7 +18,7 @@ def test_collector_builds_spans_from_live_run(tmp_path):
     by_name = {s.name: s for s in c.spans}
     assert by_name["tool.add"].status == "ok" and by_name["tool.add"].end is not None
     assert by_name["tool.nope"].status == "error"
-    assert by_name["tool.write_note"].status == "not_approved" and by_name["approval.write_note"].status == "not_approved"
+    assert by_name["tool.write_note"].status == "not_approved" and by_name["human.approval.write_note"].status == "not_approved"
     assert c.root.status == "ok" and c.root.attrs["steps"] == 3 and c.root.attrs["stopped_reason"] == "final"
     assert all(s.end is not None for s in c.spans)
     summ = c.summary()
@@ -50,3 +50,17 @@ def test_stopped_run_marks_root_and_unfinished_tools():
     c.on_event({"kind": "tool_call", "step": 1, "data": {"name": "x", "arguments": {}}}, ts=10.0)
     c.on_event({"kind": "stopped", "step": 1, "data": {"reason": "cancelled"}}, ts=12.0)
     assert c.root.status == "cancelled" and c.spans[1].status == "unfinished" and c.spans[1].end == 12.0
+
+
+def test_approval_wait_is_split_from_tool_execution():
+    c = TraceCollector("run_z", "q")
+    c.on_event({"kind": "tool_call", "step": 1, "data": {"name": "create_note", "arguments": {}}}, ts=100.0)
+    c.on_event({"kind": "approval_request", "step": 1, "data": {"name": "create_note", "arguments": {}, "tier": "write"}}, ts=100.0)
+    c.on_event({"kind": "approval_result", "step": 1, "data": {"name": "create_note", "approved": True}}, ts=120.0)
+    c.on_event({"kind": "tool_result", "step": 1, "data": {"name": "create_note", "chars": 50}}, ts=120.5)
+    c.on_event({"kind": "final", "step": 2, "data": {"answer": "ok"}}, ts=122.0)
+    d = {s.name: s.to_dict() for s in c.spans}
+    assert d["human.approval.create_note"]["duration_ms"] == 20000.0 and d["human.approval.create_note"]["parent_id"] == c.root.span_id
+    assert d["tool.create_note"]["duration_ms"] == 500.0 and d["tool.create_note"]["attrs"]["waited_for_approval_s"] == 20.0
+    summ = c.summary()
+    assert summ["human_ms"] == 20000 and summ["tool_ms"] == 500 and summ["approvals"] == 1

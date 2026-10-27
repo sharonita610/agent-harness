@@ -106,3 +106,8 @@ uv run harness eval --n 1            # 평가 16개
 - FastAPI: `ui/dist` 가 있으면 `/` → `/app/` 리다이렉트 + StaticFiles 마운트, 없으면 내장 데모(`/demo` 는 항상).
 - 실제 모델 확인: 메모 남기기 → 승인 카드 → 승인 → note_id 122 → 답변 29.3s. 트레이스: llm.step1 5.2s · tool.create_note 22.4s(승인 대기 포함) · llm.step2 1.7s.
 - CI 에 ui 잡 추가(npm ci → test → build).
+
+### 디벨롭 A·D (2026-10-28)
+- A 인증·역할·감사: API 키(해시 저장) + viewer/operator/approver/admin, 결재는 approver, `/audit`. 테스트가 실제 users.json 을 읽어 401 나던 문제 → conftest 가 없는 파일을 가리키게 함.
+- D-1 트레이스: 결재 대기를 `human.approval.*` 스팬으로 run 아래에 분리, 도구 스팬은 승인 시각부터. summary 에 human_ms/approvals. 아까 "도구 22.4초" 는 이제 "사람 대기 22초 + 도구 0.5초".
+- D-2 모델 서버 상태: `/health.model` (10초 캐시 프로브), 상단에 연결됨/꺼짐, 꺼지면 질문 잠그고 안내.

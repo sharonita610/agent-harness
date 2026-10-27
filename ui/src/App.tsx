@@ -36,17 +36,18 @@ export default function App() {
         </div>
         <div className="status">
           <span><i className={`dot ${down ? "off" : ""}`} />{down ? "서버에 연결되지 않았습니다" : health ? <>도구 <b>{health.tools}개</b></> : "연결 확인 중"}</span>
-          {health && <span>모델 <b>{health.provider}</b></span>}
+          {health && <span>모델 <b>{health.provider}</b>{health.model && !health.model.hosted && (health.model.reachable ? <span className="st-ok"> 연결됨</span> : <span className="st-failed"> 꺼짐</span>)}</span>}
           {health && health.pending_approvals > 0 && <span>결재 대기 <b className="st-running">{health.pending_approvals}건</b></span>}
           <a href="/docs" target="_blank" rel="noreferrer">API 문서</a>
           <Login me={me} onChange={refreshHealth} />
         </div>
       </header>
       {authErr && health && !down && <p className="notice">이 서비스는 API 키가 필요합니다. 오른쪽 위에 운영자나 결재자 키를 넣고 로그인하세요.</p>}
+      {health?.model && !health.model.hosted && !health.model.reachable && <p className="notice">모델 서버가 꺼져 있어 질문할 수 없습니다. 터미널에서 <code>scripts/serve_llm.sh</code> 를 실행하면 10초 안에 다시 연결됩니다.</p>}
 
       <div className="layout">
         <main>
-          <Chat sessionId={sessionId} ensureSession={newSession} onNewSession={newSession} canApprove={me?.can.approve ?? false} canChat={me?.can.chat ?? false}
+          <Chat sessionId={sessionId} ensureSession={newSession} onNewSession={newSession} canApprove={me?.can.approve ?? false} canChat={(me?.can.chat ?? false) && (health?.model ? health.model.hosted || health.model.reachable : true)}
                 onRunFinished={(runId) => { setRefreshKey((k) => k + 1); setSelectedRun(runId); refreshHealth(); }} />
         </main>
         <aside className="ledger">

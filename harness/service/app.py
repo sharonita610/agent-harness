@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -42,7 +43,7 @@ class AppState:
 def create_app(db_path: str | Path | None = None, provider_factory: Callable[[str], Any] | None = None,
                registry: ToolRegistry | None = None, system_prompt: str | None = None,
                approval_timeout_s: float = 600, default_provider: str | None = None, job_concurrency: int = 1,
-               users: UserStore | None = None) -> FastAPI:
+               users: UserStore | None = None, model_probe: Callable[[], bool] | None = None) -> FastAPI:
     if registry is None or system_prompt is None:
         from ..packs.enterprise.tools import SYSTEM_PROMPT, build_tools
         registry = registry or ToolRegistry(build_tools())
@@ -54,6 +55,33 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
     state.jobs = JobQueue(state, concurrency=job_concurrency)
     state.users = users or UserStore.load()
     current_user, require = make_dependencies(state.users)
+
+    def _default_probe() -> bool:
+        """local/compat 프로바이더면 /health 를 1초 안에 확인. 호스팅 API 는 항상 True."""
+        spec = state.default_provider
+        if spec.startswith("local"):
+            base = os.getenv("LLM_BASE_URL", "http://127.0.0.1:8080/v1")
+        elif spec.startswith("compat:"):
+            base = spec.split(":", 1)[1].split("|")[0]
+        else:
+            return True
+        import json as _json
+        import urllib.request
+        try:
+            with urllib.request.urlopen(base.rstrip("/").removesuffix("/v1") + "/health", timeout=1) as r:
+                return _json.load(r).get("status") == "ok"
+        except Exception:
+            return False
+
+    probe = model_probe or _default_probe
+    probe_cache = {"at": 0.0, "ok": False}
+
+    def model_status() -> dict[str, Any]:
+        if time.monotonic() - probe_cache["at"] > 10:
+            probe_cache["ok"] = probe()
+            probe_cache["at"] = time.monotonic()
+        hosted = not (state.default_provider.startswith("local") or state.default_provider.startswith("compat:"))
+        return {"provider": state.default_provider, "reachable": probe_cache["ok"], "hosted": hosted}
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -76,7 +104,7 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
     @app.get("/health")
     def health():
         return {"status": "ok", "tools": len(registry), "provider": state.default_provider, "pending_approvals": len(state.broker.pending()),
-                "auth_required": state.users.required}
+                "auth_required": state.users.required, "model": model_status()}
 
     @app.get("/me")
     def me(user: User = Depends(current_user)):
