@@ -30,7 +30,7 @@ fi
 exec llama-server "${MODEL_ARGS[@]}" \
   --jinja \
   -c "$CTX" \
-  "${ROPE_ARGS[@]}" \
+  ${ROPE_ARGS[@]+"${ROPE_ARGS[@]}"} \
   -fa on -ctk q8_0 -ctv q8_0 \
   -ngl 99 \
   --host 127.0.0.1 --port "$PORT" \
