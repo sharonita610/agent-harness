@@ -15,6 +15,7 @@ jobs:
       - name: seed determinism
         run: |
           uv run harness seed | grep -q "sha256_16: 92d0c19eb4f1cd2a"
+          uv run harness seed --pack factory | grep -q "sha256_16: 0fbe098605883ba6"
       - run: uv run pytest -q
       - name: mcp server smoke (enterprise + spice)
         run: |

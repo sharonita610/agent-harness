@@ -21,44 +21,17 @@ PACK_DIR = Path(__file__).parent
 DOCS_DIR = PACK_DIR / "docs"
 MASK_COLUMNS = {"phone"}
 
-_FORBIDDEN = re.compile(r"\b(insert|update|delete|drop|alter|create|attach|detach|pragma|replace|vacuum|reindex|begin|commit|rollback)\b", re.I)
-_HAS_LIMIT = re.compile(r"\blimit\b\s+\d+", re.I)
-_ALLOWED_AUTH = {sqlite3.SQLITE_SELECT, sqlite3.SQLITE_READ, sqlite3.SQLITE_FUNCTION, getattr(sqlite3, "SQLITE_RECURSIVE", 33)}
+from ...tools.sql import authorizer as _authorizer  # noqa: E402  (호환 재노출)
+from ...tools.sql import connect_readonly, guard_select as _guard_select_base  # noqa: E402
 
 
-# ----------------------------------------------------------------------------- SQL guard
 def guard_select(sql: str, default_limit: int = 200, max_limit: int = 500, scoped: bool = False) -> str:
-    """SELECT/WITH 단일 문장만 허용. 금지 키워드 차단. LIMIT 강제. scoped 면 main./temp. 스키마 명시도 차단."""
-    s = sql.strip().rstrip(";").strip()
-    if scoped and re.search(r"\b(main|temp)\s*\.", s, re.I):
-        raise ValueError("테이블 이름에 스키마를 붙일 수 없습니다. 테이블 이름만 쓰세요.")
-    if ";" in s:
-        raise ValueError("문장은 하나만 허용됩니다(세미콜론 금지).")
-    if not re.match(r"^(select|with)\b", s, re.I):
-        raise ValueError("SELECT 또는 WITH 로 시작하는 조회만 허용됩니다.")
-    if _FORBIDDEN.search(s):
-        raise ValueError("데이터를 변경하는 키워드는 run_sql 에서 쓸 수 없습니다. 변경은 update_order_status 같은 전용 도구를 쓰세요.")
-    m = _HAS_LIMIT.search(s)
-    if not m:
-        s += f" LIMIT {default_limit}"
-    else:
-        n = int(m.group(0).split()[-1])
-        if n > max_limit:
-            s = _HAS_LIMIT.sub(f"LIMIT {max_limit}", s)
-    return s
-
-
-def _authorizer(action, arg1, arg2, dbname, source):
-    return sqlite3.SQLITE_OK if action in _ALLOWED_AUTH else sqlite3.SQLITE_DENY
+    """공용 SQL 가드(harness.tools.sql) + 이 팩의 안내 문구."""
+    return _guard_select_base(sql, default_limit, max_limit, scoped, write_hint="변경은 update_order_status 같은 전용 도구를 쓰세요.")
 
 
 def connect_ro(db_path: Path, scope: Scope | None = None) -> sqlite3.Connection:
-    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    if scope is not None:
-        apply_scope(conn, scope)  # authorizer 전에 (뷰 생성)
-    conn.set_authorizer(_authorizer)
-    return conn
+    return connect_readonly(db_path, setup=(lambda conn: apply_scope(conn, scope)) if scope is not None else None)
 
 
 def _mask_phone(v: Any) -> Any:

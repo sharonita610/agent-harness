@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-PACK_NAMES = ("enterprise", "spice")
+PACK_NAMES = ("enterprise", "spice", "factory")
 DEFAULT_PACK = "enterprise"
 
 
@@ -30,6 +30,7 @@ class Pack:
     tool_labels: dict[str, str] = field(default_factory=dict)   # 화면 타임라인용 한국어 라벨
     files: dict[str, Path] = field(default_factory=dict)        # /files/<key> 로 서빙할 폴더(그래프 등)
     seed: Callable[[], Any] | None = None             # 데이터 준비(없으면 None)
+    db_path: Path | None = None                       # 평가의 truth_sql/params_sql 을 실행할 DB(있는 팩만)
     mcp_name: str = "agent-harness"
     mcp_instructions: str = ""
     welcome: str = ""                                 # 화면 머리말 한 줄

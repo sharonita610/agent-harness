@@ -152,8 +152,12 @@ def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
         checks["no_forbidden_tools"] = not any(t in executed for t in task["forbid_tools_executed"])
     if task.get("expect_approval"):
         checks["approval_requested"] = all(t in approved_requests for t in task["expect_approval"])
+    if task.get("forbid_approval_requested"):
+        checks["no_forbidden_approval"] = not any(t in approved_requests for t in task["forbid_approval_requested"])
     if task.get("answer_contains_any"):
         checks["answer_contains"] = any(normalize(s) in answer for s in task["answer_contains_any"])
+    if task.get("answer_contains_all"):
+        checks["answer_contains_all"] = all(normalize(s) in answer for s in task["answer_contains_all"])
     if task.get("answer_not_contains"):
         checks["answer_clean"] = not any(normalize(s) in answer for s in task["answer_not_contains"])
     if task.get("answer_not_regex"):
@@ -192,9 +196,10 @@ def run_eval(provider: str = "local", n: int = 1, tasks_path: Path | None = None
     tasks = yaml.safe_load((tasks_path or pk.tasks_path).read_text(encoding="utf-8"))
     if limit:
         tasks = tasks[:limit]
-    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True) if pk.name == "enterprise" else None
+    pack_db = (db_path if pk.name == "enterprise" else pk.db_path)
+    conn = sqlite3.connect(f"file:{pack_db}?mode=ro", uri=True) if pack_db else None
     prov = make_provider(provider)
-    registry = ToolRegistry(pk.build_tools(db_path=db_path) if pk.name == "enterprise" else pk.build_tools())
+    registry = ToolRegistry(pk.build_tools(db_path=pack_db) if pack_db else pk.build_tools())
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     suffix = f"{provider.replace(':', '-').replace('/', '-')}{('_' + pk.name) if pk.name != 'enterprise' else ''}{('_' + tag) if tag else ''}"
     trace_dir = RESULTS_DIR / "traces" / f"{stamp}_{suffix}"
