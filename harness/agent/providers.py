@@ -6,7 +6,7 @@ import os
 import re
 import time
 import urllib.request
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 from .types import LLMResponse, ToolCall, Usage
 
@@ -15,6 +15,9 @@ DEFAULT_LOCAL_MODEL = "local-llm"
 
 _TOOL_CALL_TAG = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.S)
 _JSON_FENCE = re.compile(r"```(?:json)?\s*(\{.*?\}|\[.*?\])\s*```", re.S)
+
+
+OnDelta = Callable[[str], None]
 
 
 class Provider(Protocol):
@@ -98,8 +101,50 @@ def salvage_text_tool_calls(text: str | None) -> list[ToolCall]:
     return calls
 
 
+def assemble_stream(chunks: Any, on_delta: OnDelta | None = None) -> LLMResponse:
+    """스트리밍 청크(choices[0].delta) 를 모아 일반 응답과 같은 LLMResponse 로 만든다. 텍스트 조각은 on_delta 로 즉시 흘린다."""
+    text_parts: list[str] = []
+    calls: dict[int, dict[str, Any]] = {}
+    finish = None
+    usage = Usage()
+    for ch in chunks:
+        u = getattr(ch, "usage", None)
+        if u:
+            usage = Usage(prompt_tokens=getattr(u, "prompt_tokens", 0) or 0, completion_tokens=getattr(u, "completion_tokens", 0) or 0)
+        if not getattr(ch, "choices", None):
+            continue
+        c0 = ch.choices[0]
+        finish = getattr(c0, "finish_reason", None) or finish
+        d = getattr(c0, "delta", None)
+        if d is None:
+            continue
+        if getattr(d, "content", None):
+            text_parts.append(d.content)
+            if on_delta:
+                on_delta(d.content)
+        for tc in getattr(d, "tool_calls", None) or []:
+            idx = getattr(tc, "index", 0) or 0
+            slot = calls.setdefault(idx, {"id": None, "name": "", "args": ""})
+            if getattr(tc, "id", None):
+                slot["id"] = tc.id
+            fn = getattr(tc, "function", None)
+            if fn is not None:
+                if getattr(fn, "name", None):
+                    slot["name"] += fn.name
+                if getattr(fn, "arguments", None):
+                    slot["args"] += fn.arguments
+    tool_calls: list[ToolCall] = []
+    for idx in sorted(calls):
+        slot = calls[idx]
+        args, err = _parse_args(slot["args"])
+        tool_calls.append(ToolCall(id=slot["id"] or f"call_{idx}", name=slot["name"], arguments=args, parse_error=err))
+    return LLMResponse(text="".join(text_parts) or None, tool_calls=tool_calls, usage=usage, finish_reason=finish)
+
+
 class OpenAICompatProvider:
-    """OpenAI 호환 /v1/chat/completions. llama-server, vLLM, LM Studio, OpenAI 모두 여기로."""
+    """OpenAI 호환 /v1/chat/completions. llama-server, vLLM, LM Studio, OpenAI 모두 여기로. on_delta 를 주면 스트리밍."""
+
+    supports_stream = True
 
     def __init__(self, model: str, base_url: str | None = None, api_key: str | None = None,
                  temperature: float = 0.2, max_tokens: int = 1024, extra_body: dict | None = None, name: str = "openai-compat"):
@@ -112,11 +157,13 @@ class OpenAICompatProvider:
         self.extra_body = extra_body or {}
         self._client = OpenAI(base_url=base_url, api_key=api_key or os.getenv("OPENAI_API_KEY") or "no-key", timeout=300)
 
-    def complete(self, messages, tools=None) -> LLMResponse:
+    def complete(self, messages, tools=None, on_delta: OnDelta | None = None) -> LLMResponse:
         from openai import NOT_GIVEN, APIStatusError
 
         for attempt in range(60):  # 모델 로딩 중(503) 이면 최대 ~2분 기다린다
             try:
+                if on_delta is not None:
+                    return assemble_stream(self._create(messages, tools, NOT_GIVEN, stream=True), on_delta)
                 resp = self._create(messages, tools, NOT_GIVEN)
                 break
             except APIStatusError as e:
@@ -136,8 +183,8 @@ class OpenAICompatProvider:
         return LLMResponse(text=msg.content, tool_calls=calls, usage=usage, finish_reason=choice.finish_reason)
 
 
-    def _create(self, messages, tools, NOT_GIVEN):
-        return self._client.chat.completions.create(
+    def _create(self, messages, tools, NOT_GIVEN, stream: bool = False):
+        kw: dict[str, Any] = dict(
             model=self.model,
             messages=messages,
             tools=tools if tools else NOT_GIVEN,
@@ -146,6 +193,10 @@ class OpenAICompatProvider:
             max_tokens=self.max_tokens,
             extra_body=self.extra_body or None,
         )
+        if stream:
+            kw["stream"] = True
+            kw["stream_options"] = {"include_usage": True}
+        return self._client.chat.completions.create(**kw)
 
 
 class AnthropicProvider:

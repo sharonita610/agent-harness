@@ -62,6 +62,10 @@ def make_sink(store, run_id: str, forward: Callable[[dict[str, Any]], None] | No
     lock = threading.Lock()
 
     def sink(ev: dict[str, Any]) -> None:
+        if ev["kind"] == "delta":  # 토큰 조각은 저장하지 않는다(이벤트 표 폭주 방지). 화면으로만 흘린다.
+            if forward:
+                forward({**ev, "seq": None})
+            return
         with lock:
             seq["n"] += 1
             n = seq["n"]

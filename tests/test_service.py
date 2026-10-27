@@ -194,3 +194,20 @@ def test_health_reports_model_server_status(tmp_path, seeded_db):
     with TestClient(app) as c:
         m = c.get("/health").json()["model"]
         assert m == {"provider": "local", "reachable": False, "hosted": False}
+
+
+def test_chat_stream_forwards_deltas_but_does_not_store_them(tmp_path, seeded_db):
+    from tests.test_streaming import StreamingFake
+    from harness.service.auth import UserStore
+    db, _ = seeded_db
+    script = [LLMResponse(text="지연 |주문은 |255건")]
+    app = create_app(db_path=tmp_path / "svc.db", provider_factory=lambda spec: StreamingFake(script), registry=ToolRegistry(build_tools(db)),
+                     system_prompt=SYSTEM_PROMPT, users=UserStore(path=tmp_path / "none.json"))
+    with TestClient(app) as c:
+        with c.stream("POST", "/chat", json={"message": "지연?"}) as r:
+            events = parse_sse(r.iter_lines())
+        deltas = [d["text"] for e, d in events if e == "delta"]
+        assert deltas == ["지연 ", "주문은 ", "255건"]
+        run_id = dict(events)["run"]["run_id"]
+        kinds = [e["kind"] for e in c.get(f"/runs/{run_id}/events").json()]
+        assert "delta" not in kinds and "final" in kinds

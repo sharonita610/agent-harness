@@ -56,7 +56,7 @@ AI Agent Engineer 공고 13개를 분석했을 때 도메인은 전부 달랐지
 | `harness/service/` | FastAPI 서비스: SSE 채팅(`/chat`), 승인 API(`/approvals`), 비동기 잡 큐(`/jobs`), API 키·역할·감사(`auth.py`, `/me`, `/audit`), 세션·실행·이벤트 저장(SQLite) |
 | `harness/cli.py` | `harness seed / tools / ask / chat / eval / mcp` |
 | `scripts/` | `serve_llm.sh`(로컬 모델 서버), `mcp_check.py`(MCP 클라이언트 검증) |
-| `tests/` | 테스트 54개: 시드 결정성, SQL 가드, 권한, 검색, 도구, 루프(가짜 프로바이더), 채점 정규화, 서비스(SSE·승인·잡·트레이스), 인증·역할·감사, 트레이싱, 하이브리드 검색 |
+| `tests/` | 테스트 60개: 시드 결정성, SQL 가드, 권한, 검색, 도구, 루프(가짜 프로바이더), 채점 정규화, 서비스(SSE·승인·잡·트레이스), 인증·역할·감사, 트레이싱, 하이브리드 검색 |
 
 ## 데이터셋 (가짜 회사 "한빛상사")
 `uv run harness seed` 로 생성. 시드가 고정돼 있어 몇 번을 다시 만들어도 같은 데이터다. 아래 표와 그림은 `scripts/data_report.py` 가 DB 에서 뽑아 갱신한다.
@@ -123,7 +123,7 @@ open http://127.0.0.1:8787/docs   # OpenAPI
 개발 중엔 `cd ui && npm run dev` (5173, API 는 8787 로 프록시). UI 단위 테스트 `npm test`(SSE 파서, 트레이스 레이아웃).
 | 엔드포인트 | 역할 |
 |---|---|
-| `POST /chat` | `{message, session_id?}` → `text/event-stream`. 이벤트: `run, step, tool_call, tool_result, tool_error, nudge, approval_pending, approval_result, denied, final, done` |
+| `POST /chat` | `{message, session_id?}` → `text/event-stream`. 이벤트: `run, step, delta(토큰 조각), tool_call, tool_result, tool_error, nudge, approval_pending, approval_result, denied, final, done` |
 | `POST /approvals/{id}` | `{decision: approve\|deny}`. 에이전트는 결정까지 대기(기본 10분, 지나면 거부) |
 | `GET /approvals?status=pending` | 대기 중인 승인 |
 | `POST /jobs` · `GET /jobs/{id}` · `POST /jobs/{id}/cancel` | 오래 걸리는 질문을 큐에 넣고 상태 조회, 협조적 취소 |

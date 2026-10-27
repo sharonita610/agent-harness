@@ -84,7 +84,10 @@ class Agent:
             messages = compact(messages, self.context_budget_tokens)
             t_call = time.perf_counter()
             try:
-                resp = self.provider.complete(messages, schemas)
+                if getattr(self.provider, "supports_stream", False):
+                    resp = self.provider.complete(messages, schemas, on_delta=lambda piece, _s=step: emit("delta", _s, text=piece))
+                else:
+                    resp = self.provider.complete(messages, schemas)
             except Exception as e:  # 네트워크/프로바이더 오류
                 emit("stopped", step, reason="provider_error", error=str(e))
                 return self._result(f"모델 호출 오류: {e}", step, "provider_error", tool_log, approvals, events, usage, t0, messages)

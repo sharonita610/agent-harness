@@ -20,6 +20,8 @@ def _printer(verbose: bool):
         d = ev.data
         if ev.kind == "step" and verbose:
             console.rule(f"[dim]step {ev.step}")
+        elif ev.kind == "delta":
+            console.print(d.get("text", ""), end="", style="dim", highlight=False, markup=False)
         elif ev.kind == "tool_call":
             console.print(f"[cyan]→ {d['name']}[/cyan] {json.dumps(d.get('arguments'), ensure_ascii=False)[:300]}")
         elif ev.kind == "tool_result" and verbose:
@@ -93,6 +95,7 @@ def ask(question: str, provider: str = typer.Option("local", help="local | opena
         printer = agent.on_event
         agent.on_event = lambda ev: (collector.on_event(ev), printer(ev))
     res = agent.run(question)
+    console.print()  # 스트리밍 줄 마감
     if collector:
         from .observability.tracer import maybe_export, write_jsonl
         collector.finish(res)

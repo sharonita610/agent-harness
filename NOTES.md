@@ -117,3 +117,9 @@ uv run harness eval --n 1            # 평가 16개
 - `docs/demo-script.md`: 3분 대본(준비 명령, 구간별 멘트, 녹화 팁). 영상 자체는 사용자가 촬영.
 - UI: `?run=<id>` 딥링크(실행 상세 공유용).
 - 눈에 띈 것: 답변의 마크다운(**굵게**)이 그대로 보임 → 가벼운 마크다운 렌더링은 후속.
+
+### C: 답변 토큰 스트리밍 (2026-10-28)
+- OpenAI 호환 프로바이더에 `stream=True` + `stream_options.include_usage`. 청크를 `assemble_stream()` 으로 모아 기존 LLMResponse 와 동일 형태(도구 호출 조각은 index 별로 합침). llama.cpp 에서 도구 호출 스트리밍 확인(run_sql → 255건).
+- 루프: `supports_stream` 프로바이더면 `delta` 이벤트 발행. 서비스는 delta 를 저장하지 않고 SSE 로만 전달. 화면은 draft 에 쌓다가 final 로 확정, 도구 호출로 이어진 스텝의 중간 텍스트는 버림.
+- 덤: 답변 최소 마크다운(굵게·코드·줄바꿈) 렌더링, CLI 는 조각을 흐리게 바로 출력.
+- Anthropic 프로바이더는 아직 비스트리밍(동작은 같음).

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import type { Approval, Run, RunEvent, Trace } from "../types";
 import TraceView from "./TraceView";
+import Rich from "./Rich";
 
 const STATUS_KO: Record<string, string> = { done: "완료", failed: "실패", cancelled: "취소됨", running: "실행 중", queued: "대기" };
 
@@ -27,7 +28,7 @@ export default function RunDetail({ runId, refreshKey, onClose }: { runId: strin
         <button className="ghost small" onClick={onClose}>닫기</button>
       </header>
       <p className="q"><span className="muted">질문 </span>{run.question}</p>
-      <div className="answer">{run.answer ?? run.error ?? "(아직 답이 없습니다)"}</div>
+      <div className="answer"><Rich text={run.answer ?? run.error ?? "(아직 답이 없습니다)"} /></div>
       <div className="meta">
         <span className={`st-${run.status}`}>{STATUS_KO[run.status] ?? run.status}</span>
         <span>{run.steps ?? "-"}단계</span><span>{run.latency_s ?? "-"}초</span><span>토큰 {(run.prompt_tokens ?? 0) + (run.completion_tokens ?? 0)}</span>

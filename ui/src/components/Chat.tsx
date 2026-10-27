@@ -3,6 +3,7 @@ import { api, streamChat } from "../api";
 import type { UiEvent } from "../types";
 import ApprovalSlip, { type PendingApproval } from "./ApprovalCard";
 import Timeline, { toUiEvent } from "./EventList";
+import Rich from "./Rich";
 
 const EXAMPLES: [string, string][] = [
   ["지연 주문 몇 건", "현재 상태가 '지연'인 주문은 총 몇 건이야?"],
@@ -13,7 +14,7 @@ const EXAMPLES: [string, string][] = [
 ];
 
 interface Props { sessionId: string | null; ensureSession: () => Promise<string>; onNewSession: () => Promise<string>; onRunFinished: (runId: string) => void; canApprove: boolean; canChat: boolean }
-interface Turn { question: string; events: UiEvent[]; pending: PendingApproval[]; decided: Record<string, "approve" | "deny">; answer: string | null; meta: string; error: string | null }
+interface Turn { question: string; events: UiEvent[]; pending: PendingApproval[]; decided: Record<string, "approve" | "deny">; answer: string | null; draft: string; meta: string; error: string | null }
 
 export default function Chat({ sessionId, ensureSession, onNewSession, onRunFinished, canApprove, canChat }: Props) {
   const [q, setQ] = useState("");
@@ -29,10 +30,12 @@ export default function Chat({ sessionId, ensureSession, onNewSession, onRunFini
     if (!message || busy) return;
     const sid = sessionId ?? (await ensureSession());
     setBusy(true); setQ(""); seq.current = 0; runId.current = null;
-    setTurns((ts) => [...ts, { question: message, events: [], pending: [], decided: {}, answer: null, meta: "", error: null }]);
+    setTurns((ts) => [...ts, { question: message, events: [], pending: [], decided: {}, answer: null, draft: "", meta: "", error: null }]);
     try {
       await streamChat({ message, session_id: sid }, (event, d) => {
         if (event === "run") runId.current = String(d.run_id);
+        if (event === "delta") patch((t) => ({ ...t, draft: t.draft + String(d.text ?? "") }));
+        if (event === "tool_call") patch((t) => ({ ...t, draft: "" }));  // 도구 호출로 이어진 스텝의 중간 텍스트는 버린다
         if (event === "approval_pending") patch((t) => ({ ...t, pending: [...t.pending, { approval_id: String(d.approval_id), tool: String(d.tool), arguments: (d.arguments as Record<string, unknown>) ?? {}, tier: String(d.tier) }] }));
         if (event === "final") patch((t) => ({ ...t, answer: String(d.answer ?? "") }));
         if (event === "done") {
@@ -77,8 +80,10 @@ export default function Chat({ sessionId, ensureSession, onNewSession, onRunFini
             <div className="turn" style={{ marginTop: 10 }}><span className="who">비서</span>
               <div>
                 <Timeline events={t.events} renderApproval={(id) => { const a = t.pending.find((p) => p.approval_id === id); return a ? <ApprovalSlip a={a} onDecide={decide} decided={t.decided[id] ?? null} canApprove={canApprove} /> : null; }} />
-                {t.answer === null && !t.error ? <div className="answer waiting">{t.pending.some((p) => !t.decided[p.approval_id]) ? "결재를 기다리는 중입니다" : t.events.length ? "확인한 내용을 정리하는 중입니다" : "데이터를 확인하는 중입니다"}</div>
-                  : <div className="answer">{t.answer || "(답변 없음)"}</div>}
+                {t.answer === null && !t.error ? (
+                  t.draft ? <div className="answer streaming"><Rich text={t.draft} /><span className="caret" aria-hidden="true" /></div>
+                    : <div className="answer waiting">{t.pending.some((p) => !t.decided[p.approval_id]) ? "결재를 기다리는 중입니다" : t.events.length ? "확인한 내용을 정리하는 중입니다" : "데이터를 확인하는 중입니다"}</div>
+                ) : <div className="answer"><Rich text={t.answer || "(답변 없음)"} /></div>}
                 {t.error && <p className="error">{t.error}</p>}
                 {t.meta && <div className="meta"><span>{t.meta}</span></div>}
               </div>
