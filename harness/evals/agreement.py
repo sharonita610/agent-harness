@@ -73,7 +73,7 @@ button{font:inherit;padding:9px 14px;border-radius:8px;border:1px solid var(--li
 .hidden{display:none}.ok{color:var(--ok)}.bad{color:var(--bad)}
 </style></head><body><main>
 <h1>사람 채점</h1><div class="sub">""" + f"{label} · {len(rows)}개. 비서 답변만 보고 통과/실패를 고르세요. 규칙 채점과 판정자 결과는 '보기' 를 누르기 전엔 숨겨져 있습니다(편향 방지). 선택은 자동 저장됩니다." + """</div>
-<div class="bar"><span id="progress"></span><button onclick="exportJson()">채점 JSON 내보내기</button><button onclick="toggleHidden()" style="background:transparent;color:var(--act)">규칙·판정자 결과 보기</button></div>
+<div class="bar"><span id="progress"></span><button onclick="saveToServer()">서버에 저장</button><button onclick="exportJson()" style="background:transparent;color:var(--act)">JSON 다운로드</button><button onclick="toggleHidden()" style="background:transparent;color:var(--act)">규칙·판정자 결과 보기</button><span id="msg" style="color:var(--muted);font-size:13px"></span></div>
 """]
     for i, r in enumerate(rows, 1):
         key = f"{r['task_id']}:{r['run']}"
@@ -94,7 +94,9 @@ let state=JSON.parse(localStorage.getItem(STORE)||'{{}}');
 function save(){{localStorage.setItem(STORE,JSON.stringify(state));const n=document.querySelectorAll('.item').length;const done=Object.values(state).filter(v=>v.pass!==undefined&&v.pass!==null).length;document.getElementById('progress').textContent=`${{done}} / ${{n}} 채점됨`;}}
 document.querySelectorAll('input[type=radio]').forEach(el=>{{const key=el.name.slice(2);if(state[key]&&((state[key].pass&&el.value==='pass')||(state[key].pass===false&&el.value==='fail')))el.checked=true;el.addEventListener('change',()=>{{state[key]={{...(state[key]||{{}}),pass:el.value==='pass'}};save();}});}});
 document.querySelectorAll('input[data-note]').forEach(el=>{{const key=el.dataset.note;if(state[key]&&state[key].note)el.value=state[key].note;el.addEventListener('input',()=>{{state[key]={{...(state[key]||{{}}),note:el.value}};save();}});}});
-function exportJson(){{const blob=new Blob([JSON.stringify({{results:'{label}',graded_at:new Date().toISOString(),grades:state}},null,2)],{{type:'application/json'}});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='human-{label}.json';a.click();}}
+function payload(){{return {{results:'{label}',graded_at:new Date().toISOString(),grades:state}};}}
+function exportJson(){{const blob=new Blob([JSON.stringify(payload(),null,2)],{{type:'application/json'}});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='human-{label}.json';a.click();}}
+async function saveToServer(){{const m=document.getElementById('msg');try{{const r=await fetch(location.pathname.replace(/\.html$/,''),{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(payload())}});const d=await r.json();m.textContent=r.ok?`저장됨: ${{d.path}} (${{d.graded}}개)`:`저장 실패: ${{d.detail||r.status}}`;}}catch(e){{m.textContent='이 페이지는 정적 서버라 저장할 수 없습니다. http://127.0.0.1:8787/grading/… 에서 여세요.';}}}}
 function toggleHidden(){{document.querySelectorAll('.meta').forEach(m=>m.classList.toggle('hidden'));}}
 save();
 </script></body></html>""")

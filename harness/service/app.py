@@ -217,6 +217,31 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         c = spans_from_events(run_id, r["question"] or "", store.events(run_id), created_at=r.get("started_at") or r.get("created_at"))
         return {"summary": c.summary(), "spans": c.to_dicts()}
 
+    RESULTS_DIR = Path(__file__).resolve().parents[1] / "evals" / "results"
+
+    @app.get("/grading/{name}", response_class=HTMLResponse)
+    def grading_page_route(name: str):
+        """사람 채점표(결과 폴더의 grading/<name>.html). 평가 도구라 인증 없이 연다(업무 데이터 없음)."""
+        if "/" in name or ".." in name:
+            raise HTTPException(400, "잘못된 이름")
+        f = RESULTS_DIR / "grading" / f"{name.removesuffix('.html')}.html"
+        if not f.exists():
+            raise HTTPException(404, f"채점표 없음: uv run harness grade-sheet 로 만드세요 ({f.name})")
+        return f.read_text(encoding="utf-8")
+
+    @app.post("/grading/{name}")
+    async def grading_save(name: str, request: Request):
+        if "/" in name or ".." in name:
+            raise HTTPException(400, "잘못된 이름")
+        body = await request.json()
+        grades = body.get("grades") or {}
+        graded = sum(1 for v in grades.values() if isinstance(v, dict) and v.get("pass") in (True, False))
+        out = RESULTS_DIR / f"human-{name}.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        import json as _json
+        out.write_text(_json.dumps({"results": name, "graded_at": body.get("graded_at"), "grades": grades}, ensure_ascii=False, indent=2), encoding="utf-8")
+        return {"path": str(out.relative_to(RESULTS_DIR.parents[2])), "graded": graded}
+
     @app.get("/runs/{run_id}/events")
     def run_events(run_id: str, after_seq: int = 0, user: User = Depends(current_user)):
         if not store.get_run(run_id):

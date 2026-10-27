@@ -159,7 +159,7 @@ def grade_sheet(results: Path, n: int = 20):
     from .evals.agreement import grading_page
     out = results.parent / "grading" / f"{results.stem}.html"
     grading_page(results, out, n=n)
-    console.print(f"채점표: {out}\n열기: uv run python -m http.server 8765 --directory {results.parent}  → http://127.0.0.1:8765/grading/{out.name}")
+    console.print(f"채점표: {out}\n열기(API 서버가 떠 있을 때): http://127.0.0.1:8787/grading/{out.stem}  → 채점 후 '서버에 저장' 버튼")
 
 
 @app.command()

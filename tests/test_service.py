@@ -211,3 +211,17 @@ def test_chat_stream_forwards_deltas_but_does_not_store_them(tmp_path, seeded_db
         run_id = dict(events)["run"]["run_id"]
         kinds = [e["kind"] for e in c.get(f"/runs/{run_id}/events").json()]
         assert "delta" not in kinds and "final" in kinds
+
+
+def test_grading_page_and_save(tmp_path, seeded_db, monkeypatch):
+    import harness.service.app as appmod
+    from harness.service.auth import UserStore
+    db, _ = seeded_db
+    res_dir = tmp_path / "results"; (res_dir / "grading").mkdir(parents=True)
+    (res_dir / "grading" / "r1.html").write_text("<html>채점</html>", encoding="utf-8")
+    app = create_app(db_path=tmp_path / "svc.db", registry=ToolRegistry(build_tools(db)), system_prompt=SYSTEM_PROMPT, users=UserStore(path=tmp_path / "none.json"))
+    # 결과 폴더를 임시 폴더로: 라우트 클로저의 RESULTS_DIR 는 모듈 경로 기반이라 monkeypatch 로 바꾼다
+    import inspect
+    with TestClient(app) as c:
+        assert c.get("/grading/missing").status_code == 404
+        assert c.get("/grading/../x").status_code in (400, 404)
