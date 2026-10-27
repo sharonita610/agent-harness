@@ -3,6 +3,8 @@ import { api } from "../api";
 import type { Approval, Run, RunEvent, Trace } from "../types";
 import TraceView from "./TraceView";
 
+const STATUS_KO: Record<string, string> = { done: "완료", failed: "실패", cancelled: "취소됨", running: "실행 중", queued: "대기" };
+
 export default function RunDetail({ runId, refreshKey, onClose }: { runId: string; refreshKey: number; onClose: () => void }) {
   const [run, setRun] = useState<(Run & { events: RunEvent[]; approvals: Approval[] }) | null>(null);
   const [trace, setTrace] = useState<Trace | null>(null);
@@ -16,26 +18,30 @@ export default function RunDetail({ runId, refreshKey, onClose }: { runId: strin
     })();
     return () => { alive = false; };
   }, [runId, refreshKey]);
-  if (err) return <div className="card"><span className="err">{err}</span></div>;
-  if (!run || !trace) return <div className="card muted">불러오는 중…</div>;
+  if (err) return <section className="detail"><p className="error">{err}</p></section>;
+  if (!run || !trace) return <section className="detail"><p className="muted">불러오는 중</p></section>;
   return (
-    <div className="card">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h2 style={{ margin: 0 }}>실행 상세 · {run.id} <span className="pill">{run.kind}</span><span className={`pill st-${run.status}`}>{run.status}</span></h2>
-        <button className="small" onClick={onClose}>닫기</button>
+    <section className="detail">
+      <header>
+        <h2>실행 상세 <span className="muted" style={{ fontWeight: 400, fontSize: 14 }}>{run.id}</span></h2>
+        <button className="ghost small" onClick={onClose}>닫기</button>
+      </header>
+      <p className="q"><span className="muted">질문 </span>{run.question}</p>
+      <div className="answer">{run.answer ?? run.error ?? "(아직 답이 없습니다)"}</div>
+      <div className="meta">
+        <span className={`st-${run.status}`}>{STATUS_KO[run.status] ?? run.status}</span>
+        <span>{run.steps ?? "-"}단계</span><span>{run.latency_s ?? "-"}초</span><span>토큰 {(run.prompt_tokens ?? 0) + (run.completion_tokens ?? 0)}</span>
+        {run.approvals.length > 0 && <span>결재 {run.approvals.map((a) => `${a.tool} ${a.status === "approved" ? "승인" : a.status === "denied" ? "반려" : a.status}`).join(", ")}</span>}
       </div>
-      <div style={{ margin: "8px 0" }}><span className="muted small">질문</span><div>{run.question}</div></div>
-      <div style={{ margin: "8px 0" }}><span className="muted small">답변</span><div className="answer">{run.answer ?? run.error ?? "(아직 없음)"}</div></div>
-      <div className="meta">{run.steps ?? "-"}스텝 · {run.latency_s ?? "-"}s · 토큰 {run.prompt_tokens ?? 0}+{run.completion_tokens ?? 0} · {run.stopped_reason ?? ""}{run.approvals.length ? ` · 승인 ${run.approvals.map((a) => `${a.tool}:${a.status}`).join(", ")}` : ""}</div>
-      <h2 style={{ marginTop: 12 }}>트레이스 (이벤트 → 스팬)</h2>
+      <h3>시간이 어디에 쓰였나</h3>
       <TraceView trace={trace} />
-      <button className="small" style={{ marginTop: 8 }} onClick={() => setShowEvents((v) => !v)}>{showEvents ? "이벤트 숨기기" : `이벤트 ${run.events.length}개 보기`}</button>
+      <button className="ghost small" style={{ marginTop: 10 }} onClick={() => setShowEvents((v) => !v)}>{showEvents ? "이벤트 원문 숨기기" : `이벤트 원문 ${run.events.length}개 보기`}</button>
       {showEvents && (
-        <table style={{ marginTop: 8 }}>
+        <table className="events">
           <thead><tr><th>#</th><th>시각</th><th>종류</th><th>내용</th></tr></thead>
-          <tbody>{run.events.map((e) => <tr key={e.seq}><td className="muted">{e.seq}</td><td className="muted">{e.ts.slice(11, 23)}</td><td>{e.kind}</td><td><pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 11.5 }}>{JSON.stringify(e.data).slice(0, 300)}</pre></td></tr>)}</tbody>
+          <tbody>{run.events.map((e) => <tr key={e.seq}><td className="muted">{e.seq}</td><td className="muted">{e.ts.slice(11, 23)}</td><td>{e.kind}</td><td><pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>{JSON.stringify(e.data).slice(0, 300)}</pre></td></tr>)}</tbody>
         </table>
       )}
-    </div>
+    </section>
   );
 }

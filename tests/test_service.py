@@ -169,3 +169,17 @@ def test_run_trace_endpoint(make_client):
         kinds = [s["kind"] for s in t["spans"]]
         assert kinds[0] == "run" and "tool" in kinds and "llm" in kinds
         assert t["summary"]["tool_calls"] == 1 and all(s["end"] is not None for s in t["spans"])
+
+
+def test_stale_runs_are_failed_on_startup(tmp_path, seeded_db):
+    from harness.service.store import Store
+    db = tmp_path / "stale.db"
+    s = Store(db)
+    sid = s.create_session("fake")["id"]
+    r1 = s.create_run(sid, "chat", "q"); s.start_run(r1)
+    r2 = s.create_run(sid, "job", "q2")
+    aid = s.create_approval(r1, "create_note", {"order_id": 1}, "write")
+    assert s.fail_stale() == 2
+    assert s.get_run(r1)["status"] == "failed" and s.get_run(r2)["status"] == "failed"
+    assert s.get_approval(aid)["status"] == "expired"
+    assert s.list_approvals("pending") == []

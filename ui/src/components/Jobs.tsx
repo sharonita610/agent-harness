@@ -3,38 +3,31 @@ import { api } from "../api";
 import type { Run } from "../types";
 
 interface Props { sessionId: string | null; ensureSession: () => Promise<string>; selected: string | null; onSelect: (id: string) => void }
+const STATUS_KO: Record<string, string> = { queued: "대기", running: "실행 중", done: "완료", failed: "실패", cancelled: "취소됨" };
 
 export default function Jobs({ sessionId, ensureSession, selected, onSelect }: Props) {
   const [q, setQ] = useState("");
   const [jobs, setJobs] = useState<Run[]>([]);
   const load = useCallback(async () => { try { setJobs(await api.jobs(15)); } catch { /* ignore */ } }, []);
   useEffect(() => { load(); const t = setInterval(load, 3000); return () => clearInterval(t); }, [load]);
-  const submit = async () => {
-    const question = q.trim(); if (!question) return;
-    const sid = sessionId ?? (await ensureSession());
-    await api.submitJob(question, sid); setQ(""); await load();
-  };
+  const submit = async () => { const question = q.trim(); if (!question) return; const sid = sessionId ?? (await ensureSession()); await api.submitJob(question, sid); setQ(""); await load(); };
   const cancel = async (id: string) => { try { await api.cancelJob(id); } catch { /* 이미 끝남 */ } await load(); };
   return (
     <div>
-      <div className="row" style={{ marginBottom: 8 }}>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="오래 걸리는 질문 (예: 거래처 등급별 지난달 주문 금액과 지연 비율 표)" onKeyDown={(e) => { if (e.key === "Enter") submit(); }} />
-        <button className="primary" onClick={submit}>잡 제출</button>
+      <div className="jobform">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="오래 걸리는 질문을 맡겨 두기" aria-label="예약 작업 질문" onKeyDown={(e) => { if (e.key === "Enter") submit(); }} />
+        <button className="primary" onClick={submit} disabled={!q.trim()}>맡기기</button>
       </div>
-      <table>
-        <thead><tr><th>run</th><th>상태</th><th>질문</th><th></th></tr></thead>
-        <tbody>
-          {jobs.map((j) => (
-            <tr key={j.id} className={`clickable ${selected === j.id ? "selected" : ""}`} onClick={() => onSelect(j.id)}>
-              <td className="muted">{j.id.slice(4, 12)}</td>
-              <td className={`st-${j.status}`}>{j.status}</td>
-              <td>{j.question.slice(0, 48)}{j.answer ? <div className="muted small">{j.answer.slice(0, 80)}</div> : null}</td>
-              <td>{["queued", "running"].includes(j.status) && <button className="small" onClick={(e) => { e.stopPropagation(); cancel(j.id); }}>취소</button>}</td>
-            </tr>
-          ))}
-          {jobs.length === 0 && <tr><td colSpan={4} className="muted">아직 잡이 없습니다.</td></tr>}
-        </tbody>
-      </table>
+      <div className="list">
+        {jobs.length === 0 && <p className="empty">맡겨 둔 작업이 없습니다. 집계처럼 오래 걸리는 질문을 여기에 두면 순서대로 처리하고 결과를 남깁니다.</p>}
+        {jobs.map((j) => (
+          <button key={j.id} className={`item ${selected === j.id ? "selected" : ""}`} onClick={() => onSelect(j.id)}>
+            <span className="q">{j.question}</span>
+            <span className="side"><b className={`st-${j.status}`}>{STATUS_KO[j.status] ?? j.status}</b>{j.latency_s != null ? `${j.latency_s}초` : ""}</span>
+            {["queued", "running"].includes(j.status) && <span><button className="ghost small" onClick={(e) => { e.stopPropagation(); cancel(j.id); }}>취소</button></span>}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

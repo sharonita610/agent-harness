@@ -52,6 +52,7 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        store.fail_stale()
         await state.jobs.start()
         yield
         await state.jobs.stop()

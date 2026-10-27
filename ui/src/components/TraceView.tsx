@@ -27,10 +27,10 @@ export default function TraceView({ trace }: { trace: Trace }) {
   return (
     <div className="trace">
       <div className="legend">
-        <span><i style={{ background: "var(--s-llm)" }} />LLM 호출 {s.llm_calls}회 · {s.llm_ms}ms</span>
-        <span><i style={{ background: "var(--s-tool)" }} />도구 {s.tool_calls}회 · {s.tool_ms}ms{s.tool_errors ? ` · 오류 ${s.tool_errors}` : ""}</span>
-        <span><i style={{ background: "var(--s-approval)" }} />승인</span>
-        <span className="muted">전체 {(s.total_ms / 1000).toFixed(1)}s</span>
+        <span><i style={{ background: "var(--s-llm)" }} />모델 생각 {s.llm_calls}회, {(s.llm_ms / 1000).toFixed(1)}초</span>
+        <span><i style={{ background: "var(--s-tool)" }} />도구 실행 {s.tool_calls}회, {(s.tool_ms / 1000).toFixed(1)}초{s.tool_errors ? ` (오류 ${s.tool_errors})` : ""}</span>
+        <span><i style={{ background: "var(--s-approval)" }} />사람 결재 대기</span>
+        <span>전체 {(s.total_ms / 1000).toFixed(1)}초</span>
       </div>
       {rows.map(({ span, depth, leftPct, widthPct }) => (
         <div className="r" key={span.span_id} title={`${span.name} · ${span.status} · ${JSON.stringify(span.attrs).slice(0, 300)}`}>

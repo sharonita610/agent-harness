@@ -88,6 +88,13 @@ class Store:
         else:
             self._q("UPDATE runs SET status=?, error=?, finished_at=? WHERE id=?", (status, error, now(), rid))
 
+    def fail_stale(self, reason: str = "서버 재시작으로 중단됨") -> int:
+        """프로세스가 죽을 때 running/queued 로 남은 실행과 pending 결재를 정리한다(시작 시 호출)."""
+        n = len(self._q("SELECT id FROM runs WHERE status IN ('running','queued')"))
+        self._q("UPDATE runs SET status='failed', error=?, finished_at=? WHERE status IN ('running','queued')", (reason, now()))
+        self._q("UPDATE approvals SET status='expired', decided_at=?, decided_by='restart' WHERE status='pending'", (now(),))
+        return n
+
     def get_run(self, rid: str) -> dict[str, Any] | None:
         rows = self._q("SELECT * FROM runs WHERE id=?", (rid,))
         return rows[0] if rows else None
