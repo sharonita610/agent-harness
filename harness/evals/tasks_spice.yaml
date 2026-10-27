@@ -114,6 +114,7 @@
 # ---- 실험 추적 그래프(기록). `uv run harness seed --pack spice` 로 기준 실행 5개(RC R1=470/1k/2.2k/4.7k, 계단 응답)가 기록된 상태에서 평가한다.
 - id: h01
   type: history
+  seed_before: true
   question: "기록에서 RC 저역통과 회로를 R1=2.2kΩ 로 돌린 실행의 차단 주파수 fc 는 얼마였어?"
   truth_expr: "1/(2*pi*2200*100e-9)"
   tolerance_pct: 2
@@ -122,6 +123,7 @@
 
 - id: h02
   type: history
+  seed_before: true
   question: "RC 저역통과(C=100nF)에서 R1 을 1kΩ 과 3.3kΩ 로 각각 시뮬레이션한 뒤, 기록에서 두 실행을 비교해서 차단 주파수가 몇 Hz 차이 나는지 알려줘"
   truth_expr: "1/(2*pi*1e3*100e-9) - 1/(2*pi*3.3e3*100e-9)"
   tolerance_pct: 3
@@ -129,12 +131,14 @@
 
 - id: h03
   type: history
+  seed_before: true
   question: "rc_lowpass 샘플을 한 번 시뮬레이션하고, 같은 회로(토폴로지)로 이전에 돌린 실행들을 R1 값과 fc 와 함께 모아서 보여줘"
   expect_tools_all: [run_simulation, circuit_family]
   answer_contains_any: ["470", "2.2", "4.7", "2200", "4700"]
 
 - id: h04
   type: history
+  seed_before: true
   question: "기록된 실행 중 차단 주파수 fc 가 1 kHz 보다 낮았던 실행은 어떤 것들이고 각각 R1 은 얼마였어?"
   expect_tools_any: [query_history]
   forbid_tools_executed: [run_simulation, run_sweep]

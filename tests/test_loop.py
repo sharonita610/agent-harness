@@ -194,3 +194,10 @@ def test_openai_reasoning_models_use_max_completion_tokens():
             pass
         assert p.reasoning_api is reasoning
         assert ("max_completion_tokens" in seen) is reasoning and ("temperature" in seen) is (not reasoning)
+
+
+def test_code_fence_alone_does_not_trigger_nudge():
+    """문법 설명 답변의 코드 블록(SQL 도 도구 이름도 없음)은 되묻기 신호가 아니다."""
+    p = FakeProvider([LLMResponse(text="측정식은 이렇게 씁니다:\n```\ntrise TRIG v(out) VAL=0.1 RISE=1 TARG v(out) VAL=0.9 RISE=1\n```")])
+    res = Agent(p, ToolRegistry([]), "sys").run("상승 시간 측정식?")
+    assert res.steps == 1 and "TRIG" in res.answer and not any(e.kind == "nudge" for e in res.events)

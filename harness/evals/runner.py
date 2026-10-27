@@ -208,6 +208,8 @@ def run_eval(provider: str = "local", n: int = 1, tasks_path: Path | None = None
         question, truth = resolve(task, conn)
         runs = []
         for i in range(n):
+            if task.get("seed_before") and pk.seed is not None:
+                pk.seed()  # 상태 의존 문제(실행 기록 등)는 매번 같은 시드 상태에서 시작한다
             collector_box["c"] = TraceCollector(f"{task['id']}_run{i + 1}", question, {"provider": provider, "task": task["id"], "type": task["type"]})
             res = agent.run(question)
             collector_box["c"].finish(res)

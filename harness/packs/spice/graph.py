@@ -216,7 +216,8 @@ class ExperimentGraph:
         for c in members:
             diffs = next((p.get("diffs") for _, n, p in self.out(base["id"], "variant_of") if n["id"] == c["id"]), [])
             runs = [self._run_view(self.node(src["id"])) for _, src, _ in self.inbound(c["id"], "simulates") if (self.node(src["id"]) or {}).get("kind") in ("sim", "sweep_point")]
-            out.append({"circuit_id": c["id"], "title": c.get("label"), "diff_from_base": diffs, "runs": runs[:limit]})
+            runs.sort(key=lambda r: (r.get("at") or "", r["run_id"]), reverse=True)
+            out.append({"circuit_id": c["id"], "title": c.get("label"), "diff_from_base": diffs, "runs": runs[:limit], "total_runs": len(runs)})
         return {"base_run": run_id, "base_circuit": base["id"], "topology": base.get("topology"), "circuits": out}
 
     def stats(self) -> dict[str, Any]:

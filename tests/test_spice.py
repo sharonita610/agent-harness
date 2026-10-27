@@ -203,3 +203,17 @@ def test_get_waveform_on_op_returns_values(reg):
     r = reg.get("run_simulation").run({"netlist": "* div\nV1 in 0 dc 12\nR1 in out 3k\nR2 out 0 1k\n.op", "measurements": []})
     w = reg.get("get_waveform").run({"run_id": r["run_id"]})
     assert w["values"]["out"] == 3.0 and "동작점" in w["note"]
+
+
+def test_measurement_name_only_duplicate_of_inline_is_ignored():
+    from harness.packs.spice.netlist import parse_netlist
+    from harness.packs.spice.simulator import simulate
+    text = "* step\nV1 in 0 PULSE(0 1 0 1n 1n 10m 20m)\nR1 in out 1k\nC1 out 0 100n\n.tran 1u 1m\n.measure tran tau WHEN v(out)=0.632"
+    if not ngspice_available():
+        with pytest.raises(NetlistError):
+            simulate(text.replace(".measure tran tau WHEN v(out)=0.632", ""), ["tau"])
+        return
+    r = simulate(text, ["tau"])
+    assert abs(r["measurements"]["tau"] - 1e-4) / 1e-4 < 0.01 and any("한 번만" in w for w in r["warnings"])
+    with pytest.raises(NetlistError, match="이름만"):
+        simulate(text.replace(".measure tran tau WHEN v(out)=0.632", ""), ["tau"])

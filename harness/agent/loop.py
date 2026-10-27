@@ -31,7 +31,7 @@ class Agent:
         context_budget_tokens: int = 24000,
         max_nudges: int = 1,
         max_calls_per_step: int = 4,
-        max_truncation_retries: int = 1,
+        max_truncation_retries: int = 2,
         on_event: EventSink | None = None,
     ):
         self.provider = provider
@@ -49,7 +49,8 @@ class Agent:
         self.on_event = on_event
         names = "|".join(re.escape(n) for n in registry.names()) or "__none__"
         # 소형 모델 실패 모드: 도구를 호출하지 않고 SQL/함수 호출을 '글로' 쓰는 경우를 잡는 패턴
-        self._text_tool_pattern = re.compile(rf"```|\b(?:{names})\s*\(|\bSELECT\b[\s\S]{{0,400}}\bFROM\b", re.I)
+        # 도구를 '글로만' 쓴 신호: 도구 이름 호출 꼴, SQL 문. 코드 펜스 자체는 신호가 아니다(문법 설명 답변에 코드가 들어가는 건 정상).
+        self._text_tool_pattern = re.compile(rf"\b(?:{names})\s*\(|\bSELECT\b[\s\S]{{0,400}}\bFROM\b", re.I)
 
     # ------------------------------------------------------------------
     def run(self, user_message: str, history: list[dict[str, Any]] | None = None,

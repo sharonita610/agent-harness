@@ -233,7 +233,14 @@ def simulate(netlist_text: str, measurements: Iterable[str] = (), save_vectors: 
     if nl.analysis_kind == "op" and specs:
         warnings.append(f"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 {len(specs)}개는 무시했습니다.")
         specs = []
+    inline_names = {m.split()[1 if m.split()[0].lower() in _MEAS_KINDS else 0].lower() for m in nl.inline_measurements if len(m.split()) >= 2}
     for spec in specs:
+        if len(spec.split()) == 1 and spec.strip().lower() in inline_names:
+            warnings.append(f"measurements 의 '{spec.strip()}' 은 넷리스트 .measure 와 같은 이름이라 한 번만 잽니다.")
+            continue
+        if len(spec.split()) == 1:
+            raise NetlistError(f"측정식 '{spec.strip()}' 에 이름만 있습니다. '이름 형식 …' 전체를 적으세요. 예: '{spec.strip()} WHEN v(out)=0.632'. "
+                               "넷리스트 안의 .measure 줄은 자동으로 반영되니 그럴 땐 measurements 를 비워 두세요.")
         name, line, warn = normalize_measurement(spec, nl.analysis_kind or "")
         meas_names.append(name)
         meas_lines.append(line)
