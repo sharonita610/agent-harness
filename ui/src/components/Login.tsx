@@ -8,7 +8,7 @@ export default function Login({ me, onChange }: { me: Me | null; onChange: () =>
   const [show, setShow] = useState(false);
   const roleKo: Record<string, string> = { viewer: "조회", operator: "운영자", approver: "결재자", admin: "관리자" };
   if (me && !me.anonymous && !show) {
-    return <span className="login"><b>{me.name}</b> ({roleKo[me.role] ?? me.role}) <button className="ghost small" onClick={() => { setApiKey(null); onChange(); }}>로그아웃</button></span>;
+    return <span className="login"><b>{me.name}</b> ({roleKo[me.role] ?? me.role}{me.scope_text ? `, 범위 ${me.scope_text}` : ""}) <button className="ghost small" onClick={() => { setApiKey(null); onChange(); }}>로그아웃</button></span>;
   }
   if (me?.anonymous && !show) {
     return <span className="login muted">개발 모드, 인증 없음 <button className="ghost small" onClick={() => setShow(true)}>키로 로그인</button></span>;

@@ -140,3 +140,9 @@ uv run harness eval --n 1            # 평가 16개
 - v2 는 v1 보다 빠르고(p50 4.7s vs 5.5s, p95 8.4s vs 10.6s) 토큰이 적다(3,407 vs 3,777). 정확도는 재채점 후 표 참조. "짧게 답하라" 가 지연·토큰을 10~20% 줄였다.
 - 사람 채점(20개, 2026-10-28 03:17): 전부 통과. 규칙 vs 사람 95%(w01:2 불일치), 판정자 vs 사람 95%(t01:1 불일치). kappa=0 — 사람 라벨에 분산이 없어 정의상 의미 없음. 교훈: 표본에 실패 사례가 섞여야 kappa 가 산다 → 다음엔 Hermes-4 결과(통과 79%)로 20개 채점.
 - 앱 내 브라우저는 다운로드가 안 됨 → 채점표를 API 가 서빙하고 POST 로 저장하도록 변경(5f67dd8).
+
+### 사용자별 데이터 범위 (2026-10-28)
+- `packs/enterprise/scope.py`: Scope(region / customer_ids) → 같은 이름의 TEMP VIEW 6개(customers, orders, order_items, shipments, order_notes, order_status_history). read-only 연결에서도 temp 뷰 생성 가능(authorizer 설정 전).
+- `guard_select(scoped=True)` 는 `main.`/`temp.` 차단. 쓰기 도구는 범위 연결에서 존재 확인 후 실행.
+- 서비스: User.scope → registry_for(user) 캐시, 프롬프트에 scope_note. /me 에 scope_text. CLI `ask --scope`, `users add --scope`.
+- 실제 모델: 지연 주문 전체 255 → 부산 39, 범위 밖 주문 1번 → "존재하지 않습니다".

@@ -13,7 +13,7 @@
 |---|---|---|
 | 에이전트 루프를 이해하는가 | 프레임워크 없이 직접 쓴 루프(계획 → 도구 → 검증 → 답), 컨텍스트 예산, 소형 모델 실패 모드 보정 | `harness/agent/`, ADR-004 |
 | LLM 이 올바르게 부를 수 있는 도구 설계 | pydantic 검증, 모델이 고칠 수 있는 에러 문장, 읽기 전용 SQL 이중 방어, 개인정보 마스킹을 도구 쪽에서 | `harness/packs/enterprise/tools.py`, ADR-001 |
-| 사람 승인, 권한, 보안 | read/write/destructive 3등급, 결재자 역할만 승인, 감사 기록, 지시문 주입을 데이터로 취급 | ADR-002, ADR-010 |
+| 사람 승인, 권한, 보안 | read/write/destructive 3등급, 결재자 역할만 승인, 감사 기록, 사용자별 데이터 범위(임시 뷰), 지시문 주입을 데이터로 취급 | ADR-002, ADR-010, ADR-012 |
 | 평가 체계 | 16문제 × 모델 × n회 반복, 과정(도구·승인)까지 채점, 채점기 버그를 잡아 재채점한 기록 | `harness/evals/`, ADR-003 |
 | 관측성 | 이벤트 → 스팬, JSONL + OpenTelemetry(Jaeger 확인), 사람 대기 시간 분리 | `harness/observability/`, ADR-007 |
 | RAG | BM25 + 임베딩 하이브리드(RRF), 검색 품질 평가 18문항 | ADR-008 |
@@ -147,6 +147,13 @@ uv run harness users list
 curl -H "Authorization: Bearer hk_…" http://127.0.0.1:8787/me
 ```
 사용자를 하나라도 등록하면 모든 API 가 키를 요구하고, 결재는 approver 이상만 할 수 있다. 등록이 없으면 개발 모드(익명 admin)로 열리며 화면 상단에 그 사실이 표시된다. 누가 무엇을 승인·반려·제출했는지는 `GET /audit` 에 남는다. 설계: ADR-010.
+
+**데이터 범위(row-level)** 도 사용자에게 붙일 수 있다. 프롬프트가 아니라 DB 연결에 임시 뷰를 씌워 강제하므로 모델이 어떤 SQL 을 쓰든 범위 밖 행은 보이지 않는다.
+```bash
+uv run harness users add 부산담당 --role operator --scope "region=부산"      # 또는 --scope "customers=1,5,9"
+uv run harness ask "지연 주문 몇 건?" --scope "region=부산"                  # CLI 로 범위 시뮬레이션: 255건 → 39건
+```
+설계: ADR-012.
 
 ## 관측성 (트레이싱)
 ```bash

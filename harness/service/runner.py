@@ -12,7 +12,7 @@ from .sse import ping, sse
 Sink = Callable[[dict[str, Any]], None]
 
 
-def build_agent(state, provider, run_id: str, sink: Sink) -> Agent:
+def build_agent(state, provider, run_id: str, sink: Sink, user=None) -> Agent:
     broker = state.broker
 
     def approval_handler(tool, args) -> bool:
@@ -21,18 +21,18 @@ def build_agent(state, provider, run_id: str, sink: Sink) -> Agent:
               "data": {"approval_id": aid, "tool": tool.name, "arguments": args.model_dump(), "tier": str(tool.tier), "timeout_s": broker.timeout_s}})
         return broker.wait(aid)
 
-    return Agent(provider, state.registry, state.system_prompt, approval_handler=approval_handler,
+    return Agent(provider, state.registry_for(user), state.system_prompt_for(user), approval_handler=approval_handler,
                  max_steps=state.max_steps, on_event=lambda ev: sink(ev.model_dump()))
 
 
 def execute_run(state, run_id: str, session_id: str, question: str, provider_spec: str | None,
-                sink: Sink, should_cancel: Callable[[], bool] | None = None) -> AgentResult:
+                sink: Sink, should_cancel: Callable[[], bool] | None = None, user=None) -> AgentResult:
     """스레드(또는 워커)에서 동기 실행. 저장소에 결과를 남긴다."""
     store = state.store
     store.start_run(run_id)
     try:
         provider = state.provider_factory(provider_spec or state.default_provider)
-        agent = build_agent(state, provider, run_id, sink)
+        agent = build_agent(state, provider, run_id, sink, user=user)
         res = agent.run(question, history=store.history(session_id), should_cancel=should_cancel)
     except Exception as e:
         store.finish_run(run_id, "failed", error=f"{type(e).__name__}: {e}")
@@ -76,7 +76,7 @@ def make_sink(store, run_id: str, forward: Callable[[dict[str, Any]], None] | No
     return sink
 
 
-async def stream_chat(state, session_id: str, question: str, provider_spec: str | None) -> AsyncIterator[str]:
+async def stream_chat(state, session_id: str, question: str, provider_spec: str | None, user=None) -> AsyncIterator[str]:
     """POST /chat 의 본문. 이벤트를 SSE 로 흘리고 마지막에 done 을 보낸다."""
     store = state.store
     run_id = store.create_run(session_id, "chat", question)
@@ -84,7 +84,7 @@ async def stream_chat(state, session_id: str, question: str, provider_spec: str 
     q: asyncio.Queue = asyncio.Queue()
     cancel = threading.Event()
     sink = make_sink(store, run_id, forward=lambda ev: loop.call_soon_threadsafe(q.put_nowait, ev))
-    fut = loop.run_in_executor(None, execute_run, state, run_id, session_id, question, provider_spec, sink, cancel.is_set)
+    fut = loop.run_in_executor(None, execute_run, state, run_id, session_id, question, provider_spec, sink, cancel.is_set, user)
     _END = object()
     fut.add_done_callback(lambda f: q.put_nowait(_END))  # 스레드 종료를 큐로 알려 15초 ping 대기를 피한다
     yield sse("run", {"run_id": run_id, "session_id": session_id})

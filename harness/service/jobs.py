@@ -28,10 +28,10 @@ class JobQueue:
             except (asyncio.CancelledError, Exception):
                 pass
 
-    def submit(self, session_id: str, question: str, provider_spec: str | None) -> str:
+    def submit(self, session_id: str, question: str, provider_spec: str | None, user=None) -> str:
         run_id = self.state.store.create_run(session_id, "job", question)
         self._cancel[run_id] = threading.Event()
-        self._queue.put_nowait((run_id, session_id, question, provider_spec))
+        self._queue.put_nowait((run_id, session_id, question, provider_spec, user))
         return run_id
 
     def cancel(self, run_id: str) -> bool:
@@ -50,7 +50,7 @@ class JobQueue:
     async def _worker(self, idx: int) -> None:
         loop = asyncio.get_running_loop()
         while True:
-            run_id, session_id, question, provider_spec = await self._queue.get()
+            run_id, session_id, question, provider_spec, user = await self._queue.get()
             flag = self._cancel.get(run_id)
             if flag is not None and flag.is_set():
                 self._queue.task_done()
@@ -58,7 +58,7 @@ class JobQueue:
             sink = make_sink(self.state.store, run_id)
             try:
                 await loop.run_in_executor(None, execute_run, self.state, run_id, session_id, question, provider_spec, sink,
-                                           flag.is_set if flag else None)
+                                           flag.is_set if flag else None, user)
             except Exception:
                 pass  # execute_run 이 failed 로 기록함
             finally:

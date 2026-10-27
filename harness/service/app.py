@@ -13,6 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..agent.providers import make_provider
+from ..packs.enterprise.scope import Scope
 from ..tools.permissions import Policy, describe
 from ..tools.registry import ToolRegistry
 from .auth import User, UserStore, make_dependencies
@@ -38,21 +39,43 @@ class AppState:
     max_steps: int = 12
     jobs: JobQueue | None = field(default=None)
     users: UserStore | None = field(default=None)
+    registry_factory: Callable[[Scope | None], ToolRegistry] | None = field(default=None)
+    _scoped: dict[str, ToolRegistry] = field(default_factory=dict)
+
+    def registry_for(self, user) -> ToolRegistry:
+        """범위가 없으면 공용 레지스트리, 있으면 범위별로 만들어 캐시."""
+        scope = Scope.parse(getattr(user, "scope", None)) if user is not None else None
+        if scope is None or self.registry_factory is None:
+            return self.registry
+        key = str(sorted(scope.to_dict().items()))
+        if key not in self._scoped:
+            self._scoped[key] = self.registry_factory(scope)
+        return self._scoped[key]
+
+    def system_prompt_for(self, user) -> str:
+        from ..packs.enterprise.tools import scope_note
+        scope = Scope.parse(getattr(user, "scope", None)) if user is not None else None
+        return self.system_prompt + scope_note(scope)
 
 
 def create_app(db_path: str | Path | None = None, provider_factory: Callable[[str], Any] | None = None,
                registry: ToolRegistry | None = None, system_prompt: str | None = None,
                approval_timeout_s: float = 600, default_provider: str | None = None, job_concurrency: int = 1,
-               users: UserStore | None = None, model_probe: Callable[[], bool] | None = None) -> FastAPI:
+               users: UserStore | None = None, model_probe: Callable[[], bool] | None = None,
+               kwargs_registry_factory: Callable[[Scope | None], ToolRegistry] | None = None) -> FastAPI:
+    registry_factory = None
     if registry is None or system_prompt is None:
-        from ..packs.enterprise.tools import SYSTEM_PROMPT, build_tools
-        registry = registry or ToolRegistry(build_tools())
+        from ..packs.enterprise.tools import SYSTEM_PROMPT, build_tools, make_index
+        shared_index = make_index()
+        registry = registry or ToolRegistry(build_tools(index=shared_index))
         system_prompt = system_prompt or SYSTEM_PROMPT
+        registry_factory = lambda scope: ToolRegistry(build_tools(index=shared_index, scope=scope))
     store = Store(db_path or os.getenv("HARNESS_SERVICE_DB", str(DEFAULT_DB)))
     state = AppState(store=store, broker=ApprovalBroker(store, approval_timeout_s), registry=registry, system_prompt=system_prompt,
                      provider_factory=provider_factory or make_provider,
                      default_provider=default_provider or os.getenv("HARNESS_PROVIDER", "local"))
     state.jobs = JobQueue(state, concurrency=job_concurrency)
+    state.registry_factory = registry_factory or kwargs_registry_factory
     state.users = users or UserStore.load()
     current_user, require = make_dependencies(state.users)
 
@@ -108,7 +131,9 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
 
     @app.get("/me")
     def me(user: User = Depends(current_user)):
+        sc = Scope.parse(user.scope)
         return {"name": user.name, "role": user.role, "anonymous": user.anonymous, "auth_required": state.users.required,
+                "scope": sc.to_dict() if sc else None, "scope_text": sc.describe() if sc else None,
                 "can": {"chat": user.has("operator"), "approve": user.has("approver"), "admin": user.has("admin")}}
 
     @app.get("/audit")
@@ -134,7 +159,7 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
 
     @app.get("/tools")
     def tools(user: User = Depends(current_user)):
-        return [{"name": t.name, "tier": str(t.tier), "policy": describe(policy.decide(t)), "description": t.description} for t in registry]
+        return [{"name": t.name, "tier": str(t.tier), "policy": describe(policy.decide(t)), "description": t.description} for t in state.registry_for(user)]
 
     @app.post("/sessions")
     def create_session(body: SessionCreate, user: User = Depends(require("operator"))):
@@ -150,8 +175,8 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
     @app.post("/chat")
     async def chat(body: ChatRequest, request: Request, user: User = Depends(require("operator"))):
         sid = _session(body.session_id, body.provider)
-        store.add_audit(user.name, user.role, "chat", sid, {"message": body.message[:200]}, request.client.host if request.client else None)
-        return StreamingResponse(stream_chat(state, sid, body.message, body.provider), media_type="text/event-stream",
+        store.add_audit(user.name, user.role, "chat", sid, {"message": body.message[:200], "scope": user.scope}, request.client.host if request.client else None)
+        return StreamingResponse(stream_chat(state, sid, body.message, body.provider, user=user), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     @app.get("/approvals")
@@ -172,8 +197,8 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
     @app.post("/jobs", status_code=202)
     def create_job(body: JobCreate, request: Request, user: User = Depends(require("operator"))):
         sid = _session(body.session_id, body.provider)
-        run_id = state.jobs.submit(sid, body.question, body.provider)
-        store.add_audit(user.name, user.role, "job.submit", run_id, {"question": body.question[:200]}, request.client.host if request.client else None)
+        run_id = state.jobs.submit(sid, body.question, body.provider, user=user)
+        store.add_audit(user.name, user.role, "job.submit", run_id, {"question": body.question[:200], "scope": user.scope}, request.client.host if request.client else None)
         return {"run_id": run_id, "session_id": sid, "status": "queued"}
 
     @app.get("/jobs")

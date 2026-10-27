@@ -25,6 +25,7 @@ class User:
     name: str
     role: str
     anonymous: bool = False
+    scope: dict | None = None   # 데이터 범위 (packs.enterprise.scope.Scope.parse 형식). None = 전체
 
     def has(self, role: str) -> bool:
         return RANK[self.role] >= RANK[role]
@@ -42,7 +43,7 @@ class UserStore:
         users: dict[str, dict] = {}
         if path.exists():
             for u in json.loads(path.read_text(encoding="utf-8")).get("users", []):
-                users[u["key_hash"]] = {"name": u["name"], "role": u["role"]}
+                users[u["key_hash"]] = {"name": u["name"], "role": u["role"], "scope": u.get("scope")}
         if required is None:
             required = bool(users) or os.getenv("HARNESS_AUTH") == "1"
         return cls(path=path, users=users, required=required)
@@ -51,12 +52,12 @@ class UserStore:
     def hash_key(key: str) -> str:
         return hashlib.sha256(key.encode("utf-8")).hexdigest()
 
-    def add(self, name: str, role: str) -> str:
-        """사용자를 추가하고 평문 키를 한 번만 돌려준다(파일엔 해시만)."""
+    def add(self, name: str, role: str, scope: dict | None = None) -> str:
+        """사용자를 추가하고 평문 키를 한 번만 돌려준다(파일엔 해시만). scope: {"customer_ids": [...], "region": "부산"}"""
         if role not in ROLES:
             raise ValueError(f"역할은 {ROLES} 중 하나")
         key = "hk_" + secrets.token_urlsafe(24)
-        self.users[self.hash_key(key)] = {"name": name, "role": role}
+        self.users[self.hash_key(key)] = {"name": name, "role": role, "scope": scope}
         self.required = True
         self.save()
         return key
@@ -77,10 +78,10 @@ class UserStore:
         if key is None:
             return None
         u = self.users.get(self.hash_key(key))
-        return User(u["name"], u["role"]) if u else None
+        return User(u["name"], u["role"], scope=u.get("scope")) if u else None
 
     def list(self) -> list[dict]:
-        return [{"name": u["name"], "role": u["role"]} for u in self.users.values()]
+        return [{"name": u["name"], "role": u["role"], "scope": u.get("scope")} for u in self.users.values()]
 
 
 def _extract_key(request: Request) -> str | None:

@@ -17,7 +17,7 @@ async function j<T>(url: string, init?: RequestInit): Promise<T> {
   return r.json() as Promise<T>;
 }
 
-export interface Me { name: string; role: string; anonymous: boolean; auth_required: boolean; can: { chat: boolean; approve: boolean; admin: boolean } }
+export interface Me { name: string; role: string; anonymous: boolean; auth_required: boolean; scope?: Record<string, unknown> | null; scope_text?: string | null; can: { chat: boolean; approve: boolean; admin: boolean } }
 export interface AuditEntry { id: number; ts: string; user: string; role: string; action: string; target: string; detail: Record<string, unknown> }
 
 export const api = {

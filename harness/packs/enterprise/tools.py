@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from ...tools.registry import Tier, Tool
 from .embeddings import OpenAIEmbedder, embedder_available
+from .scope import Scope, apply_scope
 from .search import DocIndex
 from .seed import DEFAULT_DB, REFERENCE_DATE
 
@@ -26,9 +27,11 @@ _ALLOWED_AUTH = {sqlite3.SQLITE_SELECT, sqlite3.SQLITE_READ, sqlite3.SQLITE_FUNC
 
 
 # ----------------------------------------------------------------------------- SQL guard
-def guard_select(sql: str, default_limit: int = 200, max_limit: int = 500) -> str:
-    """SELECT/WITH 단일 문장만 허용. 금지 키워드 차단. LIMIT 강제."""
+def guard_select(sql: str, default_limit: int = 200, max_limit: int = 500, scoped: bool = False) -> str:
+    """SELECT/WITH 단일 문장만 허용. 금지 키워드 차단. LIMIT 강제. scoped 면 main./temp. 스키마 명시도 차단."""
     s = sql.strip().rstrip(";").strip()
+    if scoped and re.search(r"\b(main|temp)\s*\.", s, re.I):
+        raise ValueError("테이블 이름에 스키마를 붙일 수 없습니다. 테이블 이름만 쓰세요.")
     if ";" in s:
         raise ValueError("문장은 하나만 허용됩니다(세미콜론 금지).")
     if not re.match(r"^(select|with)\b", s, re.I):
@@ -49,9 +52,11 @@ def _authorizer(action, arg1, arg2, dbname, source):
     return sqlite3.SQLITE_OK if action in _ALLOWED_AUTH else sqlite3.SQLITE_DENY
 
 
-def connect_ro(db_path: Path) -> sqlite3.Connection:
+def connect_ro(db_path: Path, scope: Scope | None = None) -> sqlite3.Connection:
     conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    if scope is not None:
+        apply_scope(conn, scope)  # authorizer 전에 (뷰 생성)
     conn.set_authorizer(_authorizer)
     return conn
 
@@ -129,12 +134,15 @@ def make_index(docs_dir: Path = DOCS_DIR, hybrid: bool | None = None) -> DocInde
     return DocIndex(docs_dir, embedder=emb, embed_model=emb.model, cache_path=DEFAULT_DB.parent / "doc_embeddings.json")
 
 
-def build_tools(db_path: Path = DEFAULT_DB, docs_dir: Path = DOCS_DIR, sql_timeout_s: float = 5.0, index: DocIndex | None = None) -> list[Tool]:
+def build_tools(db_path: Path = DEFAULT_DB, docs_dir: Path = DOCS_DIR, sql_timeout_s: float = 5.0, index: DocIndex | None = None,
+                scope: Scope | None = None) -> list[Tool]:
+    """scope 를 주면 거래처·주문 계열 테이블이 그 범위로 잘린 도구 모음을 만든다(데이터 층 강제)."""
     db_path = Path(db_path)
     if not db_path.exists():
         raise FileNotFoundError(f"DB 가 없습니다: {db_path}. 먼저 `uv run harness seed` 를 실행하세요.")
-    ro = connect_ro(db_path)
+    ro = connect_ro(db_path, scope)
     index = index or make_index(docs_dir)
+    scoped = scope is not None
     lock = threading.Lock()
 
     def q(sql: str, params: tuple = (), limit: int | None = None) -> dict[str, Any]:
@@ -160,7 +168,7 @@ def build_tools(db_path: Path = DEFAULT_DB, docs_dir: Path = DOCS_DIR, sql_timeo
         return {"table": a.table, "columns": cols, "sample_rows": sample["rows"]}
 
     def run_sql(a: RunSqlArgs) -> Any:
-        sql = guard_select(a.sql, default_limit=a.limit, max_limit=500)
+        sql = guard_select(a.sql, default_limit=a.limit, max_limit=500, scoped=scoped)
         try:
             return {**q(sql, limit=a.limit), "sql_executed": sql}
         except sqlite3.OperationalError as e:
@@ -213,9 +221,14 @@ def build_tools(db_path: Path = DEFAULT_DB, docs_dir: Path = DOCS_DIR, sql_timeo
         conn.row_factory = sqlite3.Row
         return conn
 
+    def _assert_in_scope(order_id: int) -> None:
+        if scoped and not q("SELECT 1 FROM orders WHERE id=?", (order_id,))["rows"]:
+            raise ValueError(f"주문 {order_id} 은(는) 이 사용자의 조회 범위({scope.describe()}) 밖이거나 없습니다.")
+
     def update_order_status(a: UpdateStatusArgs) -> Any:
         if a.new_status == "취소" and a.reason not in ("고객 요청", "결제 실패", "장기 지연"):
             raise ValueError("취소 사유는 '고객 요청', '결제 실패', '장기 지연' 중 하나여야 합니다(주문 취소 규정 OPS-010).")
+        _assert_in_scope(a.order_id)
         conn = _rw()
         try:
             row = conn.execute("SELECT status FROM orders WHERE id=?", (a.order_id,)).fetchone()
@@ -234,6 +247,7 @@ def build_tools(db_path: Path = DEFAULT_DB, docs_dir: Path = DOCS_DIR, sql_timeo
             conn.close()
 
     def create_note(a: CreateNoteArgs) -> Any:
+        _assert_in_scope(a.order_id)
         conn = _rw()
         try:
             if not conn.execute("SELECT 1 FROM orders WHERE id=?", (a.order_id,)).fetchone():
@@ -247,6 +261,7 @@ def build_tools(db_path: Path = DEFAULT_DB, docs_dir: Path = DOCS_DIR, sql_timeo
 
     # ---- destructive (기본 차단)
     def delete_order(a: OrderIdArgs) -> Any:
+        _assert_in_scope(a.order_id)
         conn = _rw()
         try:
             conn.execute("DELETE FROM order_items WHERE order_id=?", (a.order_id,))
@@ -317,3 +332,11 @@ SYSTEM_PROMPT_V2 = f"""당신은 '한빛상사' 운영 데이터 비서입니다
 """
 
 SYSTEM_PROMPTS = {"v1": SYSTEM_PROMPT, "v2": SYSTEM_PROMPT_V2}
+
+
+def scope_note(scope: Scope | None) -> str:
+    """범위가 있는 사용자에게 붙이는 안내. 강제는 데이터 층이 하고, 이 문장은 모델이 상황을 이해하게 할 뿐이다."""
+    if scope is None:
+        return ""
+    return (f"\n\n데이터 범위: 이 사용자는 {scope.describe()} 의 거래처·주문·배송·메모만 볼 수 있습니다. "
+            "범위 밖 주문이나 거래처는 조회 결과에 나오지 않으며, 그럴 땐 '조회 범위에 없다' 고 답합니다. 규정 문서와 상품·재고는 공통입니다.")

@@ -41,14 +41,16 @@ def _printer(verbose: bool):
     return on_event
 
 
-def _build_agent(provider: str, approve: str, max_steps: int, verbose: bool):
+def _build_agent(provider: str, approve: str, max_steps: int, verbose: bool, scope: Optional[str] = None):
     from .agent.loop import Agent
     from .agent.providers import make_provider
-    from .packs.enterprise.tools import SYSTEM_PROMPT, build_tools
+    from .packs.enterprise.scope import Scope
+    from .packs.enterprise.tools import SYSTEM_PROMPT, build_tools, scope_note
     from .tools.permissions import auto_approve, auto_deny, cli_approval
     from .tools.registry import ToolRegistry
 
     handler = {"ask": cli_approval, "deny": auto_deny, "approve": auto_approve}[approve]
+    sc = Scope.parse(scope)
     prov = make_provider(provider)
     if provider.startswith(("local", "compat")):
         from .agent.providers import DEFAULT_LOCAL_BASE_URL, wait_ready
@@ -57,7 +59,9 @@ def _build_agent(provider: str, approve: str, max_steps: int, verbose: bool):
         if not wait_ready(base, on_wait=lambda: console.print("[dim]로컬 모델 서버 준비 대기 중… (scripts/serve_llm.sh 가 떠 있어야 합니다)[/dim]")):
             console.print(f"[red]서버 응답 없음: {base}. 다른 터미널에서 scripts/serve_llm.sh 를 먼저 실행하세요.[/red]")
             raise typer.Exit(1)
-    return Agent(prov, ToolRegistry(build_tools()), SYSTEM_PROMPT, approval_handler=handler,
+    if sc:
+        console.print(f"[dim]데이터 범위: {sc.describe()}[/dim]")
+    return Agent(prov, ToolRegistry(build_tools(scope=sc)), SYSTEM_PROMPT + scope_note(sc), approval_handler=handler,
                  max_steps=max_steps, on_event=_printer(verbose))
 
 
@@ -84,9 +88,10 @@ def tools():
 def ask(question: str, provider: str = typer.Option("local", help="local | openai:모델 | anthropic:모델 | compat:URL|모델"),
         approve: str = typer.Option("ask", help="ask | deny | approve"), max_steps: int = 12,
         verbose: bool = True, json_out: Optional[Path] = typer.Option(None, help="결과를 JSON 으로 저장"),
-        trace: bool = typer.Option(False, help="실행 트레이스를 traces/<run_id>.jsonl 로 저장 (HARNESS_OTLP_ENDPOINT 가 있으면 OTLP 로도 내보냄)")):
+        trace: bool = typer.Option(False, help="실행 트레이스를 traces/<run_id>.jsonl 로 저장 (HARNESS_OTLP_ENDPOINT 가 있으면 OTLP 로도 내보냄)"),
+        scope: Optional[str] = typer.Option(None, help="데이터 범위 시뮬레이션. 예: 'region=부산'")):
     """질문 하나를 에이전트에게 던진다."""
-    agent = _build_agent(provider, approve, max_steps, verbose)
+    agent = _build_agent(provider, approve, max_steps, verbose, scope)
     collector = None
     if trace:
         from .observability.tracer import TraceCollector
@@ -199,10 +204,15 @@ app.add_typer(users_app, name="users")
 
 
 @users_app.command("add")
-def users_add(name: str, role: str = typer.Option("operator", help="viewer | operator | approver | admin")):
+def users_add(name: str, role: str = typer.Option("operator", help="viewer | operator | approver | admin"),
+              scope: Optional[str] = typer.Option(None, help="데이터 범위. 예: 'region=부산' 또는 'customers=1,5,9' (둘 다면 ;로 연결)")):
+    from .packs.enterprise.scope import Scope
     from .service.auth import UserStore
     us = UserStore.load()
-    key = us.add(name, role)
+    sc = Scope.parse(scope)
+    key = us.add(name, role, scope=sc.to_dict() if sc else None)
+    if sc:
+        console.print(f"데이터 범위: {sc.describe()}")
     console.print(f"[bold]{name}[/bold] ({role}) 키: [green]{key}[/green]\n이 키는 다시 볼 수 없습니다. 파일: {us.path}")
 
 
@@ -212,8 +222,10 @@ def users_list():
     us = UserStore.load()
     if not us.users:
         console.print("등록된 사용자 없음 → 서비스는 개발 모드(인증 없음)로 뜹니다. HARNESS_AUTH=1 로 강제할 수 있습니다.")
+    from .packs.enterprise.scope import Scope
     for u in us.list():
-        console.print(f"{u['name']:12} {u['role']}")
+        sc = Scope.parse(u.get("scope"))
+        console.print(f"{u['name']:12} {u['role']:10} {('범위: ' + sc.describe()) if sc else ''}")
 
 
 @users_app.command("remove")
