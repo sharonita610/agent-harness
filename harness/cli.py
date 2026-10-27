@@ -121,6 +121,15 @@ def eval_cmd(provider: str = "local", n: int = typer.Option(1, help="태스크�
 
 
 @app.command()
+def rescore(results: list[Path]):
+    """저장된 평가 결과를 현재 채점 로직으로 다시 채점한다(모델 재호출 없음)."""
+    from .evals.runner import rescore as _rescore
+    for r in results:
+        s = _rescore(r)
+        console.print(f"{r.name}: 통과율 {s['pass_rate']:.0%}")
+
+
+@app.command()
 def mcp():
     """회사 데이터 비서 도구를 MCP 서버(stdio) 로 노출한다."""
     from .mcp_server.enterprise_server import main

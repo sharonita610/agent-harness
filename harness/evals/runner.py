@@ -26,6 +26,19 @@ TASKS_PATH = Path(__file__).parent / "tasks.yaml"
 RESULTS_DIR = Path(__file__).parent / "results"
 
 
+_SPACE_VARIANTS = {"\u202f": " ", "\u00a0": " ", "\u2009": " ", "\u2007": " "}
+
+
+def normalize(text: str) -> str:
+    """채점 전 정규화: 특수 공백(NNBSP 등)을 일반 공백으로, '5 %' → '5%', 마크다운 강조 제거."""
+    for k, v in _SPACE_VARIANTS.items():
+        text = text.replace(k, v)
+    text = text.replace("**", "").replace("\u201c", '"').replace("\u201d", '"')
+    text = re.sub(r"(\d)\s+%", r"\1%", text)
+    text = re.sub(r"[ \t]+", " ", text)
+    return text
+
+
 def _num_in_answer(value: Any, answer: str) -> bool:
     if isinstance(value, (int, float)):
         if isinstance(value, float) and not value.is_integer():
@@ -43,7 +56,8 @@ def _num_in_answer(value: Any, answer: str) -> bool:
 
 
 def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
-    answer = res.answer or ""
+    answer = normalize(res.answer or "")
+    truth = [normalize(v) if isinstance(v, str) else v for v in truth]
     executed = [t["name"] for t in res.tool_calls if t.get("status") == "ok"]
     approved_requests = [a["name"] for a in res.approvals]
     checks: dict[str, bool] = {}
@@ -58,9 +72,9 @@ def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
     if task.get("expect_approval"):
         checks["approval_requested"] = all(t in approved_requests for t in task["expect_approval"])
     if task.get("answer_contains_any"):
-        checks["answer_contains"] = any(s in answer for s in task["answer_contains_any"])
+        checks["answer_contains"] = any(normalize(s) in answer for s in task["answer_contains_any"])
     if task.get("answer_not_contains"):
-        checks["answer_clean"] = not any(s in answer for s in task["answer_not_contains"])
+        checks["answer_clean"] = not any(normalize(s) in answer for s in task["answer_not_contains"])
     if task.get("answer_not_regex"):
         checks["answer_no_pattern"] = re.search(task["answer_not_regex"], answer) is None
     checks["finished"] = res.stopped_reason in ("final", "max_steps")
@@ -152,3 +166,23 @@ def render_markdown(summary: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         ans = (r0["answer"] or "").replace("\n", " ").replace("|", "/")[:80]
         lines.append(f"| {t['id']} | {t['type']} | {t['pass_rate']:.0%} | {r0['steps']} | {r0['latency_s']} | {failed} | {ans} |")
     return "\n".join(lines) + "\n"
+
+
+def rescore(path: Path, tasks_path: Path | None = None) -> dict[str, Any]:
+    """저장된 결과 JSON 을 현재 채점 로직으로 다시 채점해 같은 이름으로 덮어쓴다(모델 재호출 없음)."""
+    from ..agent.types import AgentResult
+
+    data = json.loads(path.read_text(encoding="utf-8"))
+    tasks = {t["id"]: t for t in yaml.safe_load((tasks_path or TASKS_PATH).read_text(encoding="utf-8"))}
+    for t in data["tasks"]:
+        task = tasks[t["id"]]
+        for r in t["runs"]:
+            fake = AgentResult(answer=r["answer"] or "", steps=r["steps"], stopped_reason=r["stopped"],
+                               tool_calls=r.get("tool_calls", []), approvals=[{"name": n} for n in r.get("approvals", [])])
+            r.update(score(task, fake, r.get("truth", [])))
+        t["pass_rate"] = sum(r["pass"] for r in t["runs"]) / len(t["runs"])
+    meta = {k: data["summary"][k] for k in ("provider", "model", "n", "tag") if k in data["summary"]}
+    data["summary"] = {**_summarize(data["tasks"], **meta), "rescored_at": datetime.now().isoformat(timespec="seconds")}
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    path.with_suffix(".md").write_text(render_markdown(data["summary"], data["tasks"]), encoding="utf-8")
+    return data["summary"]
