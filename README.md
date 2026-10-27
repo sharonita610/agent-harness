@@ -24,6 +24,7 @@ AI Agent Engineer 공고 13개를 분석했을 때 도메인은 전부 달랐지
 | `harness/mcp_server/` | 같은 도구를 MCP 서버(stdio) 로 노출. Claude Desktop, Hermes Agent 등에서 그대로 사용 |
 | `harness/evals/` | 태스크 16개(`tasks.yaml`: 조회·규정·복합·변경·함정), 채점 러너(`runner.py`), 결과(`results/`) |
 | `harness/observability/` | 트레이스 수집기(이벤트 → 스팬), JSONL 저장, OpenTelemetry OTLP 내보내기 |
+| `ui/` | React + TypeScript(Vite) 화면: SSE 채팅·승인 카드·잡 큐·실행 기록·트레이스 waterfall. 빌드하면 FastAPI 가 `/app` 에서 서빙 |
 | `harness/service/` | FastAPI 서비스: SSE 채팅(`/chat`), 승인 API(`/approvals`), 비동기 잡 큐(`/jobs`), 세션·실행·이벤트 저장(SQLite), 데모 페이지(`/`) |
 | `harness/cli.py` | `harness seed / tools / ask / chat / eval / mcp` |
 | `scripts/` | `serve_llm.sh`(로컬 모델 서버), `mcp_check.py`(MCP 클라이언트 검증) |
@@ -85,10 +86,13 @@ gpt-oss-20b 파일은 `curl -L -C - -o ~/.cache/local-agent-lab/models/gpt-oss-2
 
 ## 서비스로 쓰기 (FastAPI)
 ```bash
+(cd ui && npm ci && npm run build)                       # React 화면 빌드 (한 번)
 uv run uvicorn harness.service.app:app --port 8787     # 모델 서버가 떠 있어야 함
-open http://127.0.0.1:8787        # 데모 페이지: 질문 → 이벤트 스트림 → 승인 카드 → 답변, 잡 제출/취소
+open http://127.0.0.1:8787/app/   # React 화면: 질문 → 이벤트 스트림 → 승인 카드 → 답변, 잡, 실행 기록 → 트레이스 waterfall
+open http://127.0.0.1:8787/demo   # 의존성 없는 HTML 데모 페이지
 open http://127.0.0.1:8787/docs   # OpenAPI
 ```
+개발 중엔 `cd ui && npm run dev` (5173, API 는 8787 로 프록시). UI 단위 테스트 `npm test`(SSE 파서, 트레이스 레이아웃).
 | 엔드포인트 | 역할 |
 |---|---|
 | `POST /chat` | `{message, session_id?}` → `text/event-stream`. 이벤트: `run, step, tool_call, tool_result, tool_error, nudge, approval_pending, approval_result, denied, final, done` |
@@ -185,7 +189,7 @@ _출처: `harness/evals/results/20261027-012753_local_day3-smoke.json`, `harness
 
 ## 로드맵
 - 2주차: ~~FastAPI 서비스~~ ~~트레이싱(JSONL·OTLP)~~ ~~하이브리드 검색~~ 완료 → 상용 모델 비교 행 추가(API 키 필요)
-- 3주차: React UI, CI(GitHub Actions 에서 테스트 + 소형 eval), ADR 문서, 데모 영상, 2차 도메인 팩(`spice`: ngspice 회로 시뮬레이터)
+- 3주차: ~~React UI~~ 완료 → 데모 영상, README 상단 재정리, 2차 도메인 팩(`spice`: ngspice 회로 시뮬레이터), LLM 판정자 vs 사람 채점 대조
 
 ## 문서
 `NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정) · `docs/VERIFY-day1-3.md`(검증 절차)

@@ -18,3 +18,19 @@ jobs:
       - name: mcp server smoke (tools list only)
         run: uv run python scripts/mcp_check.py
       # 소형 eval 스모크(모델 호출)는 2주차에 API 키 secret 과 함께 추가한다.
+
+  ui:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build

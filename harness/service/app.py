@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Any, Callable
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from ..agent.providers import make_provider
 from ..tools.permissions import Policy, describe
@@ -20,6 +21,7 @@ from .runner import stream_chat
 from .store import Store
 
 STATIC = Path(__file__).parent / "static"
+UI_DIST = Path(__file__).resolve().parents[2] / "ui" / "dist"
 DEFAULT_DB = Path(__file__).resolve().parents[2] / "data" / "service.db"
 
 
@@ -69,8 +71,17 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
     def health():
         return {"status": "ok", "tools": len(registry), "provider": state.default_provider, "pending_approvals": len(state.broker.pending())}
 
-    @app.get("/", response_class=HTMLResponse)
+    ui_built = (UI_DIST / "index.html").exists()
+
+    @app.get("/")
     def index():
+        """React 빌드(ui/dist)가 있으면 /app 으로, 없으면 내장 데모 페이지."""
+        if ui_built:
+            return RedirectResponse("/app/")
+        return HTMLResponse((STATIC / "index.html").read_text(encoding="utf-8"))
+
+    @app.get("/demo", response_class=HTMLResponse)
+    def demo():
         return (STATIC / "index.html").read_text(encoding="utf-8")
 
     @app.get("/tools")
@@ -159,6 +170,8 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
             raise HTTPException(404, "실행 없음")
         return store.events(run_id, after_seq)
 
+    if ui_built:
+        app.mount("/app", StaticFiles(directory=str(UI_DIST), html=True), name="ui")
     return app
 
 

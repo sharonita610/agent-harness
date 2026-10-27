@@ -99,3 +99,10 @@ uv run harness eval --n 1            # 평가 16개
 - 하이브리드: RRF(k=60). 자동 감지, `HARNESS_HYBRID=0` 으로 off. 테스트는 가짜 임베더(글자 2-gram 해시)로 결정적.
 - 검색 평가 18문항: bm25 89/94/0.91 · vector 100/100/1.00 · hybrid 94/100/0.97 (hit@1/hit@3/MRR). 벡터 단독이 최고, 하이브리드는 BM25 오답에 1건 끌림. 표본이 작다.
 - 남은 2주차 항목: 상용 모델 비교 행(API 키 필요).
+
+### 3주차 1일차: React 화면 (2026-10-28)
+- `ui/`: Vite + React 19 + TypeScript(strict). 의존성은 react/react-dom 뿐. 빌드 240KB(gzip 75KB). vitest 3개(SSE 파서, 트레이스 레이아웃).
+- 구성: Chat(SSE 스트림·승인 카드) / Runs·Jobs·Approvals 탭 / RunDetail(트레이스 waterfall + 이벤트 표). 실행이 끝나면 상세가 자동으로 열린다.
+- FastAPI: `ui/dist` 가 있으면 `/` → `/app/` 리다이렉트 + StaticFiles 마운트, 없으면 내장 데모(`/demo` 는 항상).
+- 실제 모델 확인: 메모 남기기 → 승인 카드 → 승인 → note_id 122 → 답변 29.3s. 트레이스: llm.step1 5.2s · tool.create_note 22.4s(승인 대기 포함) · llm.step2 1.7s.
+- CI 에 ui 잡 추가(npm ci → test → build).
