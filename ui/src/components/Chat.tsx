@@ -76,10 +76,8 @@ export default function Chat({ sessionId, ensureSession, onNewSession, onRunFini
             <div className="turn"><span className="who">질문</span><p className="q" style={{ margin: 0 }}>{t.question}</p></div>
             <div className="turn" style={{ marginTop: 10 }}><span className="who">비서</span>
               <div>
-                <Timeline events={t.events}>
-                  {t.pending.map((a) => <div className="step warn" key={a.approval_id}><ApprovalSlip a={a} onDecide={decide} decided={t.decided[a.approval_id] ?? null} /></div>)}
-                </Timeline>
-                {t.answer === null && !t.error ? <div className="answer waiting">{t.events.length ? "확인한 내용을 정리하는 중입니다" : "데이터를 확인하는 중입니다"}</div>
+                <Timeline events={t.events} renderApproval={(id) => { const a = t.pending.find((p) => p.approval_id === id); return a ? <ApprovalSlip a={a} onDecide={decide} decided={t.decided[id] ?? null} /> : null; }} />
+                {t.answer === null && !t.error ? <div className="answer waiting">{t.pending.some((p) => !t.decided[p.approval_id]) ? "결재를 기다리는 중입니다" : t.events.length ? "확인한 내용을 정리하는 중입니다" : "데이터를 확인하는 중입니다"}</div>
                   : <div className="answer">{t.answer || "(답변 없음)"}</div>}
                 {t.error && <p className="error">{t.error}</p>}
                 {t.meta && <div className="meta"><span>{t.meta}</span></div>}

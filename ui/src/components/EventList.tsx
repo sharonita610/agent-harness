@@ -17,7 +17,7 @@ export function toUiEvent(id: number, event: string, d: Record<string, unknown>)
     case "tool_result": return { id, kind: event, label: "결과", detail: s(d.preview), tone: "" };
     case "tool_error": return { id, kind: event, label: "도구 오류", detail: s(d.error), tone: "err" };
     case "nudge": return { id, kind: event, label: "다시 요청", detail: "도구를 글로만 써서 실제 호출을 요청했습니다", tone: "warn" };
-    case "approval_pending": return { id, kind: event, label: "결재 대기", detail: `${TOOL_KO[String(d.tool)] ?? s(d.tool)}`, tone: "warn" };
+    case "approval_pending": return { id, kind: event, label: "결재 대기", detail: `${TOOL_KO[String(d.tool)] ?? s(d.tool)}`, tone: "warn", approvalId: String(d.approval_id) };
     case "approval_result": return { id, kind: event, label: d.approved ? "승인됨" : "반려됨", detail: d.approved ? "도구를 실행합니다" : "실행하지 않습니다", tone: d.approved ? "ok" : "err" };
     case "denied": return { id, kind: event, label: "차단", detail: `${TOOL_KO[String(d.name)] ?? s(d.name)}은(는) 이 비서가 실행할 수 없는 작업입니다`, tone: "err" };
     case "stopped": return { id, kind: event, label: "중단", detail: `${s(d.reason)} ${s(d.error ?? "")}`.trim(), tone: "err" };
@@ -27,19 +27,19 @@ export function toUiEvent(id: number, event: string, d: Record<string, unknown>)
   }
 }
 
-export default function Timeline({ events, children }: { events: UiEvent[]; children?: React.ReactNode }) {
-  if (!events.length && !children) return null;
+export default function Timeline({ events, renderApproval }: { events: UiEvent[]; renderApproval?: (approvalId: string) => React.ReactNode }) {
+  if (!events.length) return null;
   return (
     <div className="timeline">
       {events.map((e) => (
         <div className={`step ${e.tone}`} key={e.id}>
-          <div className="head"><span className="label">{e.label}</span>{e.kind !== "tool_result" && e.kind !== "tool_error" && <span className="brief">{e.detail}</span>}</div>
+          <div className="head"><span className="label">{e.label}</span>{e.kind !== "tool_error" && <span className="brief">{e.detail}</span>}</div>
           {(e.kind === "tool_result" || e.kind === "tool_error" || e.kind === "tool_call") && e.detail && (
             <details><summary>{e.kind === "tool_call" ? "보낸 값 보기" : "원문 보기"}</summary><pre>{e.detail}</pre></details>
           )}
+          {e.approvalId && renderApproval?.(e.approvalId)}
         </div>
       ))}
-      {children}
     </div>
   );
 }

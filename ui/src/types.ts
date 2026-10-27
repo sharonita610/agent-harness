@@ -17,4 +17,4 @@ export interface Span {
 export interface Trace { summary: { spans: number; llm_calls: number; tool_calls: number; tool_errors: number; llm_ms: number; tool_ms: number; total_ms: number }; spans: Span[] }
 
 /** 채팅 스트림에서 화면에 쌓는 한 줄 */
-export interface UiEvent { id: number; kind: string; label: string; detail: string; tone: "" | "tool" | "ok" | "err" | "warn" }
+export interface UiEvent { id: number; kind: string; label: string; detail: string; tone: "" | "tool" | "ok" | "err" | "warn"; approvalId?: string }
