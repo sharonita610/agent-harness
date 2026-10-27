@@ -17,10 +17,11 @@ jobs:
           uv run harness seed | grep -q "sha256_16: 92d0c19eb4f1cd2a"
           uv run harness seed --pack factory | grep -q "sha256_16: 0fbe098605883ba6"
       - run: uv run pytest -q
-      - name: mcp server smoke (enterprise + spice)
+      - name: mcp server smoke (enterprise + spice + factory)
         run: |
           uv run python scripts/mcp_check.py
           HARNESS_HYBRID=0 uv run python scripts/mcp_check.py spice
+          HARNESS_HYBRID=0 uv run python scripts/mcp_check.py factory
       # 소형 eval 스모크(모델 호출)는 2주차에 API 키 secret 과 함께 추가한다.
 
   ui:

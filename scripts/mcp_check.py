@@ -24,6 +24,20 @@ async def check_spice(s, names: list[str]) -> None:
     assert "delete_circuit" not in names, "destructive 도구가 노출됨"
 
 
+async def check_factory(s, names: list[str]) -> None:
+    r = await s.call_tool("detect_spikes", {"limit": 2})
+    top = json.loads(r.content[0].text)["spikes"][0]
+    print("detect_spikes ->", top["station"], top["start"], top["multiplier"])
+    r = await s.call_tool("search_docs", {"query": "급증 알림 기준", "k": 2})
+    hits = [json.loads(c.text) for c in r.content]
+    print("search_docs ->", [h["source"] for h in hits])
+    r = await s.call_tool("run_sql", {"sql": "DELETE FROM ng_events"})
+    print("run_sql(DELETE) -> isError:", r.is_error)
+    doc = await s.read_resource("docs://05-급증-알림-기준")
+    print("read_resource ->", doc.contents[0].text[:30].replace("\n", " "))
+    assert "delete_ng_events" not in names, "destructive 도구가 노출됨"
+
+
 async def main() -> int:
     pack = sys.argv[1] if len(sys.argv) > 1 else "enterprise"
     params = StdioServerParameters(command="uv", args=["run", "harness", "mcp", "--pack", pack])
@@ -38,6 +52,10 @@ async def main() -> int:
             if pack == "spice":
                 await check_spice(s, names)
                 print("MCP CHECK OK (spice)")
+                return 0
+            if pack == "factory":
+                await check_factory(s, names)
+                print("MCP CHECK OK (factory)")
                 return 0
             r = await s.call_tool("list_tables", {})
             print("list_tables ->", r.content[0].text[:160])

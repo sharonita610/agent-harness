@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
-MARKERS = {"enterprise": "EVAL_RESULTS", "spice": "SPICE_EVAL_RESULTS"}
+MARKERS = {"enterprise": "EVAL_RESULTS", "spice": "SPICE_EVAL_RESULTS", "factory": "FACTORY_EVAL_RESULTS"}
 jsons = sorted(p for p in (root / "harness/evals/results").glob("*.json") if not p.name.startswith(("retrieval_", "agreement_", "human-")))
 if not jsons:
     sys.exit("결과 파일 없음. 먼저 uv run harness eval")
@@ -32,7 +32,7 @@ for pack, files in by_pack.items():
     else:
         body = files[0].with_suffix(".md").read_text(encoding="utf-8").split("\n", 1)[1].strip()
         src = f"`{files[0].relative_to(root)}`"
-    block = f"<!-- {marker}_START -->\n_출처: {src}_ · 같은 16문제, n = 태스크당 반복 횟수\n\n{body}\n<!-- {marker}_END -->"
+    block = f"<!-- {marker}_START -->\n_출처: {src}_ · 같은 문제, n = 태스크당 반복 횟수\n\n{body}\n<!-- {marker}_END -->"
     text = re.sub(rf"<!-- {marker}_START -->.*?<!-- {marker}_END -->", lambda _: block, text, flags=re.S)
     print(f"{pack}: README 갱신 ({len(files)}개 결과)")
 readme.write_text(text, encoding="utf-8")
