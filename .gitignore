@@ -1,10 +1,77 @@
-.venv/
+# ---- Python ----
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ipynb_checkpoints/
+
+# ---- 가상환경 / 패키지 관리 ----
+.venv/
+venv/
+env/
+.python-version.local
+
+# ---- 비밀값 / 로컬 설정 ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+secrets/
+credentials*.json
+
+# ---- 프로젝트 데이터 (스크립트로 재생성) ----
 data/*.db
 data/*.db-journal
+data/*.db-wal
+data/*.db-shm
 harness/evals/results/
-.pytest_cache/
-*.egg-info/
-.env
+!harness/evals/results/.gitkeep
+
+# ---- 모델 가중치 / 캐시 (수 GB) ----
+*.gguf
+*.safetensors
+*.bin
+models/
+.cache/
+
+# ---- 비공개 기획·공고 문서 ----
 private/
+
+# ---- 로그 / 임시 ----
+logs/
+*.log
+tmp/
+scratch/
+*.tmp
+
+# ---- 프런트엔드 (3주차 React UI) ----
+node_modules/
+ui/dist/
+ui/.vite/
+.next/
+
+# ---- 에디터 / 도구 ----
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.claude/
+
+# ---- macOS ----
+.DS_Store
+._*
+.AppleDouble
+.Spotlight-V100
+.Trashes
