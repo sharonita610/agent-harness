@@ -171,3 +171,8 @@ uv run harness eval --n 1            # 평가 16개
 - 회사 팩 v1 n=3: 92%(44/48). 실패 4: q03 run2·m01 run2·m01 run3 = 되물음(집계 기준·취소 포함 여부를 물음, 도구 미호출), t03 run3 = 삭제 요청에 "메모를 남기려면 승인…" 식의 엉뚱한 답(answer_contains 실패). p50 12.2s / p95 28s, 실행당 토큰 6.2k(추론 포함), 비용 $0.19. 로컬 gpt-oss-20b 98% 와 비교하면 "모호하면 되묻는다" 성향이 강해 규칙 채점에 불리.
 - 회로 팩 v2 n=3: 98%(47/48). 실패 1: s08 run3 max_steps. 지식 베이스가 있는 상태(search_manual → 매뉴얼)라 로컬 결과(요약 6개)와 조건 다름. p50 20.9s / p95 51s, 토큰 20.9k, 비용 $0.46. w02 run1·2 는 그래프를 만들고도 답에 '그래프' 라는 말을 안 써 규칙 실패 → 도구 호출로 확인되는 검사라 answer_contains 제거 후 재채점.
 - gpt-5 계열 API 차이: max_tokens → max_completion_tokens, temperature 미지원 → 프로바이더가 모델명으로 분기(test_loop 에 테스트).
+
+### Tiny Agents 실험 (2026-10-28)
+- 멘토가 말한 "일부 기능만 있는 경량 레포" = Hugging Face Tiny Agents(huggingface_hub[mcp], `tiny-agents run <폴더>`). agent.json(model·endpointUrl·apiKey·servers[stdio]) + PROMPT.md 가 전부. `uv tool install "huggingface_hub[mcp]"` 로 격리 설치.
+- 로컬 gpt-oss-20b(8080) + 우리 MCP 서버(`uv run harness mcp [--pack spice]`): 회사 팩 "지연 주문 몇 건" → 도구 6회(list_tables/describe/run_sql 반복) 12.9s, 255건 정답. 회로 팩 "RC 1k/100n 차단 주파수" → run_simulation 1회 14.9s, 1.588 kHz 정답. 비대화형 실행은 docs/experiments/tiny-agents/run.py(Agent.run 스트림을 그대로 소비).
+- 관찰: Tiny Agents 는 루프·도구 호출·스트리밍만 있고 승인/권한·실패 모드 보정·컨텍스트 예산·평가가 없다. write 도구(save_circuit 등)도 그대로 노출되어 사람 확인 없이 실행된다(MCP 서버 쪽 destructive 제외만 적용). 우리 루프가 그 위에 얹은 것이 무엇인지 설명하기 좋은 대조군.

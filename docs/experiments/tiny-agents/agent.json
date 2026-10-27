@@ -1,0 +1,14 @@
+{
+  "model": "local-llm",
+  "endpointUrl": "http://127.0.0.1:8080/v1",
+  "apiKey": "llama.cpp",
+  "servers": [
+    {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--directory", "/Users/sharonkim/IdeaProjects/local-agent-lab", "harness", "mcp"],
+      "env": {"HARNESS_HYBRID": "0"},
+      "cwd": "/Users/sharonkim/IdeaProjects/local-agent-lab"
+    }
+  ]
+}

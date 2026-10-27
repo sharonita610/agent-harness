@@ -232,6 +232,8 @@ uv run harness retrieval-eval     # bm25 / vector / hybrid 의 hit@1, hit@3, MRR
 지식 베이스가 적중률을 두 배로 올렸고(요약만으로는 인덕터·커패시터·.FOUR 같은 주제가 없었다), **하이브리드가 항상 낫지는 않다**: 로컬 임베딩은 한국어 질문 → 영어 기술 문서에서 벡터 69% 에 그쳐 융합해도 BM25 단독(84%)보다 낮았고, 호스팅 임베딩은 벡터 81% 로 올라가 융합이 97% 가 됐다. 융합의 이득은 두 신호가 서로 다른 문항을 맞힐 때만 생긴다(ADR-014).
 
 ## MCP 로 쓰기
+같은 도구를 MCP 서버로 노출하므로 외부 에이전트가 그대로 쓴다. 확인한 클라이언트: Hermes Agent(아래), Hugging Face **Tiny Agents**(`huggingface_hub[mcp]`, 70줄짜리 최소 루프). Tiny Agents 는 `docs/experiments/tiny-agents/` 의 `agent.json` 하나로 로컬 gpt-oss-20b + 우리 MCP 서버에 붙어 회사 팩 "지연 주문 몇 건" 을 6회 도구 호출 12.9초, 회로 팩 "RC 차단 주파수" 를 1회 호출 14.9초에 맞혔다. 우리 루프와의 차이는 승인 단계·실패 모드 보정·평가가 없다는 것이고, 그 차이가 이 프로젝트의 플랫폼 부분이다.
+
 ```bash
 uv run python scripts/mcp_check.py   # 서버 띄워 도구 목록·호출·리소스 확인
 ```
