@@ -1,0 +1,61 @@
+# agent-harness 한 명령 기동:  docker compose up -d --build
+#   api    : FastAPI + React 화면  → http://127.0.0.1:${API_PORT:-8787}/app/
+#   jaeger : 트레이스 뷰어          → http://127.0.0.1:16686
+#   embed  : 임베딩 서버(llama.cpp, CPU, 300MB 모델)
+# 모델 서버(LLM) 는 호스트에서 돌린다(맥 Docker 는 GPU 를 못 씀): scripts/serve_llm.sh
+services:
+  api:
+    build: .
+    ports:
+      - "${API_PORT:-8787}:8787"
+    environment:
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:8080/v1}
+      HARNESS_PROVIDER: ${HARNESS_PROVIDER:-local}
+      HARNESS_EMBED_BASE_URL: http://embed:8082/v1
+      HARNESS_OTLP_ENDPOINT: http://jaeger:4318/v1/traces
+      HARNESS_SERVICE_DB: /app/data/service.db
+      HARNESS_USERS_FILE: /app/data/users.json
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      - ${DATA_DIR:-./data}:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      jaeger:
+        condition: service_started
+      embed:
+        condition: service_healthy   # 임베딩 서버가 준비된 뒤 떠야 하이브리드 검색 인덱스가 만들어진다
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/jaeger:2.4.0
+    ports:
+      - "16686:16686"   # UI
+      - "4318:4318"     # OTLP HTTP (호스트의 CLI/평가도 여기로 보낼 수 있음)
+    restart: unless-stopped
+
+  embed:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    command: >
+      -hf ggml-org/embeddinggemma-300m-qat-q8_0-GGUF --embeddings -c 2048
+      --host 0.0.0.0 --port 8082 --alias local-embed
+    volumes:
+      - hf-cache:/root/.cache
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8082/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 60       # 첫 실행은 모델(300MB) 다운로드를 기다린다
+      start_period: 20s
+    restart: unless-stopped
+
+  # 리눅스 + NVIDIA 에서 모델까지 컨테이너로 돌리려면 주석을 풀고 LLM_BASE_URL=http://llm:8080/v1 로.
+  # llm:
+  #   image: ghcr.io/ggml-org/llama.cpp:server-cuda
+  #   command: -hf ggml-org/gpt-oss-20b-GGUF:MXFP4 --jinja -c 65536 -ngl 99 --host 0.0.0.0 --port 8080 --alias local-llm
+  #   deploy: { resources: { reservations: { devices: [{ driver: nvidia, count: 1, capabilities: [gpu] }] } } }
+  #   volumes: [ "hf-cache:/root/.cache" ]
+
+volumes:
+  hf-cache:

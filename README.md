@@ -112,6 +112,14 @@ uv run harness eval --n 1            # 평가 → harness/evals/results/*.md
 | gpt-oss-20b MXFP4 (12GB) | `LLM_MODEL_PATH=~/.cache/local-agent-lab/models/gpt-oss-20b-MXFP4.gguf scripts/serve_llm.sh` | ~65 tok/s | 추천. 네이티브 128K, 툴콜 안정, Hermes Agent 에서도 동작 |
 gpt-oss-20b 파일은 `curl -L -C - -o ~/.cache/local-agent-lab/models/gpt-oss-20b-MXFP4.gguf https://huggingface.co/ggml-org/gpt-oss-20b-GGUF/resolve/main/gpt-oss-20b-MXFP4.gguf` 로 받는다.
 
+## 한 명령으로 띄우기 (Docker Compose)
+```bash
+scripts/serve_llm.sh                 # 모델 서버는 호스트에서 (맥 Docker 는 GPU 를 못 씀)
+docker compose up -d --build         # api(8787) + jaeger(16686) + 임베딩 서버
+open http://127.0.0.1:8787/app/
+```
+`./data` 가 컨테이너에 마운트되어 DB·사용자(`harness users add`)·임베딩 캐시가 호스트와 같다. 첫 실행에 DB 가 없으면 자동 시드. 트레이스는 Jaeger 로 자동 전송. 리눅스 + NVIDIA 면 `docker-compose.yml` 의 `llm` 서비스 주석을 풀어 모델까지 컨테이너로 돌릴 수 있다.
+
 ## 서비스로 쓰기 (FastAPI)
 ```bash
 (cd ui && npm ci && npm run build)                       # React 화면 빌드 (한 번)

@@ -80,3 +80,6 @@ ui/.vite/
 traces/
 data/*.json
 data/users.json
+
+# ---- docker 로컬 테스트 데이터 ----
+.docker-test-data/

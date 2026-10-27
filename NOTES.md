@@ -123,3 +123,10 @@ uv run harness eval --n 1            # 평가 16개
 - 루프: `supports_stream` 프로바이더면 `delta` 이벤트 발행. 서비스는 delta 를 저장하지 않고 SSE 로만 전달. 화면은 draft 에 쌓다가 final 로 확정, 도구 호출로 이어진 스텝의 중간 텍스트는 버림.
 - 덤: 답변 최소 마크다운(굵게·코드·줄바꿈) 렌더링, CLI 는 조각을 흐리게 바로 출력.
 - Anthropic 프로바이더는 아직 비스트리밍(동작은 같음).
+
+### F: Docker Compose (2026-10-28)
+- `Dockerfile`(node 빌드 → python 3.12 + uv, 비루트 아님·단순), `docker/entrypoint.sh`(DB 없으면 시드), `docker-compose.yml`(api·jaeger·embed, llm 은 주석 선택).
+- 맥 Docker 는 Metal 을 못 써서 모델 서버는 호스트, 컨테이너는 `host.docker.internal:8080`. 확인: 컨테이너 API → 호스트 모델 → 도구 → 답(255건), 트레이스가 compose 의 Jaeger 에 도착.
+- 함정: api 가 embed 보다 먼저 뜨면 인덱스가 BM25 로 고정됨 → `depends_on: embed: condition: service_healthy` + embed healthcheck(첫 실행 모델 다운로드 대기 retries 60).
+- 로컬 테스트는 `DATA_DIR=./.docker-test-data API_PORT=8790` 로 본 서버(8787)와 분리.
+- CI 에 docker 빌드 잡(buildx, gha 캐시).
