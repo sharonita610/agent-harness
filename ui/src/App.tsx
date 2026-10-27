@@ -17,7 +17,11 @@ export default function App() {
   const [authErr, setAuthErr] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("runs");
-  const [selectedRun, setSelectedRun] = useState<string | null>(null);
+  const [selectedRun, setSelectedRunState] = useState<string | null>(() => new URLSearchParams(location.search).get("run"));
+  const setSelectedRun = useCallback((id: string | null) => {
+    setSelectedRunState(id);
+    const u = new URL(location.href); id ? u.searchParams.set("run", id) : u.searchParams.delete("run"); history.replaceState(null, "", u);
+  }, []);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const refreshHealth = useCallback(async () => {
