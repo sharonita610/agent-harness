@@ -158,3 +158,14 @@ def test_jobs_submit_poll_and_cancel(make_client):
             time.sleep(0.1)
         assert j2["status"] in ("cancelled", "done")
         assert c.get("/runs?kind=job").json()[0]["id"] == rid2
+
+
+def test_run_trace_endpoint(make_client):
+    script = [LLMResponse(tool_calls=[tc("list_tables")]), LLMResponse(text="끝")]
+    with make_client([script]) as c:
+        with c.stream("POST", "/chat", json={"message": "테이블?"}) as r:
+            run_id = dict(parse_sse(r.iter_lines()))["run"]["run_id"]
+        t = c.get(f"/runs/{run_id}/trace").json()
+        kinds = [s["kind"] for s in t["spans"]]
+        assert kinds[0] == "run" and "tool" in kinds and "llm" in kinds
+        assert t["summary"]["tool_calls"] == 1 and all(s["end"] is not None for s in t["spans"])

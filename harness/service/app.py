@@ -143,6 +143,16 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         r["approvals"] = [a for a in store.list_approvals(None, 200) if a["run_id"] == run_id]
         return r
 
+    @app.get("/runs/{run_id}/trace")
+    def run_trace(run_id: str):
+        """저장된 이벤트로 스팬(run/llm/tool/approval)을 재구성한다."""
+        from ..observability.tracer import spans_from_events
+        r = store.get_run(run_id)
+        if not r:
+            raise HTTPException(404, "실행 없음")
+        c = spans_from_events(run_id, r["question"] or "", store.events(run_id), created_at=r.get("started_at") or r.get("created_at"))
+        return {"summary": c.summary(), "spans": c.to_dicts()}
+
     @app.get("/runs/{run_id}/events")
     def run_events(run_id: str, after_seq: int = 0):
         if not store.get_run(run_id):

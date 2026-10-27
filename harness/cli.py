@@ -81,10 +81,25 @@ def tools():
 @app.command()
 def ask(question: str, provider: str = typer.Option("local", help="local | openai:모델 | anthropic:모델 | compat:URL|모델"),
         approve: str = typer.Option("ask", help="ask | deny | approve"), max_steps: int = 12,
-        verbose: bool = True, json_out: Optional[Path] = typer.Option(None, help="결과를 JSON 으로 저장")):
+        verbose: bool = True, json_out: Optional[Path] = typer.Option(None, help="결과를 JSON 으로 저장"),
+        trace: bool = typer.Option(False, help="실행 트레이스를 traces/<run_id>.jsonl 로 저장 (HARNESS_OTLP_ENDPOINT 가 있으면 OTLP 로도 내보냄)")):
     """질문 하나를 에이전트에게 던진다."""
     agent = _build_agent(provider, approve, max_steps, verbose)
+    collector = None
+    if trace:
+        from .observability.tracer import TraceCollector
+        from .service.store import new_id
+        collector = TraceCollector(new_id("run"), question, {"provider": provider})
+        printer = agent.on_event
+        agent.on_event = lambda ev: (collector.on_event(ev), printer(ev))
     res = agent.run(question)
+    if collector:
+        from .observability.tracer import maybe_export, write_jsonl
+        collector.finish(res)
+        path = write_jsonl(collector)
+        exported = maybe_export(collector)
+        s = collector.summary()
+        console.print(f"[dim]트레이스: {path} · 스팬 {s['spans']} · LLM {s['llm_ms']}ms · 도구 {s['tool_ms']}ms" + (" · OTLP 전송됨" if exported else "") + "[/dim]")
     console.print(Panel(res.answer or "(빈 답변)", title=f"답변 · {res.steps}스텝 · {res.latency_s}s · 토큰 {res.usage.prompt_tokens}+{res.usage.completion_tokens} · {res.stopped_reason}"))
     if json_out:
         json_out.write_text(res.model_dump_json(indent=2, exclude={"messages"}), encoding="utf-8")
@@ -118,6 +133,13 @@ def eval_cmd(provider: str = "local", n: int = typer.Option(1, help="태스크�
     """평가 태스크를 돌리고 성적표를 저장한다."""
     from .evals.runner import run_eval
     run_eval(provider=provider, n=n, tasks_path=tasks, limit=limit, tag=tag, console=console)
+
+
+@app.command("retrieval-eval")
+def retrieval_eval():
+    """문서 검색 품질 비교(bm25 / vector / hybrid). 임베딩 서버(8082)가 떠 있으면 세 모드 전부."""
+    from .evals.retrieval_eval import run
+    run(console=console)
 
 
 @app.command()

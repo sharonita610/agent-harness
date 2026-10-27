@@ -75,3 +75,7 @@ ui/.vite/
 .AppleDouble
 .Spotlight-V100
 .Trashes
+
+# ---- 트레이스 / 임베딩 캐시 ----
+traces/
+data/*.json

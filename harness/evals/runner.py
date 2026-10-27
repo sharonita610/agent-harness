@@ -17,6 +17,7 @@ import yaml
 
 from ..agent.loop import Agent
 from ..agent.providers import make_provider
+from ..observability.tracer import TraceCollector, maybe_export, write_jsonl
 from ..packs.enterprise.seed import DEFAULT_DB
 from ..packs.enterprise.tools import SYSTEM_PROMPT, build_tools
 from ..tools.permissions import auto_deny
@@ -101,18 +102,27 @@ def run_eval(provider: str = "local", n: int = 1, tasks_path: Path | None = None
     conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     prov = make_provider(provider)
     registry = ToolRegistry(build_tools(db_path))
-    agent = Agent(prov, registry, SYSTEM_PROMPT, approval_handler=auto_deny, max_steps=12)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    trace_dir = RESULTS_DIR / "traces" / f"{stamp}_{provider.replace(':', '-').replace('/', '-')}{('_' + tag) if tag else ''}"
+    collector_box: dict[str, TraceCollector] = {}
+    agent = Agent(prov, registry, SYSTEM_PROMPT, approval_handler=auto_deny, max_steps=12,
+                  on_event=lambda ev: collector_box["c"].on_event(ev) if "c" in collector_box else None)
 
     rows: list[dict[str, Any]] = []
     for task in tasks:
         question, truth = resolve(task, conn)
         runs = []
         for i in range(n):
+            collector_box["c"] = TraceCollector(f"{task['id']}_run{i + 1}", question, {"provider": provider, "task": task["id"], "type": task["type"]})
             res = agent.run(question)
+            collector_box["c"].finish(res)
+            tpath = write_jsonl(collector_box["c"], trace_dir / f"{task['id']}_run{i + 1}.jsonl")
+            maybe_export(collector_box["c"])
             sc = score(task, res, truth)
             runs.append({"run": i + 1, **sc, "answer": res.answer, "steps": res.steps, "latency_s": res.latency_s,
                          "prompt_tokens": res.usage.prompt_tokens, "completion_tokens": res.usage.completion_tokens,
-                         "stopped": res.stopped_reason, "tool_calls": res.tool_calls})
+                         "stopped": res.stopped_reason, "tool_calls": res.tool_calls,
+                         "trace": str(tpath.relative_to(RESULTS_DIR)), "trace_summary": collector_box["c"].summary()})
             if console:
                 mark = "[green]PASS[/green]" if sc["pass"] else "[red]FAIL[/red]"
                 failed = [k for k, v in sc["checks"].items() if not v]
@@ -121,7 +131,6 @@ def run_eval(provider: str = "local", n: int = 1, tasks_path: Path | None = None
 
     summary = _summarize(rows, provider=provider, model=getattr(prov, "model", "?"), n=n, tag=tag)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     base = RESULTS_DIR / f"{stamp}_{provider.replace(':', '-').replace('/', '-')}{('_' + tag) if tag else ''}"
     base.with_suffix(".json").write_text(json.dumps({"summary": summary, "tasks": rows}, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     base.with_suffix(".md").write_text(render_markdown(summary, rows), encoding="utf-8")

@@ -40,7 +40,21 @@ def execute_run(state, run_id: str, session_id: str, question: str, provider_spe
     store.add_message(session_id, "user", question)
     store.add_message(session_id, "assistant", res.answer)
     store.finish_run(run_id, "cancelled" if res.stopped_reason == "cancelled" else "done", result=res)
+    _export_trace(store, run_id, question)
     return res
+
+
+def _export_trace(store, run_id: str, question: str) -> None:
+    """HARNESS_OTLP_ENDPOINT 가 있으면 저장된 이벤트로 스팬을 만들어 내보낸다(실패해도 실행 결과엔 영향 없음)."""
+    import os
+    if not os.getenv("HARNESS_OTLP_ENDPOINT"):
+        return
+    try:
+        from ..observability.tracer import maybe_export, spans_from_events
+        r = store.get_run(run_id) or {}
+        maybe_export(spans_from_events(run_id, question, store.events(run_id), created_at=r.get("started_at") or r.get("created_at")))
+    except Exception:
+        pass
 
 
 def make_sink(store, run_id: str, forward: Callable[[dict[str, Any]], None] | None = None) -> Sink:

@@ -23,10 +23,11 @@ AI Agent Engineer 공고 13개를 분석했을 때 도메인은 전부 달랐지
 | `harness/packs/enterprise/` | 도메인 팩: DB 스키마·시드(`seed.py`, 3,000 주문, 시드 고정), 규정 문서 10개(`docs/`, 함정 지시문 2개 포함), 도구 10개(`tools.py`), FTS5 문서 검색(`search.py`) |
 | `harness/mcp_server/` | 같은 도구를 MCP 서버(stdio) 로 노출. Claude Desktop, Hermes Agent 등에서 그대로 사용 |
 | `harness/evals/` | 태스크 16개(`tasks.yaml`: 조회·규정·복합·변경·함정), 채점 러너(`runner.py`), 결과(`results/`) |
+| `harness/observability/` | 트레이스 수집기(이벤트 → 스팬), JSONL 저장, OpenTelemetry OTLP 내보내기 |
 | `harness/service/` | FastAPI 서비스: SSE 채팅(`/chat`), 승인 API(`/approvals`), 비동기 잡 큐(`/jobs`), 세션·실행·이벤트 저장(SQLite), 데모 페이지(`/`) |
 | `harness/cli.py` | `harness seed / tools / ask / chat / eval / mcp` |
 | `scripts/` | `serve_llm.sh`(로컬 모델 서버), `mcp_check.py`(MCP 클라이언트 검증) |
-| `tests/` | 테스트 40개: 시드 결정성, SQL 가드, 권한, 검색, 도구, 루프(가짜 프로바이더), 채점 정규화, 서비스(SSE·승인·잡) |
+| `tests/` | 테스트 48개: 시드 결정성, SQL 가드, 권한, 검색, 도구, 루프(가짜 프로바이더), 채점 정규화, 서비스(SSE·승인·잡·트레이스), 트레이싱, 하이브리드 검색 |
 
 ## 10분 안에 돌려보기
 ```bash
@@ -63,6 +64,26 @@ open http://127.0.0.1:8787/docs   # OpenAPI
 | `GET /runs/{id}` | 실행 1건의 전체 트레이스(이벤트 seq 순, 승인 포함) |
 | `POST /sessions` · `GET /sessions/{id}` | 대화 세션과 메시지 이력 |
 설계는 `docs/decisions/006-service-sse-approval-jobs.md`.
+
+## 관측성 (트레이싱)
+```bash
+uv run harness ask "지연 주문 몇 건?" --trace                  # traces/<run_id>.jsonl 저장
+HARNESS_OTLP_ENDPOINT=http://127.0.0.1:4318/v1/traces uv run harness ask "…" --trace   # OpenTelemetry 로 전송
+docker run -d --name jaeger -p 16686:16686 -p 4318:4318 jaegertracing/jaeger:2.4.0     # 보기: http://127.0.0.1:16686
+```
+스팬: `agent.run` → `llm.stepN`, `tool.<name>`, `approval.<name>`. 평가는 실행마다 트레이스를 남기고(`results/traces/`), 서비스는 `GET /runs/{id}/trace` 로 재구성한다. 설계: ADR-007.
+
+## 문서 검색: BM25 + 임베딩 하이브리드
+```bash
+scripts/serve_embed.sh            # embeddinggemma-300m 임베딩 서버(8082). 없으면 자동으로 BM25 만 사용
+uv run harness retrieval-eval     # bm25 / vector / hybrid 의 hit@1, hit@3, MRR
+```
+| 모드 | hit@1 | hit@3 | MRR |
+|---|---|---|---|
+| bm25 | 89% | 94% | 0.91 |
+| vector | 100% | 100% | 1.00 |
+| hybrid | 94% | 100% | 0.97 |
+질문 18개, 문서 10개 기준. 융합은 RRF. 설계와 해석: ADR-008.
 
 ## MCP 로 쓰기
 ```bash
@@ -129,7 +150,7 @@ _출처: `harness/evals/results/20261027-012753_local_day3-smoke.json`, `harness
 <!-- EVAL_RESULTS_END -->
 
 ## 로드맵
-- 2주차: ~~FastAPI(SSE 스트리밍, 승인 API, 비동기 잡 큐)~~ 완료 → 트레이싱 내보내기(Langfuse), 임베딩 하이브리드 검색, 상용 모델 비교 행 추가
+- 2주차: ~~FastAPI 서비스~~ ~~트레이싱(JSONL·OTLP)~~ ~~하이브리드 검색~~ 완료 → 상용 모델 비교 행 추가(API 키 필요)
 - 3주차: React UI, CI(GitHub Actions 에서 테스트 + 소형 eval), ADR 문서, 데모 영상, 2차 도메인 팩(`spice`: ngspice 회로 시뮬레이터)
 
 ## 문서
