@@ -23,9 +23,10 @@ AI Agent Engineer 공고 13개를 분석했을 때 도메인은 전부 달랐지
 | `harness/packs/enterprise/` | 도메인 팩: DB 스키마·시드(`seed.py`, 3,000 주문, 시드 고정), 규정 문서 10개(`docs/`, 함정 지시문 2개 포함), 도구 10개(`tools.py`), FTS5 문서 검색(`search.py`) |
 | `harness/mcp_server/` | 같은 도구를 MCP 서버(stdio) 로 노출. Claude Desktop, Hermes Agent 등에서 그대로 사용 |
 | `harness/evals/` | 태스크 16개(`tasks.yaml`: 조회·규정·복합·변경·함정), 채점 러너(`runner.py`), 결과(`results/`) |
+| `harness/service/` | FastAPI 서비스: SSE 채팅(`/chat`), 승인 API(`/approvals`), 비동기 잡 큐(`/jobs`), 세션·실행·이벤트 저장(SQLite), 데모 페이지(`/`) |
 | `harness/cli.py` | `harness seed / tools / ask / chat / eval / mcp` |
 | `scripts/` | `serve_llm.sh`(로컬 모델 서버), `mcp_check.py`(MCP 클라이언트 검증) |
-| `tests/` | 단위 테스트 30개: 시드 결정성, SQL 가드, 권한, 검색, 도구, 루프(가짜 프로바이더) |
+| `tests/` | 테스트 40개: 시드 결정성, SQL 가드, 권한, 검색, 도구, 루프(가짜 프로바이더), 채점 정규화, 서비스(SSE·승인·잡) |
 
 ## 10분 안에 돌려보기
 ```bash
@@ -46,6 +47,22 @@ uv run harness eval --n 1            # 평가 → harness/evals/results/*.md
 | Hermes-4-14B Q4_K_M (9GB) | `scripts/serve_llm.sh` | ~24 tok/s | 하네스 비교군. 64K 는 YaRN 자동 적용 |
 | gpt-oss-20b MXFP4 (12GB) | `LLM_MODEL_PATH=~/.cache/local-agent-lab/models/gpt-oss-20b-MXFP4.gguf scripts/serve_llm.sh` | ~65 tok/s | 추천. 네이티브 128K, 툴콜 안정, Hermes Agent 에서도 동작 |
 gpt-oss-20b 파일은 `curl -L -C - -o ~/.cache/local-agent-lab/models/gpt-oss-20b-MXFP4.gguf https://huggingface.co/ggml-org/gpt-oss-20b-GGUF/resolve/main/gpt-oss-20b-MXFP4.gguf` 로 받는다.
+
+## 서비스로 쓰기 (FastAPI)
+```bash
+uv run uvicorn harness.service.app:app --port 8787     # 모델 서버가 떠 있어야 함
+open http://127.0.0.1:8787        # 데모 페이지: 질문 → 이벤트 스트림 → 승인 카드 → 답변, 잡 제출/취소
+open http://127.0.0.1:8787/docs   # OpenAPI
+```
+| 엔드포인트 | 역할 |
+|---|---|
+| `POST /chat` | `{message, session_id?}` → `text/event-stream`. 이벤트: `run, step, tool_call, tool_result, tool_error, nudge, approval_pending, approval_result, denied, final, done` |
+| `POST /approvals/{id}` | `{decision: approve\|deny}`. 에이전트는 결정까지 대기(기본 10분, 지나면 거부) |
+| `GET /approvals?status=pending` | 대기 중인 승인 |
+| `POST /jobs` · `GET /jobs/{id}` · `POST /jobs/{id}/cancel` | 오래 걸리는 질문을 큐에 넣고 상태 조회, 협조적 취소 |
+| `GET /runs/{id}` | 실행 1건의 전체 트레이스(이벤트 seq 순, 승인 포함) |
+| `POST /sessions` · `GET /sessions/{id}` | 대화 세션과 메시지 이력 |
+설계는 `docs/decisions/006-service-sse-approval-jobs.md`.
 
 ## MCP 로 쓰기
 ```bash
@@ -112,7 +129,7 @@ _출처: `harness/evals/results/20261027-012753_local_day3-smoke.json`, `harness
 <!-- EVAL_RESULTS_END -->
 
 ## 로드맵
-- 2주차: FastAPI(SSE 스트리밍, 승인 API, 비동기 잡 큐), 트레이싱(Langfuse 셀프호스팅), 임베딩 하이브리드 검색, 모델 3종 비교 리포트
+- 2주차: ~~FastAPI(SSE 스트리밍, 승인 API, 비동기 잡 큐)~~ 완료 → 트레이싱 내보내기(Langfuse), 임베딩 하이브리드 검색, 상용 모델 비교 행 추가
 - 3주차: React UI, CI(GitHub Actions 에서 테스트 + 소형 eval), ADR 문서, 데모 영상, 2차 도메인 팩(`spice`: ngspice 회로 시뮬레이터)
 
 ## 문서

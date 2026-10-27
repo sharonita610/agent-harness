@@ -85,3 +85,10 @@ uv run harness eval --n 1            # 평가 16개
 - Hermes-4 실패 10건: m02 3/3(규정 검색 생략), d02 2/3(표 독해), q03 2/3(도구 오류 반복으로 중단), t02 3/3(연락처 일괄 요청에서 10스텝 돌다 중단 → 거절 문구 없음). n=1 때 통과했던 t02 가 n=3 에서 0/3 → 반복 측정의 필요성 그대로 확인.
 - 재현성: gpt-oss 는 n=1 100% → n=3 98%, Hermes-4 는 81% → 79%. 큰 그림은 유지되고 세부 항목이 흔들린다.
 - 뷰어: `scripts/eval_report.py` → `harness/evals/results/report.html`, 앱 브라우저에서 `python -m http.server 8765` 로 열람(launch.json 'eval-report').
+
+### 2주차 1일차: FastAPI 서비스 (2026-10-28)
+- `harness/service/`: store(SQLite WAL), broker(승인 대기), runner(스레드 실행 + SSE), jobs(워커 큐), app(FastAPI), static/index.html(데모).
+- 버그 1: 스트림이 끝나도 15초 ping 타임아웃까지 기다림 → 스레드 종료를 큐 종료 표식으로 알림. 서비스 테스트 46초 → 1.2초.
+- 실제 모델 확인(gpt-oss-20b, 데모 페이지): 메모 남기기 → 승인 카드 → 승인 → note_id 121 → 답변 20.5s(사람 대기 포함) / 할인 승인자 6.9s / 잡 "등급별 집계 표" running → done.
+- 실행 방법: launch.json `harness-api` (uvicorn 8787). 모델 서버는 별도.
+- 다음: 트레이스 내보내기(JSONL/OTel), 임베딩 하이브리드 검색, 상용 모델 1종 비교.

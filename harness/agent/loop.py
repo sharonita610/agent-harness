@@ -50,7 +50,8 @@ class Agent:
         self._text_tool_pattern = re.compile(rf"```|\b(?:{names})\s*\(|\bSELECT\b[\s\S]{{0,400}}\bFROM\b", re.I)
 
     # ------------------------------------------------------------------
-    def run(self, user_message: str, history: list[dict[str, Any]] | None = None) -> AgentResult:
+    def run(self, user_message: str, history: list[dict[str, Any]] | None = None,
+            should_cancel: Callable[[], bool] | None = None) -> AgentResult:
         t0 = time.perf_counter()
         events: list[AgentEvent] = []
         tool_log: list[dict[str, Any]] = []
@@ -74,6 +75,11 @@ class Agent:
         stopped = "max_steps"
         step = 0
         for step in range(1, self.max_steps + 1):
+            if should_cancel and should_cancel():
+                stopped = "cancelled"
+                answer = "요청에 따라 작업을 취소했습니다."
+                emit("stopped", step, reason=stopped)
+                break
             emit("step", step)
             messages = compact(messages, self.context_budget_tokens)
             t_call = time.perf_counter()

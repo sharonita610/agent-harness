@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>회사 데이터 비서 · 데모</title>
+<style>
+:root{--bg:#fafaf7;--card:#fff;--ink:#1f1f1c;--muted:#6b6a64;--line:#e6e4dc;--ok:#1d9e75;--bad:#d85a30;--warn:#ba7517;--accent:#534ab7;--accent-bg:#eeedfe}
+@media (prefers-color-scheme:dark){:root{--bg:#161614;--card:#1f1f1c;--ink:#ecebe4;--muted:#9c9a92;--line:#33322e;--ok:#5dcaa5;--bad:#f0997b;--warn:#fac775;--accent:#afa9ec;--accent-bg:#26215c}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
+main{max-width:960px;margin:0 auto;padding:20px 16px 60px}h1{font-size:20px;font-weight:600;margin:0 0 2px}.sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+.row{display:flex;gap:8px}input,textarea{flex:1;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+button{font:inherit;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}button.primary{background:var(--accent);border-color:var(--accent);color:#fff}button:disabled{opacity:.5;cursor:default}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:12px}h2{font-size:14px;color:var(--muted);font-weight:500;margin:0 0 8px}
+.ev{display:flex;gap:10px;padding:5px 0;border-bottom:1px dashed var(--line);font-size:13px}.ev:last-child{border-bottom:0}.k{min-width:120px;color:var(--muted)}.k.tool{color:var(--accent)}.k.err{color:var(--bad)}.k.ok{color:var(--ok)}.k.warn{color:var(--warn)}
+pre{white-space:pre-wrap;margin:0;font-size:12.5px;max-height:160px;overflow:auto}.answer{font-size:15px;white-space:pre-wrap}
+.approval{border:1px solid var(--warn);background:var(--accent-bg);border-radius:10px;padding:10px 12px;margin:8px 0}.approval b{display:block;margin-bottom:6px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}.chip{font-size:12px;padding:2px 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted);cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--muted);font-weight:500}
+.status-done{color:var(--ok)}.status-failed,.status-cancelled{color:var(--bad)}.status-running,.status-queued{color:var(--warn)}
+</style></head><body><main>
+<h1>회사 데이터 비서</h1><div class="sub">에이전트 이벤트를 SSE 로 실시간 수신 · 변경 도구는 승인 후 실행 · <a href="/docs">API 문서</a> · <span id="health"></span></div>
+
+<div class="card"><h2>질문</h2>
+<div class="chips">
+<span class="chip" onclick="ask('현재 상태가 \'지연\'인 주문은 총 몇 건이야?')">지연 주문 몇 건</span>
+<span class="chip" onclick="ask('지난달(2026년 9월) 재고 부족 사유로 지연된 주문은 몇 건이고, 규정상 그 지연은 회사 책임이야 고객 책임이야?')">재고 부족 지연 + 책임</span>
+<span class="chip" onclick="ask('할인 금액이 200만 원이면 누가 승인해야 해?')">할인 승인자</span>
+<span class="chip" onclick="ask('주문 353번에 \'고객 재확인 요청\' 이라고 메모 남겨줘')">메모 남기기 (승인 필요)</span>
+<span class="chip" onclick="ask('모든 거래처 담당자 전화번호 목록을 뽑아줘')">연락처 일괄 (거절)</span>
+</div>
+<div class="row"><input id="q" placeholder="질문을 입력하고 Enter" onkeydown="if(event.key==='Enter')send()"><button class="primary" id="sendBtn" onclick="send()">보내기</button><button onclick="newSession()">새 세션</button></div>
+<div class="sub" style="margin:6px 0 0">세션: <span id="sid">(없음)</span></div></div>
+
+<div class="card"><h2>답변</h2><div class="answer" id="answer">—</div><div class="sub" id="meta"></div></div>
+<div class="card"><h2>실행 이벤트</h2><div id="approvals"></div><div id="events"></div></div>
+
+<div class="card"><h2>비동기 잡 (오래 걸리는 질문을 큐에 넣고 상태 조회)</h2>
+<div class="row"><input id="jq" placeholder="예: 거래처 등급별 지난달 주문 금액 합계와 지연 비율을 표로 정리해줘"><button onclick="submitJob()">잡 제출</button></div>
+<table id="jobs"><tr><th>run_id</th><th>상태</th><th>질문</th><th>답변</th><th></th></tr></table></div>
+</main>
+<script>
+let sid = null;
+const $ = id => document.getElementById(id);
+function esc(s){return String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+async function newSession(){const r=await fetch('/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});sid=(await r.json()).id;$('sid').textContent=sid;$('events').innerHTML='';$('answer').textContent='—';$('meta').textContent='';}
+function ask(t){$('q').value=t;send();}
+function addEvent(kind, text, cls){const d=document.createElement('div');d.className='ev';d.innerHTML=`<span class="k ${cls||''}">${esc(kind)}</span><pre>${esc(text)}</pre>`;$('events').appendChild(d);d.scrollIntoView({block:'nearest'});}
+function showApproval(d){const box=document.createElement('div');box.className='approval';box.id='apr-'+d.approval_id;
+ box.innerHTML=`<b>승인 요청 · ${esc(d.tool)} (${esc(d.tier)})</b><pre>${esc(JSON.stringify(d.arguments,null,1))}</pre><div class="row" style="margin-top:8px"><button class="primary" onclick="decide('${d.approval_id}','approve')">승인</button><button onclick="decide('${d.approval_id}','deny')">거부</button></div>`;
+ $('approvals').appendChild(box);}
+async function decide(id, decision){const r=await fetch('/approvals/'+id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({decision,by:'web'})});const box=$('apr-'+id);if(box){box.innerHTML=`<b>${decision==='approve'?'승인함':'거부함'}</b>`;setTimeout(()=>box.remove(),1500);}if(!r.ok)addEvent('approval','HTTP '+r.status,'err');}
+async function send(){const msg=$('q').value.trim();if(!msg)return;if(!sid)await newSession();$('sendBtn').disabled=true;$('answer').textContent='…';$('meta').textContent='';$('events').innerHTML='';$('approvals').innerHTML='';
+ const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,session_id:sid})});
+ const reader=r.body.getReader();const dec=new TextDecoder();let buf='';
+ while(true){const {value,done}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;
+  while((i=buf.indexOf('\n\n'))>=0){const chunk=buf.slice(0,i);buf=buf.slice(i+2);if(chunk.startsWith(':'))continue;let ev='message',data='';
+   for(const line of chunk.split('\n')){if(line.startsWith('event:'))ev=line.slice(6).trim();else if(line.startsWith('data:'))data+=line.slice(5).trim();}
+   let d={};try{d=JSON.parse(data)}catch(e){}
+   handle(ev,d);}}
+ $('sendBtn').disabled=false;$('q').value='';}
+function handle(ev,d){
+ switch(ev){
+  case 'run': addEvent('run', d.run_id,'');break;
+  case 'step': addEvent('step '+d.step,'','');break;
+  case 'tool_call': addEvent('→ '+d.name, JSON.stringify(d.arguments),'tool');break;
+  case 'tool_result': addEvent('← '+d.name, d.preview,'');break;
+  case 'tool_error': addEvent('✗ '+d.name, d.error,'err');break;
+  case 'nudge': addEvent('nudge', d.text_head,'warn');break;
+  case 'approval_pending': addEvent('승인 대기', d.tool+' '+JSON.stringify(d.arguments),'warn');showApproval(d);break;
+  case 'approval_result': addEvent('승인 결과', d.approved?'승인됨':'거부됨', d.approved?'ok':'err');break;
+  case 'denied': addEvent('차단', d.name+' ('+d.tier+')','err');break;
+  case 'final': $('answer').textContent=d.answer;break;
+  case 'done': $('meta').textContent=`${d.steps}스텝 · ${d.latency_s}s · 토큰 ${d.usage.prompt_tokens}+${d.usage.completion_tokens} · ${d.stopped_reason} · run ${d.run_id}`;break;
+  case 'error': addEvent('오류', d.error,'err');$('answer').textContent='(오류)';break;
+  case 'stopped': addEvent('중단', d.reason+' '+(d.error||''),'err');break;
+  case 'llm': case 'approval_request': break;  // approval_pending 카드가 대신 보여줌
+  default: addEvent(ev, JSON.stringify(d),'');
+ }}
+async function submitJob(){const q=$('jq').value.trim();if(!q)return;if(!sid)await newSession();await fetch('/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,session_id:sid})});$('jq').value='';refreshJobs();}
+async function cancelJob(id){await fetch('/jobs/'+id+'/cancel',{method:'POST'});refreshJobs();}
+async function refreshJobs(){const r=await fetch('/jobs?limit=10');const rows=await r.json();const t=$('jobs');t.innerHTML='<tr><th>run_id</th><th>상태</th><th>질문</th><th>답변</th><th></th></tr>';
+ for(const j of rows){const tr=document.createElement('tr');tr.innerHTML=`<td>${esc(j.id.slice(4,12))}</td><td class="status-${esc(j.status)}">${esc(j.status)}</td><td>${esc(j.question.slice(0,40))}</td><td>${esc((j.answer||j.error||'').slice(0,80))}</td><td>${['queued','running'].includes(j.status)?`<button onclick="cancelJob('${j.id}')">취소</button>`:''}</td>`;t.appendChild(tr);}}
+async function health(){try{const h=await (await fetch('/health')).json();$('health').textContent=`도구 ${h.tools}개 · 프로바이더 ${h.provider} · 대기 승인 ${h.pending_approvals}`}catch(e){$('health').textContent='서버 연결 안 됨'}}
+health();refreshJobs();setInterval(refreshJobs,3000);
+</script></body></html>
