@@ -53,4 +53,4 @@ def test_sample_runs_is_balanced_and_grading_page_renders(tmp_path):
     rp = tmp_path / "r.json"; rp.write_text(json.dumps(_results()), encoding="utf-8")
     page = grading_page(rp, tmp_path / "g.html", n=3)
     html = page.read_text(encoding="utf-8")
-    assert html.count('class="item"') == 3 and "채점 JSON 내보내기" in html and 'name="g-a:1"' in html
+    assert html.count('class="item"') == 3 and "서버에 저장" in html and 'name="g-a:1"' in html

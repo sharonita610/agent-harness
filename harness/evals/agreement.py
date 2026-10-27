@@ -96,7 +96,7 @@ document.querySelectorAll('input[type=radio]').forEach(el=>{{const key=el.name.s
 document.querySelectorAll('input[data-note]').forEach(el=>{{const key=el.dataset.note;if(state[key]&&state[key].note)el.value=state[key].note;el.addEventListener('input',()=>{{state[key]={{...(state[key]||{{}}),note:el.value}};save();}});}});
 function payload(){{return {{results:'{label}',graded_at:new Date().toISOString(),grades:state}};}}
 function exportJson(){{const blob=new Blob([JSON.stringify(payload(),null,2)],{{type:'application/json'}});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='human-{label}.json';a.click();}}
-async function saveToServer(){{const m=document.getElementById('msg');try{{const r=await fetch(location.pathname.replace(/\.html$/,''),{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(payload())}});const d=await r.json();m.textContent=r.ok?`저장됨: ${{d.path}} (${{d.graded}}개)`:`저장 실패: ${{d.detail||r.status}}`;}}catch(e){{m.textContent='이 페이지는 정적 서버라 저장할 수 없습니다. http://127.0.0.1:8787/grading/… 에서 여세요.';}}}}
+async function saveToServer(){{const m=document.getElementById('msg');try{{const r=await fetch(location.pathname.replace(/\\.html$/,''),{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(payload())}});const d=await r.json();m.textContent=r.ok?`저장됨: ${{d.path}} (${{d.graded}}개)`:`저장 실패: ${{d.detail||r.status}}`;}}catch(e){{m.textContent='이 페이지는 정적 서버라 저장할 수 없습니다. http://127.0.0.1:8787/grading/… 에서 여세요.';}}}}
 function toggleHidden(){{document.querySelectorAll('.meta').forEach(m=>m.classList.toggle('hidden'));}}
 save();
 </script></body></html>""")
