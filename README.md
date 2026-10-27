@@ -11,7 +11,7 @@
 ```
 
 ## 왜 만들었나
-AI Agent Engineer 공고 13개를 분석했을 때 도메인은 전부 달랐지만 요구하는 뼈대는 같았다(`MARKET-SCAN.md`):
+AI Agent Engineer 공고 13개를 분석했을 때 도메인은 전부 달랐지만 요구하는 뼈대는 같았다:
 도구 설계, RAG, **평가 체계**, 관측성, 안전(승인·권한), 비동기 API, 모델 비교, 판단 근거 문서화.
 그래서 뼈대를 플랫폼으로 만들고 도메인은 "팩" 으로 교체한다. 프레임워크(LangGraph 등) 없이 루프를 직접 구현해 구조를 설명할 수 있게 했다.
 
@@ -116,4 +116,4 @@ _출처: `harness/evals/results/20261027-012753_local_day3-smoke.json`, `harness
 - 3주차: React UI, CI(GitHub Actions 에서 테스트 + 소형 eval), ADR 문서, 데모 영상, 2차 도메인 팩(`spice`: ngspice 회로 시뮬레이터)
 
 ## 문서
-`PORTFOLIO.md`(명세) · `MARKET-SCAN.md`(공고 13개 분석) · `JOB-393812-alsemy.md` · `PLAN.md`(초기 로드맵) · `NOTES.md`(실험 노트)
+`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정) · `docs/VERIFY-day1-3.md`(검증 절차)
