@@ -68,8 +68,7 @@
 - id: w02
   type: sweep
   question: "rc_lowpass 샘플에서 C1 을 10nF 부터 1µF 까지 로그 간격 5점으로 스윕해서 차단 주파수가 어떻게 변하는지 그래프로 보여줘"
-  expect_tools_all: [run_sweep, plot_waveform]
-  answer_contains_any: ["그래프", "첨부"]
+  expect_tools_all: [run_sweep, plot_waveform]   # 그래프를 '만들었는지' 는 도구 호출로 확인한다(답에 '그래프' 라는 말이 없어도 통과)
 
 - id: d01
   type: doc
