@@ -152,4 +152,10 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
     return app
 
 
-app = create_app()
+def __getattr__(name: str):
+    """`uvicorn harness.service.app:app` 용. import 시점에 DB 를 요구하지 않도록 첫 접근 때 만든다(PEP 562)."""
+    if name == "app":
+        global app
+        app = create_app()
+        return app
+    raise AttributeError(name)

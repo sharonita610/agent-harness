@@ -11,10 +11,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --all-groups
-      - run: uv run pytest -q
       - name: seed determinism
         run: |
           uv run harness seed | grep -q "sha256_16: 92d0c19eb4f1cd2a"
+      - run: uv run pytest -q
       - name: mcp server smoke (tools list only)
         run: uv run python scripts/mcp_check.py
       # 소형 eval 스모크(모델 호출)는 2주차에 API 키 secret 과 함께 추가한다.
