@@ -13,6 +13,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from ...retrieval import DocIndex, OpenAIEmbedder, embedder_available
+from ...retrieval.kb import KnowledgeBase
 from ...tools.registry import Tier, Tool
 from .netlist import NetlistError, format_si, parse_netlist
 from .plot import Marker, figure_from_columns, render_svg
@@ -23,6 +24,7 @@ PACK_DIR = Path(__file__).parent
 CIRCUITS_DIR = PACK_DIR / "circuits"
 DOCS_DIR = PACK_DIR / "docs"
 LIBRARY_DIR = Path(os.getenv("HARNESS_SPICE_LIBRARY", str(RUNS_DIR.parent / "spice_circuits")))
+KB_PATH = Path(os.getenv("HARNESS_SPICE_KB", str(RUNS_DIR.parent / "kb" / "ngspice-manual.sqlite")))   # harness kb build 로 만든 매뉴얼 지식 베이스
 _NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
 _RUN_ID = re.compile(r"^(sim|swp)_[0-9a-f]{8}$")
 
@@ -83,18 +85,26 @@ class SaveCircuitArgs(BaseModel):
 
 
 class SearchArgs(BaseModel):
-    query: str = Field(description="검색어(한국어/영어 혼용 가능)")
+    query: str = Field(description="검색어. 매뉴얼은 영어라 명령 이름·키워드는 영어로(예: 'meas TRIG TARG rise time'), 설명은 한국어도 된다")
     k: int = Field(5, ge=1, le=10)
 
 
+class ReadSectionArgs(BaseModel):
+    section: str = Field(description="search_manual 결과의 section_id(예: '15.4.3') 또는 source 문자열('문서 > 절')")
+
+
 # ----------------------------------------------------------------------------- 인덱스
-def make_index(docs_dir: Path = DOCS_DIR, hybrid: bool | None = None) -> DocIndex:
-    """enterprise.tools.make_index 와 같은 규칙: 임베딩 서버가 있으면 하이브리드, HARNESS_HYBRID=0 이면 BM25 만."""
+def make_index(docs_dir: Path = DOCS_DIR, hybrid: bool | None = None, kb_path: Path | None = None) -> DocIndex | KnowledgeBase:
+    """매뉴얼 지식 베이스(data/kb/ngspice-manual.sqlite, `harness kb build`)가 있으면 그것을, 없으면 요약 문서 6개의 메모리 색인을 쓴다.
+    임베딩은 enterprise 와 같은 규칙: 임베딩 서버가 있으면 하이브리드, HARNESS_HYBRID=0 이면 BM25 만."""
     if hybrid is None:
         hybrid = os.getenv("HARNESS_HYBRID", "auto") != "0" and embedder_available()
-    if not hybrid:
+    emb = OpenAIEmbedder() if hybrid else None
+    kb_path = Path(kb_path or KB_PATH)
+    if kb_path.exists():
+        return KnowledgeBase(kb_path, embedder=emb, embed_model=emb.model if emb else None)
+    if emb is None:
         return DocIndex(docs_dir)
-    emb = OpenAIEmbedder()
     return DocIndex(docs_dir, embedder=emb, embed_model=emb.model, cache_path=RUNS_DIR.parent / "spice_doc_embeddings.json")
 
 
@@ -214,7 +224,23 @@ def build_tools(circuits_dir: Path = CIRCUITS_DIR, docs_dir: Path = DOCS_DIR, ru
         return {**r, "next": "표가 길면 plot_waveform(run_id) 로 그래프를 만든다"}
 
     def search_manual(a: SearchArgs) -> Any:
-        return index.search(a.query, k=a.k)
+        hits = index.search(a.query, k=a.k)
+        out = []
+        for h in hits:  # 매뉴얼 청크는 길어서 앞부분만. 전체는 read_manual 로
+            out.append({k: v for k, v in h.items() if k != "text"} | {"text": (h.get("text") or "")[:600] + ("…" if len(h.get("text") or "") > 600 else "")})
+        return out
+
+    def read_manual(a: ReadSectionArgs) -> Any:
+        if isinstance(index, KnowledgeBase):
+            sec = index.get_section(a.section)
+            if sec is None:
+                raise ValueError(f"절 없음: {a.section!r}. search_manual 결과의 section_id 나 source 를 그대로 주세요.")
+            return sec
+        ref = a.section.split(">")[-1].strip().lower()
+        for c in index.chunks:
+            if ref in (c.section.lower(), f"{c.doc} > {c.section}".lower(), c.doc.lower()):
+                return {"source": f"{c.doc} > {c.section}", "text": c.text, "chars": len(c.text)}
+        raise ValueError(f"절 없음: {a.section!r}. list_manual 로 문서 목록을 확인하세요.")
 
     def list_manual(_: NoArgs) -> Any:
         return index.list_docs()
@@ -253,6 +279,7 @@ def build_tools(circuits_dir: Path = CIRCUITS_DIR, docs_dir: Path = DOCS_DIR, ru
         Tool("plot_waveform", "실행 결과를 SVG 그래프로 그린다(주파수 응답, 시간 파형, 스윕 곡선). 측정값은 mark_x/mark_y 로 점선 표시한다.", PlotArgs, plot_waveform),
         Tool("run_sweep", f"소자 값을 바꿔 가며 같은 측정을 반복한다(최대 {MAX_SWEEP_POINTS}점). '저항을 바꾸면 fc 가 어떻게 변하나' 같은 질문에 쓴다. 오래 걸릴 수 있다.", SweepArgs, run_sweep),
         Tool("search_manual", "ngspice 문법·해석·측정식·공식·오류 해결 문서를 검색한다. 문법이 확실하지 않거나 오류가 났을 때, 이론 공식이 필요할 때 쓴다. 답에 출처를 적는다.", SearchArgs, search_manual),
+        Tool("read_manual", "search_manual 로 찾은 절 하나를 전체 읽는다(section_id 또는 source). 명령 문법이나 파라미터 표가 잘려 보일 때 쓴다.", ReadSectionArgs, read_manual),
         Tool("list_manual", "참고 문서 목록을 본다.", NoArgs, list_manual),
         Tool("save_circuit", "넷리스트를 이름을 붙여 저장한다. 사람 승인이 필요한 변경 작업이다.", SaveCircuitArgs, save_circuit, Tier.WRITE),
         Tool("delete_circuit", "저장된 회로를 삭제한다. 되돌릴 수 없는 작업으로 이 에이전트에서는 차단된다.", CircuitNameArgs, delete_circuit, Tier.DESTRUCTIVE),
@@ -308,7 +335,7 @@ SYSTEM_PROMPTS = {"v1": SYSTEM_PROMPT, "v2": SYSTEM_PROMPT_V2}
 TOOL_LABELS = {
     "list_circuits": "회로 목록 확인", "get_circuit": "회로 가져오기", "check_netlist": "넷리스트 검사", "run_simulation": "시뮬레이션 실행",
     "get_waveform": "파형 데이터 보기", "plot_waveform": "그래프 그리기", "run_sweep": "파라미터 스윕", "search_manual": "매뉴얼 검색",
-    "list_manual": "문서 목록 확인", "save_circuit": "회로 저장", "delete_circuit": "회로 삭제",
+    "read_manual": "매뉴얼 절 읽기", "list_manual": "문서 목록 확인", "save_circuit": "회로 저장", "delete_circuit": "회로 삭제",
 }
 
 

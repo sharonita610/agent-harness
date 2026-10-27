@@ -17,6 +17,7 @@ dependencies = [
   "opentelemetry-api>=1.25",
   "opentelemetry-sdk>=1.25",
   "opentelemetry-exporter-otlp-proto-http>=1.25",
+  "pymupdf>=2.0",
 ]
 
 [project.scripts]

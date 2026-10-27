@@ -20,7 +20,8 @@
 | 서비스화 | FastAPI, SSE 이벤트 스트림, 승인 API, 비동기 잡 큐, React + TypeScript 화면 | `harness/service/`, `ui/`, ADR-006 |
 | 모델 비교 | 로컬 2종(gpt-oss-20b 98%, Hermes-4-14B 79%) 같은 조건 비교, 상용은 설정 한 줄 | 아래 평가 표, ADR-005 |
 | 전문 소프트웨어 위의 에이전트, 도메인 교체 | 두 번째 팩 `spice`: 같은 플랫폼에 폴더 하나를 더해 **ngspice 회로 시뮬레이션 비서** 가 된다. 넷리스트 가드, 측정·스윕·그래프, 공식 정답 평가 16문제 | `harness/packs/spice/`, ADR-013 |
-| 판단 근거를 글로 | 설계 결정 문서 13편, 실험 노트 | `docs/decisions/`, `NOTES.md` |
+| 지식 베이스와 검색 파이프라인 | 매뉴얼 PDF 765쪽 → 절 단위 1,137청크 → SQLite(BM25 + 벡터, 증분 임베딩) → 검색·읽기 도구 → 32문항으로 측정(hit@1 44% → 97%) | `harness/retrieval/kb.py`, ADR-014 |
+| 판단 근거를 글로 | 설계 결정 문서 14편, 실험 노트 | `docs/decisions/`, `NOTES.md` |
 
 MCP 서버로도 노출되어 Hermes Agent, Claude Desktop 같은 외부 에이전트에서 같은 도구를 쓸 수 있다.
 
@@ -51,16 +52,16 @@ AI Agent Engineer 공고 13개를 분석했을 때 도메인은 전부 달랐지
 | `harness/tools/` | 도구 레지스트리(pydantic 인자 검증, OpenAI 함수 스키마), 권한 정책(read / write / destructive) |
 | `harness/packs/__init__.py` | 팩 인터페이스(`Pack`): 도구·프롬프트·범위·평가 태스크·화면 라벨. 플랫폼은 이것만 보고 돈다. 선택은 `HARNESS_PACK` 또는 `--pack` |
 | `harness/packs/enterprise/` | 1차 팩 · 회사 데이터 비서: DB 스키마·시드(`seed.py`, 3,000 주문, 시드 고정), 규정 문서 10개(`docs/`, 함정 지시문 2개 포함), 도구 10개(`tools.py`), 사용자별 범위(`scope.py`) |
-| `harness/packs/spice/` | 2차 팩 · 회로 시뮬레이션 비서: 넷리스트 가드·파서(`netlist.py`), ngspice 실행·측정·스윕(`simulator.py`), SVG 그래프(`plot.py`), 도구 11개(`tools.py`), 매뉴얼 요약 문서 6개(함정 지시문 1개), 샘플 회로 6개 |
-| `harness/retrieval/` | 도메인 중립 문서 검색: 마크다운 청킹, FTS5 BM25, 임베딩 + RRF 하이브리드. 두 팩이 같이 쓴다 |
+| `harness/packs/spice/` | 2차 팩 · 회로 시뮬레이션 비서: 넷리스트 가드·파서(`netlist.py`), ngspice 실행·측정·스윕(`simulator.py`), SVG 그래프(`plot.py`), 도구 12개(`tools.py`: 검색·읽기 포함), 매뉴얼 요약 문서 6개(함정 지시문 1개), 샘플 회로 6개 |
+| `harness/retrieval/` | 도메인 중립 검색: 마크다운 청킹, FTS5 BM25, 임베딩 + RRF 하이브리드(`search.py`), PDF 매뉴얼 지식 베이스(`kb.py`: 책갈피 절 단위 청킹, SQLite 저장, 증분 임베딩, 절 읽기). 두 팩이 같이 쓴다 |
 | `harness/mcp_server/` | 같은 도구를 MCP 서버(stdio) 로 노출. Claude Desktop, Hermes Agent 등에서 그대로 사용 |
 | `harness/evals/` | 태스크 16개 × 팩 2개(`tasks.yaml`: 조회·규정·복합·변경·함정 / `tasks_spice.yaml`: 해석·스윕·문서·저장·함정, 정답은 공식), 채점 러너(`runner.py`), LLM 판정자, 사람 채점 대조, 결과(`results/`) |
 | `harness/observability/` | 트레이스 수집기(이벤트 → 스팬), JSONL 저장, OpenTelemetry OTLP 내보내기 |
 | `ui/` | React + TypeScript(Vite) 화면: SSE 채팅·승인 카드·잡 큐·실행 기록·트레이스 waterfall. 빌드하면 FastAPI 가 `/app` 에서 서빙 |
 | `harness/service/` | FastAPI 서비스: SSE 채팅(`/chat`), 승인 API(`/approvals`), 비동기 잡 큐(`/jobs`), API 키·역할·감사(`auth.py`, `/me`, `/audit`), 세션·실행·이벤트 저장(SQLite) |
-| `harness/cli.py` | `harness seed / tools / ask / chat / eval / judge / grade-sheet / agreement / users / mcp`, 모두 `--pack` |
+| `harness/cli.py` | `harness seed / tools / ask / chat / eval / retrieval-eval / judge / grade-sheet / agreement / users / kb / mcp`, 모두 `--pack` |
 | `scripts/` | `serve_llm.sh`(로컬 모델 서버), `mcp_check.py`(MCP 클라이언트 검증) |
-| `tests/` | 테스트 98개: 시드 결정성, SQL 가드, 권한, 검색, 도구, 루프(가짜 프로바이더), 채점 정규화·허용오차, 서비스(SSE·승인·잡·트레이스), 인증·역할·감사·범위, 트레이싱, 하이브리드 검색, 넷리스트 가드·시뮬레이터·스윕·그래프, 팩 인터페이스 |
+| `tests/` | 테스트 107개: 시드 결정성, SQL 가드, 권한, 검색, 도구, 루프(가짜 프로바이더), 채점 정규화·허용오차, 서비스(SSE·승인·잡·트레이스), 인증·역할·감사·범위, 트레이싱, 하이브리드 검색, 넷리스트 가드·시뮬레이터·스윕·그래프, 팩 인터페이스, 지식 베이스(합성 PDF) |
 
 ## 데이터셋 (가짜 회사 "한빛상사")
 `uv run harness seed` 로 생성. 시드가 고정돼 있어 몇 번을 다시 만들어도 같은 데이터다. 아래 표와 그림은 `scripts/data_report.py` 가 DB 에서 뽑아 갱신한다.
@@ -126,6 +127,14 @@ uv run harness eval --pack spice --n 3                 # 정답은 공식(1/(2π
 HARNESS_PACK=spice uv run uvicorn harness.service.app:app --port 8787    # 화면·API 가 회로 비서로 바뀐다
 ```
 평가 결과는 아래 평가 절, 설계는 ADR-013.
+
+**매뉴얼 지식 베이스.** 비서의 `search_manual` 은 직접 쓴 요약 문서 6개 대신 ngspice 공식 매뉴얼 PDF 765쪽을 통째로 검색할 수 있다. 책갈피의 절 번호를 경계로 1,137개 청크를 만들어 SQLite 에 넣고(BM25 + 벡터, 임베딩은 청크 해시 단위 증분), `read_manual(절 번호)` 로 절 전체를 읽는다. "`.tran` 의 TMAX 는 무슨 뜻이야?" 같은 질문에 11.3.10 절 원문을 인용해 답한다(3스텝 12초). 검색 품질 32문항 비교는 "문서 검색" 절, 설계는 ADR-014.
+```bash
+scripts/fetch_manual.sh                      # 매뉴얼 PDF(2.7MB) 내려받기 + 절 단위 청킹 → data/kb/ngspice-manual.sqlite
+uv run harness kb embed --model local        # 임베딩(scripts/serve_embed.sh 가 떠 있을 때) 또는 --model openai
+uv run harness kb search "tran TMAX" --mode hybrid
+uv run harness retrieval-eval --pack spice   # 32문항 hit@1 / hit@3 / MRR (--index docs 면 요약 문서만)
+```
 
 ## 10분 안에 돌려보기
 ```bash
@@ -211,7 +220,16 @@ uv run harness retrieval-eval     # bm25 / vector / hybrid 의 hit@1, hit@3, MRR
 | vector | text-embedding-3-small (OpenAI) | 100% | 100% | 1.00 |
 | hybrid | text-embedding-3-small (OpenAI) | 100% | 100% | 1.00 |
 
-질문 18개, 문서 10개 기준. 융합은 RRF. 로컬 하이브리드가 놓친 1문항("거래처 등급은 어떻게 정해져")은 BM25 가 '거래처 등급' 단어가 많은 할인 규정을 1위로 올렸고 로컬 임베딩의 순위 차가 작아 융합에서 밀린 경우다. OpenAI 임베딩에선 순위 차가 커서 복구됐다. 호스팅 임베딩은 `HARNESS_EMBED_BASE_URL=https://api.openai.com/v1 HARNESS_EMBED_MODEL=text-embedding-3-small` 로 바꿔 끼운다(키는 `OPENAI_API_KEY`). 설계와 해석: ADR-008.
+질문 18개, 문서 10개 기준(회사 팩). 융합은 RRF. 로컬 하이브리드가 놓친 1문항("거래처 등급은 어떻게 정해져")은 BM25 가 '거래처 등급' 단어가 많은 할인 규정을 1위로 올렸고 로컬 임베딩의 순위 차가 작아 융합에서 밀린 경우다. OpenAI 임베딩에선 순위 차가 커서 복구됐다. 호스팅 임베딩은 `HARNESS_EMBED_BASE_URL=https://api.openai.com/v1 HARNESS_EMBED_MODEL=text-embedding-3-small` 로 바꿔 끼운다(키는 `OPENAI_API_KEY`). 설계와 해석: ADR-008.
+
+**회로 팩 지식 베이스(매뉴얼 765쪽 + 요약 6개), 질문 32개, hit@1:**
+| 색인 | BM25 | 벡터 | 하이브리드 |
+|---|---|---|---|
+| 요약 문서 6개만 | 44% | 44~47% | 41~44% |
+| 매뉴얼 + 요약 (로컬 embeddinggemma-300m) | 84% | 69% | 81% |
+| 매뉴얼 + 요약 (OpenAI text-embedding-3-small) | 84% | 81% | **97%** |
+
+지식 베이스가 적중률을 두 배로 올렸고(요약만으로는 인덕터·커패시터·.FOUR 같은 주제가 없었다), **하이브리드가 항상 낫지는 않다**: 로컬 임베딩은 한국어 질문 → 영어 기술 문서에서 벡터 69% 에 그쳐 융합해도 BM25 단독(84%)보다 낮았고, 호스팅 임베딩은 벡터 81% 로 올라가 융합이 97% 가 됐다. 융합의 이득은 두 신호가 서로 다른 문항을 맞힐 때만 생긴다(ADR-014).
 
 ## MCP 로 쓰기
 ```bash

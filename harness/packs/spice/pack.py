@@ -8,7 +8,7 @@ from .tools import DOCS_DIR, SYSTEM_PROMPTS, TOOL_LABELS, build_tools, make_inde
 PACK = Pack(
     name="spice",
     title="회로 시뮬레이션 비서",
-    description="ngspice 위의 에이전트. 넷리스트 가드, 1회 해석·측정, 파라미터 스윕(긴 작업), SVG 그래프, 매뉴얼 검색. 도구 11개.",
+    description="ngspice 위의 에이전트. 넷리스트 가드, 1회 해석·측정, 파라미터 스윕(긴 작업), SVG 그래프, 매뉴얼 지식 베이스(PDF 765쪽, 책갈피 절 단위 청킹) 검색·읽기. 도구 12개.",
     build_tools=build_tools,
     system_prompts=SYSTEM_PROMPTS,
     parse_scope=lambda spec: None,

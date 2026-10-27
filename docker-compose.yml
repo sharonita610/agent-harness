@@ -39,7 +39,7 @@ services:
   embed:
     image: ghcr.io/ggml-org/llama.cpp:server
     command: >
-      -hf ggml-org/embeddinggemma-300m-qat-q8_0-GGUF --embeddings -c 2048
+      -hf ggml-org/embeddinggemma-300m-qat-q8_0-GGUF --embeddings -c 2048 -b 2048 -ub 2048
       --host 0.0.0.0 --port 8082 --alias local-embed
     volumes:
       - hf-cache:/root/.cache

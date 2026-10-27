@@ -88,3 +88,6 @@ data/users.json
 data/spice_runs/
 data/spice_circuits/
 data/spice_doc_embeddings.json
+
+# 지식 베이스 원본(매뉴얼 PDF)과 색인
+data/kb/

@@ -156,10 +156,11 @@ def eval_cmd(provider: str = "local", n: int = typer.Option(1, help="태스크�
 
 
 @app.command("retrieval-eval")
-def retrieval_eval():
+def retrieval_eval(pack: Optional[str] = typer.Option(None, help=PACK_HELP), index: str = typer.Option("auto", help="spice: auto | kb(매뉴얼 지식 베이스) | docs(요약 문서 6개)")):
     """문서 검색 품질 비교(bm25 / vector / hybrid). 임베딩 서버(8082)가 떠 있으면 세 모드 전부."""
     from .evals.retrieval_eval import run
-    run(console=console)
+    from .packs import load_pack
+    run(console=console, pack=load_pack(pack).name, index_kind=index)
 
 
 @app.command()
@@ -244,6 +245,67 @@ def users_remove(name: str):
     from .service.auth import UserStore
     us = UserStore.load()
     console.print(f"{us.remove(name)}명 삭제")
+
+
+kb_app = typer.Typer(help="지식 베이스: PDF 매뉴얼·마크다운 → SQLite(BM25 + 벡터). 회로 팩의 search_manual 이 쓴다.")
+app.add_typer(kb_app, name="kb")
+DEFAULT_KB = Path(__file__).resolve().parents[1] / "data" / "kb" / "ngspice-manual.sqlite"
+
+
+def _embedder_for(spec: str):
+    """local(HARNESS_EMBED_* 기본값) | openai | 'base_url|model'"""
+    from .retrieval import OpenAIEmbedder
+    if spec == "local":
+        return OpenAIEmbedder()
+    if spec == "openai":
+        return OpenAIEmbedder(base_url="https://api.openai.com/v1", model="text-embedding-3-small")
+    base, _, model = spec.partition("|")
+    return OpenAIEmbedder(base_url=base, model=model or None)
+
+
+@kb_app.command("build")
+def kb_build(pdf: Optional[Path] = typer.Option(None, help="매뉴얼 PDF 경로"), name: str = typer.Option("ngspice manual", help="문서 이름"),
+             docs: Optional[Path] = typer.Option(None, help="함께 넣을 마크다운 폴더(기본: 회로 팩 요약 문서 6개)"),
+             out: Path = typer.Option(DEFAULT_KB, help="SQLite 파일")):
+    """PDF 를 절 단위로 잘라 지식 베이스를 만든다(임베딩은 kb embed 로 따로)."""
+    from .packs.spice.tools import DOCS_DIR
+    from .retrieval.kb import KnowledgeBase, ingest_markdown_dir, ingest_pdf
+    kb = KnowledgeBase(out)
+    if pdf:
+        chunks = ingest_pdf(pdf, name)
+        console.print(f"{pdf.name}: 절 {len({c.section_id for c in chunks})}개 → 청크 {len(chunks)}개")
+        kb.build(chunks, kind="pdf", path=str(pdf))
+    md = ingest_markdown_dir(docs or DOCS_DIR)
+    kb.build(md, kind="markdown", path=str(docs or DOCS_DIR))
+    console.print(f"마크다운 청크 {len(md)}개 · 저장: {out}")
+    console.print(kb.stats())
+
+
+@kb_app.command("embed")
+def kb_embed(model: str = typer.Option("local", help="local | openai | 'base_url|model'"), kb: Path = typer.Option(DEFAULT_KB)):
+    """아직 임베딩이 없는 청크만 계산해 저장한다(증분)."""
+    from .retrieval.kb import KnowledgeBase
+    emb = _embedder_for(model)
+    store = KnowledgeBase(kb)
+    n = store.embed(emb.model, emb, on_progress=lambda d, t: console.print(f"[dim]{d}/{t}[/dim]", end="\r"))
+    console.print(f"\n{emb.model}: 새로 계산 {n}개 · 커버리지 {store.coverage(emb.model):.0%}")
+
+
+@kb_app.command("search")
+def kb_search(query: str, mode: str = typer.Option("auto", help="auto | bm25 | vector | hybrid"), k: int = 5,
+              model: str = typer.Option("local", help="벡터 검색에 쓸 임베더: local | openai"), kb: Path = typer.Option(DEFAULT_KB)):
+    """지식 베이스를 검색해 본다."""
+    from .retrieval.kb import KnowledgeBase
+    emb = _embedder_for(model) if mode != "bm25" else None
+    store = KnowledgeBase(kb, embedder=emb, embed_model=emb.model if emb else None)
+    for h in store.search(query, k=k, mode=None if mode == "auto" else mode):
+        console.print(f"[bold]{h['source']}[/bold]  [dim]{h['mode']} {h['score']}[/dim]\n  {h['snippet'][:160]}")
+
+
+@kb_app.command("stats")
+def kb_stats(kb: Path = typer.Option(DEFAULT_KB)):
+    from .retrieval.kb import KnowledgeBase
+    console.print(KnowledgeBase(kb).stats())
 
 
 @app.command()

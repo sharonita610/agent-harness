@@ -159,3 +159,10 @@ uv run harness eval --n 1            # 평가 16개
 ### OpenAI 키로 두 가지 비교 (2026-10-28)
 - 검색 평가 18문항, OpenAI text-embedding-3-small: vector 100% / hybrid 100%(로컬 embeddinggemma 100% / 94%). 로컬 하이브리드 미스 1건("거래처 등급은 어떻게 정해져" → 할인 승인 규정)은 BM25 오답이 RRF 에서 이긴 경우. 비용: 청크 37개 + 질문 18개 임베딩, 사실상 0.
 - 모델 비교 행: gpt-5-mini 로 회사 팩(v1) n=3, 회로 팩(v2) n=3. gpt-5 계열은 max_tokens 대신 max_completion_tokens, temperature 고정 → 프로바이더가 모델명으로 분기. 결과는 README 두 표.
+
+### 매뉴얼 지식 베이스 (2026-10-28)
+- ngspice 공식 매뉴얼 PDF(765쪽, 2.7MB, 책갈피 840개) → pymupdf 로 블록 추출, 책갈피 절 번호("2.1.1")를 본문 블록 첫 줄에서 찾아 경계로. 머리글(y<42)·쪽번호(y>790) 제거. 절 786개 → 청크 1,137개(중간 940자, 최대 1,800자), 0.7초. 요약 문서 6개(37청크)도 같은 파일에.
+- 저장: SQLite(chunks + FTS5 + embeddings(hash, model)). 로컬 embeddinggemma(768차원) 임베딩은 llama-server 물리 배치 512 토큰에 걸려 실패 → `-b 2048 -ub 2048`(serve_embed.sh, compose) 후 성공. OpenAI text-embedding-3-small(1536차원) 1,174개 약 1분, 비용 수 원.
+- 검색 평가 32문항(retrieval_spice.yaml, 정답 = 절 번호·접두·요약 출처): 요약만 44~47% / KB 로컬 BM25 84·벡터 69·하이브리드 81 / KB OpenAI 84·81·**97**. 교훈: 하이브리드의 이득은 임베더 품질에 달려 있다(로컬은 융합이 BM25 보다 낮음). 남은 오답은 이웃 절(11.4.5 vs 11.4.1 등) → 접두 매칭 `11.4*` 도입.
+- 도구: search_manual(앞 600자) + read_manual(절 전체 4,000자). gpt-5-mini 로 ".tran TMAX 뜻?" → search → read_manual("11.3.10") → 원문 인용 답, 3스텝 12초.
+- 주의: gpt-5-mini 회로 팩 평가(n=3 v2)는 지식 베이스가 있는 상태에서 돌아 search_manual 이 매뉴얼을 봤다. 로컬 gpt-oss 결과(요약 문서 6개)와 조건이 다르니 표에서 비교할 때 감안.

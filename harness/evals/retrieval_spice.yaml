@@ -1,0 +1,66 @@
+# 회로 팩 검색 평가. expect 는 정답으로 인정하는 절 번호(매뉴얼) 또는 출처 문자열 조각(요약 문서) 목록 — 하나라도 1위면 hit@1.
+# 한국어 질문 → 영어 매뉴얼(BM25 는 단어가 안 겹침) / 영어 키워드 질문 / 요약 문서에만 있는 한국어 설명 을 섞었다.
+- q: "교류 소신호 해석 .ac 문법"
+  expect: ["11.3.1", "해석 종류와 결과 벡터 > .ac 교류 소신호 해석"]
+- q: ".AC dec oct lin points fstart fstop"
+  expect: ["11.3.1"]
+- q: "과도 해석 .tran 시간 간격과 끝 시간"
+  expect: ["11.3.10", "해석 종류와 결과 벡터 > .tran 과도 해석"]
+- q: ".TRAN TSTEP TSTOP TSTART TMAX uic"
+  expect: ["11.3.10"]
+- q: "직류 스윕 .dc 소스 시작 끝 간격"
+  expect: ["11.3.2", "해석 종류와 결과 벡터 > .dc 직류 스윕"]
+- q: "동작점 해석 .op"
+  expect: ["11.3.5", "해석 종류와 결과 벡터 > .op 동작점 해석"]
+- q: ".meas TRIG TARG rise time measurement"
+  expect: ["11.4*", "측정식(meas) 문법 > 두 시점 사이: TRIG"]
+- q: "measure WHEN FIND AT syntax"
+  expect: ["11.4*", "측정식(meas) 문법 > 교차점: WHEN", "측정식(meas) 문법 > 특정 점의 값: FIND"]
+- q: "PULSE 전원 파형 인자 V1 V2 TD TR TF PW PER"
+  expect: ["4.1.1", "전원과 파형 > PULSE 계단·펄스"]
+- q: "SIN sinusoidal source VO VA FREQ"
+  expect: ["4.1.2", "전원과 파형 > SIN 정현파"]
+- q: "independent voltage source dc ac value syntax"
+  expect: ["4.1", "전원과 파형 > 직류·교류 지정"]
+- q: "저항 소자 줄 형식 Rname n+ n- value"
+  expect: ["3.3.1", "넷리스트 기본 문법 > 소자 줄 형식"]
+- q: "capacitor element line initial condition"
+  expect: ["3.3.6"]
+- q: "inductor element syntax"
+  expect: ["3.3.10"]
+- q: "coupled mutual inductors K coefficient"
+  expect: ["3.3.12"]
+- q: ".MODEL device model card syntax"
+  expect: ["2.5", "8.1.1"]
+- q: "subcircuit .SUBCKT .ENDS definition and call X"
+  expect: ["2.6", "2.6.1", "2.6.3"]
+- q: ".INCLUDE file"
+  expect: ["2.8"]
+- q: ".param parametric netlist brace expressions"
+  expect: ["2.11", "2.11.1", "2.11.2"]
+- q: "title line first line of input file"
+  expect: ["2.4.1", "넷리스트 기본 문법 > 파일 구조", "2.1.1"]
+- q: ".END line last line"
+  expect: ["2.4.2", "넷리스트 기본 문법 > 파일 구조"]
+- q: "comments in netlist asterisk"
+  expect: ["2.4.3", "2.4.4", "넷리스트 기본 문법 > 파일 구조"]
+- q: "접미사 M 밀리 meg 메가 1M 뜻"
+  expect: ["넷리스트 기본 문법 > 값과 접미사", "오류 메시지와 해결 > 1M 이 1 밀리로 읽힘", "2.1.3"]
+- q: "convergence failure singular matrix"
+  expect: ["1.4.3", "오류 메시지와 해결 > singular matrix / DC solution failed"]
+- q: "timestep too small 오류 해결"
+  expect: ["오류 메시지와 해결 > timestep too small", "1.4.3", "11.1.4"]
+- q: "diode model parameters IS N RS"
+  expect: ["7.2*"]
+- q: "MOSFET instance line W L model NMOS PMOS"
+  expect: ["7.6*"]
+- q: "BJT NPN PNP model"
+  expect: ["7.3*"]
+- q: ".NODESET .IC initial conditions"
+  expect: ["11.2.1", "11.2.2"]
+- q: ".FOUR Fourier analysis of transient output"
+  expect: ["11.6.4"]
+- q: "RC 저역통과 필터 차단 주파수 공식"
+  expect: ["자주 쓰는 해석 공식 > 1차 RC 필터"]
+- q: ".options simulator variables reltol abstol"
+  expect: ["11.1"]
