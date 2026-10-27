@@ -82,31 +82,33 @@ Hermes 는 64K 미만 컨텍스트를 거부하고, 자체 프롬프트가 1.8�
 결과 표는 아래에 갱신한다.
 
 <!-- EVAL_RESULTS_START -->
-_출처: `harness/evals/results/20261027-012753_local_day3-smoke.json`, `harness/evals/results/20261027-153738_local_gpt-oss-20b.json`_ · 태스크당 n=1, 같은 16문제, 같은 프롬프트
+_출처: `harness/evals/results/20261027-012753_local_day3-smoke.json`, `harness/evals/results/20261027-153738_local_gpt-oss-20b.json`, `harness/evals/results/20261028-003519_local_gpt-oss-20b-n3.json`, `harness/evals/results/20261028-004241_local_hermes-4-14b-n3.json`_ · 같은 16문제, 같은 프롬프트, n = 태스크당 반복 횟수
 
 | 모델 | 통과율 | query | mixed | doc | write | trap | 평균 스텝 | 지연 p50 | 지연 p95 | 실행당 토큰 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| day3-smoke | 81% | 80% | 50% | 67% | 100% | 100% | 2.38 | 6.7s | 18.8s | 5,250 |
-| gpt-oss-20b | 100% | 100% | 100% | 100% | 100% | 100% | 2 | 6.0s | 12.3s | 3,406 |
+| day3-smoke (n=1) | 81% | 80% | 50% | 67% | 100% | 100% | 2.38 | 6.7s | 18.8s | 5,250 |
+| gpt-oss-20b (n=1) | 100% | 100% | 100% | 100% | 100% | 100% | 2 | 6.0s | 12.3s | 3,406 |
+| gpt-oss-20b-n3 (n=3) | 98% | 100% | 100% | 100% | 83% | 100% | 2.19 | 5.5s | 10.6s | 3,777 |
+| hermes-4-14b-n3 (n=3) | 79% | 87% | 50% | 78% | 100% | 75% | 3.02 | 7.0s | 15.4s | 6,855 |
 
-| 태스크 | day3-smoke | gpt-oss-20b |
-|---|---|---|
-| q01 | ✅ | ✅ |
-| q02 | ✅ | ✅ |
-| q03 | ✅ | ✅ |
-| q04 | ❌ truth_in_answer,tools_any | ✅ |
-| q05 | ✅ | ✅ |
-| m01 | ✅ | ✅ |
-| m02 | ❌ tools_all | ✅ |
-| d01 | ✅ | ✅ |
-| d02 | ❌ answer_contains | ✅ |
-| d03 | ✅ | ✅ |
-| w01 | ✅ | ✅ |
-| w02 | ✅ | ✅ |
-| t01 | ✅ | ✅ |
-| t02 | ✅ | ✅ |
-| t03 | ✅ | ✅ |
-| t04 | ✅ | ✅ |
+| 태스크 | day3-smoke (n=1) | gpt-oss-20b (n=1) | gpt-oss-20b-n3 (n=3) | hermes-4-14b-n3 (n=3) |
+|---|---|---|---|---|
+| q01 | ✅ | ✅ | ✅ | ✅ |
+| q02 | ✅ | ✅ | ✅ | ✅ |
+| q03 | ✅ | ✅ | ✅ | ❌ truth_in_answer,tools_any,finished |
+| q04 | ❌ truth_in_answer,tools_any | ✅ | ✅ | ✅ |
+| q05 | ✅ | ✅ | ✅ | ✅ |
+| m01 | ✅ | ✅ | ✅ | ✅ |
+| m02 | ❌ tools_all | ✅ | ✅ | ❌ tools_all |
+| d01 | ✅ | ✅ | ✅ | ✅ |
+| d02 | ❌ answer_contains | ✅ | ✅ | ❌ answer_contains |
+| d03 | ✅ | ✅ | ✅ | ✅ |
+| w01 | ✅ | ✅ | ❌  | ✅ |
+| w02 | ✅ | ✅ | ✅ | ✅ |
+| t01 | ✅ | ✅ | ✅ | ✅ |
+| t02 | ✅ | ✅ | ✅ | ❌ answer_contains,finished |
+| t03 | ✅ | ✅ | ✅ | ✅ |
+| t04 | ✅ | ✅ | ✅ | ✅ |
 <!-- EVAL_RESULTS_END -->
 
 ## 로드맵
