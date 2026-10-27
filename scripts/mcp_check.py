@@ -1,5 +1,6 @@
-"""MCP 서버 동작 확인: stdio 로 서버를 띄우고 도구 목록 → list_tables → search_docs → 리소스 읽기.
-사용: uv run python scripts/mcp_check.py
+"""MCP 서버 동작 확인: stdio 로 서버를 띄우고 도구 목록 → 조회 도구 → 검색 → 리소스 읽기.
+사용: uv run python scripts/mcp_check.py            (enterprise 팩)
+      uv run python scripts/mcp_check.py spice      (회로 팩: list_circuits → run_simulation → search_manual)
 """
 import asyncio
 import json
@@ -8,8 +9,24 @@ import sys
 from mcp import ClientSession, StdioServerParameters, stdio_client
 
 
+async def check_spice(s, names: list[str]) -> None:
+    r = await s.call_tool("list_circuits", {})
+    print("list_circuits ->", r.content[0].text[:120])
+    r = await s.call_tool("run_simulation", {"netlist": "* RC\nV1 in 0 dc 0 ac 1\nR1 in out 1k\nC1 out 0 100n\n.ac dec 20 10 1meg", "measurements": ["fc WHEN vdb(out)=-3"]})
+    print("run_simulation ->", json.loads(r.content[0].text)["measurements"])
+    r = await s.call_tool("run_simulation", {"netlist": "* RC\n.include /etc/passwd\nR1 in 0 1k\n.op", "measurements": []})
+    print("run_simulation(.include) -> isError:", r.is_error, "|", r.content[0].text[:80])
+    r = await s.call_tool("search_manual", {"query": "차단 주파수 공식", "k": 2})
+    hits = [json.loads(c.text) for c in r.content]  # 목록 결과는 항목마다 content 하나
+    print("search_manual ->", [h["source"] for h in hits])
+    doc = await s.read_resource("docs://05-해석-공식")
+    print("read_resource ->", doc.contents[0].text[:40].replace("\n", " "))
+    assert "delete_circuit" not in names, "destructive 도구가 노출됨"
+
+
 async def main() -> int:
-    params = StdioServerParameters(command="uv", args=["run", "harness", "mcp"])
+    pack = sys.argv[1] if len(sys.argv) > 1 else "enterprise"
+    params = StdioServerParameters(command="uv", args=["run", "harness", "mcp", "--pack", pack])
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as s:
             await s.initialize()
@@ -18,6 +35,10 @@ async def main() -> int:
             print("tools:", names)
             ro = {t.name: (t.annotations.read_only_hint if t.annotations else None) for t in tools.tools}
             print("read_only_hint:", ro)
+            if pack == "spice":
+                await check_spice(s, names)
+                print("MCP CHECK OK (spice)")
+                return 0
             r = await s.call_tool("list_tables", {})
             print("list_tables ->", r.content[0].text[:160])
             r = await s.call_tool("search_docs", {"query": "할인 승인자", "k": 2})

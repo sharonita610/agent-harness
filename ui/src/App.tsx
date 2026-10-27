@@ -31,6 +31,7 @@ export default function App() {
   }, []);
   useEffect(() => { refreshHealth(); const t = setInterval(refreshHealth, 5000); return () => clearInterval(t); }, [refreshHealth]);
   useEffect(() => { if (health?.pack?.title) document.title = health.pack.title; }, [health?.pack?.title]);
+  useEffect(() => { const th = new URLSearchParams(location.search).get("theme"); if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; }, []);  // 캡처·시연용 ?theme=light
   const newSession = useCallback(async () => { const s = await api.createSession(); setSessionId(s.id); return s.id; }, []);
 
   return (

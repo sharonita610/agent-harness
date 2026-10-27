@@ -8,7 +8,7 @@
   --radius:8px;--font:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
   --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
 }
-@media (prefers-color-scheme:dark){:root{
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
   --paper:#15181c;--sheet:#1d2126;--rule:#2e343b;--rule-strong:#444c56;
   --ink:#e8ebee;--ink-2:#a3acb6;--ink-3:#737c87;
   --act:#5cc2b6;--act-hover:#7fd3c9;--act-tint:#17302d;
@@ -82,7 +82,7 @@ pre,code{font-family:var(--mono);font-size:12.5px}
 .slip td{padding:3px 12px 3px 0;vertical-align:top}.slip td:first-child{color:var(--ink-2);white-space:nowrap}
 .slip .actions{display:flex;gap:8px}
 .stamp{position:absolute;right:18px;top:12px;width:64px;height:64px;border:3px solid var(--stamp);border-radius:50%;color:var(--stamp);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;letter-spacing:.08em;transform:rotate(-12deg);opacity:.9;mix-blend-mode:multiply}
-@media (prefers-color-scheme:dark){.stamp{mix-blend-mode:normal}}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .stamp{mix-blend-mode:normal}}
 .stamp.deny{color:var(--ink-2);border-color:var(--ink-2)}
 @media (prefers-reduced-motion:no-preference){.stamp{animation:stamp .28s cubic-bezier(.2,.9,.3,1.2) both}@keyframes stamp{from{transform:rotate(-12deg) scale(1.6);opacity:0}to{transform:rotate(-12deg) scale(1);opacity:.9}}}
 
