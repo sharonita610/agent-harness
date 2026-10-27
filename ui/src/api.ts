@@ -1,13 +1,29 @@
 import type { Approval, Health, Run, RunEvent, Session, Tool, Trace } from "./types";
 
+const KEY_STORAGE = "harness.apiKey";
+export function getApiKey(): string | null { try { return localStorage.getItem(KEY_STORAGE); } catch { return null; } }
+export function setApiKey(key: string | null): void { try { key ? localStorage.setItem(KEY_STORAGE, key) : localStorage.removeItem(KEY_STORAGE); } catch { /* 저장 불가 환경 */ } }
+export function authHeaders(): Record<string, string> { const k = getApiKey(); return k ? { Authorization: `Bearer ${k}` } : {}; }
+
+export class ApiError extends Error { constructor(public status: number, message: string) { super(message); } }
+
 async function j<T>(url: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(url, { headers: { "Content-Type": "application/json" }, ...init });
-  if (!r.ok) throw new Error(`${init?.method ?? "GET"} ${url} → HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  const r = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...authHeaders(), ...(init?.headers as Record<string, string> | undefined) } });
+  if (!r.ok) {
+    let detail = "";
+    try { detail = ((await r.json()) as { detail?: string }).detail ?? ""; } catch { /* 본문 없음 */ }
+    throw new ApiError(r.status, detail || `${init?.method ?? "GET"} ${url} → HTTP ${r.status}`);
+  }
   return r.json() as Promise<T>;
 }
 
+export interface Me { name: string; role: string; anonymous: boolean; auth_required: boolean; can: { chat: boolean; approve: boolean; admin: boolean } }
+export interface AuditEntry { id: number; ts: string; user: string; role: string; action: string; target: string; detail: Record<string, unknown> }
+
 export const api = {
   health: () => j<Health>("/health"),
+  me: () => j<Me>("/me"),
+  audit: (limit = 50) => j<AuditEntry[]>(`/audit?limit=${limit}`),
   tools: () => j<Tool[]>("/tools"),
   createSession: () => j<Session>("/sessions", { method: "POST", body: "{}" }),
   session: (id: string) => j<Session>(`/sessions/${id}`),
@@ -37,8 +53,12 @@ export function parseSSEChunk(chunk: string): { event: string; data: Record<stri
 
 /** POST /chat 를 읽어 이벤트마다 콜백. 스트림이 끝나면 resolve. */
 export async function streamChat(body: { message: string; session_id?: string }, onEvent: (event: string, data: Record<string, unknown>) => void, signal?: AbortSignal): Promise<void> {
-  const r = await fetch("/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
-  if (!r.ok || !r.body) throw new Error(`POST /chat → HTTP ${r.status}`);
+  const r = await fetch("/chat", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify(body), signal });
+  if (!r.ok || !r.body) {
+    let detail = "";
+    try { detail = ((await r.json()) as { detail?: string }).detail ?? ""; } catch { /* 본문 없음 */ }
+    throw new ApiError(r.status, detail || `POST /chat → HTTP ${r.status}`);
+  }
   const reader = r.body.getReader();
   const dec = new TextDecoder();
   let buf = "";

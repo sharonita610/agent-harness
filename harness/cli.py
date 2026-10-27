@@ -151,6 +151,35 @@ def rescore(results: list[Path]):
         console.print(f"{r.name}: 통과율 {s['pass_rate']:.0%}")
 
 
+users_app = typer.Typer(help="서비스 사용자(API 키)와 역할 관리. 키는 해시로만 저장되고 발급 때 한 번만 보인다.")
+app.add_typer(users_app, name="users")
+
+
+@users_app.command("add")
+def users_add(name: str, role: str = typer.Option("operator", help="viewer | operator | approver | admin")):
+    from .service.auth import UserStore
+    us = UserStore.load()
+    key = us.add(name, role)
+    console.print(f"[bold]{name}[/bold] ({role}) 키: [green]{key}[/green]\n이 키는 다시 볼 수 없습니다. 파일: {us.path}")
+
+
+@users_app.command("list")
+def users_list():
+    from .service.auth import UserStore
+    us = UserStore.load()
+    if not us.users:
+        console.print("등록된 사용자 없음 → 서비스는 개발 모드(인증 없음)로 뜹니다. HARNESS_AUTH=1 로 강제할 수 있습니다.")
+    for u in us.list():
+        console.print(f"{u['name']:12} {u['role']}")
+
+
+@users_app.command("remove")
+def users_remove(name: str):
+    from .service.auth import UserStore
+    us = UserStore.load()
+    console.print(f"{us.remove(name)}명 삭제")
+
+
 @app.command()
 def mcp():
     """회사 데이터 비서 도구를 MCP 서버(stdio) 로 노출한다."""

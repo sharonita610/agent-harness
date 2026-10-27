@@ -25,10 +25,10 @@ AI Agent Engineer 공고 13개를 분석했을 때 도메인은 전부 달랐지
 | `harness/evals/` | 태스크 16개(`tasks.yaml`: 조회·규정·복합·변경·함정), 채점 러너(`runner.py`), 결과(`results/`) |
 | `harness/observability/` | 트레이스 수집기(이벤트 → 스팬), JSONL 저장, OpenTelemetry OTLP 내보내기 |
 | `ui/` | React + TypeScript(Vite) 화면: SSE 채팅·승인 카드·잡 큐·실행 기록·트레이스 waterfall. 빌드하면 FastAPI 가 `/app` 에서 서빙 |
-| `harness/service/` | FastAPI 서비스: SSE 채팅(`/chat`), 승인 API(`/approvals`), 비동기 잡 큐(`/jobs`), 세션·실행·이벤트 저장(SQLite), 데모 페이지(`/`) |
+| `harness/service/` | FastAPI 서비스: SSE 채팅(`/chat`), 승인 API(`/approvals`), 비동기 잡 큐(`/jobs`), API 키·역할·감사(`auth.py`, `/me`, `/audit`), 세션·실행·이벤트 저장(SQLite) |
 | `harness/cli.py` | `harness seed / tools / ask / chat / eval / mcp` |
 | `scripts/` | `serve_llm.sh`(로컬 모델 서버), `mcp_check.py`(MCP 클라이언트 검증) |
-| `tests/` | 테스트 48개: 시드 결정성, SQL 가드, 권한, 검색, 도구, 루프(가짜 프로바이더), 채점 정규화, 서비스(SSE·승인·잡·트레이스), 트레이싱, 하이브리드 검색 |
+| `tests/` | 테스트 54개: 시드 결정성, SQL 가드, 권한, 검색, 도구, 루프(가짜 프로바이더), 채점 정규화, 서비스(SSE·승인·잡·트레이스), 인증·역할·감사, 트레이싱, 하이브리드 검색 |
 
 ## 데이터셋 (가짜 회사 "한빛상사")
 `uv run harness seed` 로 생성. 시드가 고정돼 있어 몇 번을 다시 만들어도 같은 데이터다. 아래 표와 그림은 `scripts/data_report.py` 가 DB 에서 뽑아 갱신한다.
@@ -102,6 +102,15 @@ open http://127.0.0.1:8787/docs   # OpenAPI
 | `GET /runs/{id}` | 실행 1건의 전체 트레이스(이벤트 seq 순, 승인 포함) |
 | `POST /sessions` · `GET /sessions/{id}` | 대화 세션과 메시지 이력 |
 설계는 `docs/decisions/006-service-sse-approval-jobs.md`.
+
+## 인증·역할·감사
+```bash
+uv run harness users add 운영자 --role operator     # 질문·잡 제출
+uv run harness users add 팀장 --role approver       # 결재(승인·반려)
+uv run harness users list
+curl -H "Authorization: Bearer hk_…" http://127.0.0.1:8787/me
+```
+사용자를 하나라도 등록하면 모든 API 가 키를 요구하고, 결재는 approver 이상만 할 수 있다. 등록이 없으면 개발 모드(익명 admin)로 열리며 화면 상단에 그 사실이 표시된다. 누가 무엇을 승인·반려·제출했는지는 `GET /audit` 에 남는다. 설계: ADR-010.
 
 ## 관측성 (트레이싱)
 ```bash

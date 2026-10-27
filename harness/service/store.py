@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS approvals(id TEXT PRIMARY KEY, run_id TEXT, tool TEXT
 CREATE INDEX IF NOT EXISTS idx_events_run ON run_events(run_id, seq);
 CREATE INDEX IF NOT EXISTS idx_runs_session ON runs(session_id);
 CREATE INDEX IF NOT EXISTS idx_approvals_status ON approvals(status);
+CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, ts TEXT, user TEXT, role TEXT, action TEXT, target TEXT, detail TEXT, ip TEXT);
+CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit(ts);
 """
 
 
@@ -112,6 +114,17 @@ class Store:
         rows = self._q("SELECT seq, kind, step, data, ts FROM run_events WHERE run_id=? AND seq>? ORDER BY seq", (rid, after_seq))
         for r in rows:
             r["data"] = json.loads(r["data"])
+        return rows
+
+    # ---- audit
+    def add_audit(self, user: str, role: str, action: str, target: str, detail: dict[str, Any] | None = None, ip: str | None = None) -> None:
+        self._q("INSERT INTO audit(ts, user, role, action, target, detail, ip) VALUES (?,?,?,?,?,?,?)",
+                (now(), user, role, action, target, json.dumps(detail or {}, ensure_ascii=False, default=str), ip))
+
+    def list_audit(self, limit: int = 100, user: str | None = None) -> list[dict[str, Any]]:
+        rows = self._q("SELECT * FROM audit WHERE (? IS NULL OR user=?) ORDER BY id DESC LIMIT ?", (user, user, limit))
+        for r in rows:
+            r["detail"] = json.loads(r["detail"])
         return rows
 
     # ---- approvals

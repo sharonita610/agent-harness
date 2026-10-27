@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { api } from "./api";
+import { api, type Me } from "./api";
+import Login from "./components/Login";
 import Chat from "./components/Chat";
 import Approvals from "./components/Approvals";
 import Jobs from "./components/Jobs";
@@ -12,6 +13,8 @@ type Tab = "runs" | "jobs" | "approvals";
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null);
   const [down, setDown] = useState(false);
+  const [me, setMe] = useState<Me | null>(null);
+  const [authErr, setAuthErr] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("runs");
   const [selectedRun, setSelectedRun] = useState<string | null>(null);
@@ -19,6 +22,7 @@ export default function App() {
 
   const refreshHealth = useCallback(async () => {
     try { setHealth(await api.health()); setDown(false); } catch { setDown(true); }
+    try { setMe(await api.me()); setAuthErr(null); } catch (e) { setMe(null); setAuthErr(String((e as Error).message)); }
   }, []);
   useEffect(() => { refreshHealth(); const t = setInterval(refreshHealth, 5000); return () => clearInterval(t); }, [refreshHealth]);
   const newSession = useCallback(async () => { const s = await api.createSession(); setSessionId(s.id); return s.id; }, []);
@@ -35,12 +39,14 @@ export default function App() {
           {health && <span>모델 <b>{health.provider}</b></span>}
           {health && health.pending_approvals > 0 && <span>결재 대기 <b className="st-running">{health.pending_approvals}건</b></span>}
           <a href="/docs" target="_blank" rel="noreferrer">API 문서</a>
+          <Login me={me} onChange={refreshHealth} />
         </div>
       </header>
+      {authErr && health && !down && <p className="notice">이 서비스는 API 키가 필요합니다. 운영자나 결재자 키로 로그인하세요. ({authErr})</p>}
 
       <div className="layout">
         <main>
-          <Chat sessionId={sessionId} ensureSession={newSession} onNewSession={newSession}
+          <Chat sessionId={sessionId} ensureSession={newSession} onNewSession={newSession} canApprove={me?.can.approve ?? false} canChat={me?.can.chat ?? false}
                 onRunFinished={(runId) => { setRefreshKey((k) => k + 1); setSelectedRun(runId); refreshHealth(); }} />
         </main>
         <aside className="ledger">
@@ -53,7 +59,7 @@ export default function App() {
           </div>
           {tab === "runs" && <Runs refreshKey={refreshKey} selected={selectedRun} onSelect={setSelectedRun} />}
           {tab === "jobs" && <Jobs sessionId={sessionId} ensureSession={newSession} selected={selectedRun} onSelect={setSelectedRun} />}
-          {tab === "approvals" && <Approvals onDecided={refreshHealth} />}
+          {tab === "approvals" && <Approvals onDecided={refreshHealth} canApprove={me?.can.approve ?? false} />}
         </aside>
       </div>
 

@@ -7,13 +7,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..agent.providers import make_provider
 from ..tools.permissions import Policy, describe
 from ..tools.registry import ToolRegistry
+from .auth import User, UserStore, make_dependencies
 from .broker import ApprovalBroker
 from .jobs import JobQueue
 from .models import ApprovalDecision, ChatRequest, JobCreate, SessionCreate
@@ -35,11 +36,13 @@ class AppState:
     default_provider: str = "local"
     max_steps: int = 12
     jobs: JobQueue | None = field(default=None)
+    users: UserStore | None = field(default=None)
 
 
 def create_app(db_path: str | Path | None = None, provider_factory: Callable[[str], Any] | None = None,
                registry: ToolRegistry | None = None, system_prompt: str | None = None,
-               approval_timeout_s: float = 600, default_provider: str | None = None, job_concurrency: int = 1) -> FastAPI:
+               approval_timeout_s: float = 600, default_provider: str | None = None, job_concurrency: int = 1,
+               users: UserStore | None = None) -> FastAPI:
     if registry is None or system_prompt is None:
         from ..packs.enterprise.tools import SYSTEM_PROMPT, build_tools
         registry = registry or ToolRegistry(build_tools())
@@ -49,6 +52,8 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
                      provider_factory=provider_factory or make_provider,
                      default_provider=default_provider or os.getenv("HARNESS_PROVIDER", "local"))
     state.jobs = JobQueue(state, concurrency=job_concurrency)
+    state.users = users or UserStore.load()
+    current_user, require = make_dependencies(state.users)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -70,7 +75,21 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
 
     @app.get("/health")
     def health():
-        return {"status": "ok", "tools": len(registry), "provider": state.default_provider, "pending_approvals": len(state.broker.pending())}
+        return {"status": "ok", "tools": len(registry), "provider": state.default_provider, "pending_approvals": len(state.broker.pending()),
+                "auth_required": state.users.required}
+
+    @app.get("/me")
+    def me(user: User = Depends(current_user)):
+        return {"name": user.name, "role": user.role, "anonymous": user.anonymous, "auth_required": state.users.required,
+                "can": {"chat": user.has("operator"), "approve": user.has("approver"), "admin": user.has("admin")}}
+
+    @app.get("/audit")
+    def audit(limit: int = 100, user: User = Depends(require("approver"))):
+        return store.list_audit(limit)
+
+    @app.get("/users")
+    def users_list(user: User = Depends(require("admin"))):
+        return state.users.list()
 
     ui_built = (UI_DIST / "index.html").exists()
 
@@ -86,68 +105,73 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         return (STATIC / "index.html").read_text(encoding="utf-8")
 
     @app.get("/tools")
-    def tools():
+    def tools(user: User = Depends(current_user)):
         return [{"name": t.name, "tier": str(t.tier), "policy": describe(policy.decide(t)), "description": t.description} for t in registry]
 
     @app.post("/sessions")
-    def create_session(body: SessionCreate):
+    def create_session(body: SessionCreate, user: User = Depends(require("operator"))):
         return store.create_session(body.provider or state.default_provider, body.title)
 
     @app.get("/sessions/{sid}")
-    def get_session(sid: str):
+    def get_session(sid: str, user: User = Depends(current_user)):
         s = store.get_session(sid)
         if not s:
             raise HTTPException(404, "세션 없음")
         return s
 
     @app.post("/chat")
-    async def chat(body: ChatRequest):
+    async def chat(body: ChatRequest, request: Request, user: User = Depends(require("operator"))):
         sid = _session(body.session_id, body.provider)
+        store.add_audit(user.name, user.role, "chat", sid, {"message": body.message[:200]}, request.client.host if request.client else None)
         return StreamingResponse(stream_chat(state, sid, body.message, body.provider), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     @app.get("/approvals")
-    def list_approvals(status: str | None = Query(default="pending")):
+    def list_approvals(status: str | None = Query(default="pending"), user: User = Depends(current_user)):
         return store.list_approvals(None if status in (None, "all") else status)
 
     @app.post("/approvals/{aid}")
-    def decide(aid: str, body: ApprovalDecision):
+    def decide(aid: str, body: ApprovalDecision, request: Request, user: User = Depends(require("approver"))):
         a = store.get_approval(aid)
         if not a:
             raise HTTPException(404, "승인 요청 없음")
-        if not state.broker.decide(aid, body.decision == "approve", body.by):
+        if not state.broker.decide(aid, body.decision == "approve", user.name):
             raise HTTPException(409, f"이미 처리됨: {a['status']}")
+        store.add_audit(user.name, user.role, f"approval.{body.decision}", aid, {"tool": a["tool"], "args": a["args"], "run_id": a["run_id"]},
+                        request.client.host if request.client else None)
         return store.get_approval(aid)
 
     @app.post("/jobs", status_code=202)
-    def create_job(body: JobCreate):
+    def create_job(body: JobCreate, request: Request, user: User = Depends(require("operator"))):
         sid = _session(body.session_id, body.provider)
         run_id = state.jobs.submit(sid, body.question, body.provider)
+        store.add_audit(user.name, user.role, "job.submit", run_id, {"question": body.question[:200]}, request.client.host if request.client else None)
         return {"run_id": run_id, "session_id": sid, "status": "queued"}
 
     @app.get("/jobs")
-    def list_jobs(limit: int = 50):
+    def list_jobs(limit: int = 50, user: User = Depends(current_user)):
         return store.list_runs(limit, kind="job")
 
     @app.get("/jobs/{run_id}")
-    def get_job(run_id: str):
+    def get_job(run_id: str, user: User = Depends(current_user)):
         r = store.get_run(run_id)
         if not r or r["kind"] != "job":
             raise HTTPException(404, "잡 없음")
         return r
 
     @app.post("/jobs/{run_id}/cancel")
-    def cancel_job(run_id: str):
+    def cancel_job(run_id: str, user: User = Depends(require("operator"))):
         if not state.jobs.cancel(run_id):
             raise HTTPException(409, "취소할 수 없는 상태")
+        store.add_audit(user.name, user.role, "job.cancel", run_id)
         return store.get_run(run_id)
 
     @app.get("/runs")
-    def list_runs(limit: int = 50, kind: str | None = None):
+    def list_runs(limit: int = 50, kind: str | None = None, user: User = Depends(current_user)):
         return store.list_runs(limit, kind)
 
     @app.get("/runs/{run_id}")
-    def get_run(run_id: str):
+    def get_run(run_id: str, user: User = Depends(current_user)):
         r = store.get_run(run_id)
         if not r:
             raise HTTPException(404, "실행 없음")
@@ -156,7 +180,7 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         return r
 
     @app.get("/runs/{run_id}/trace")
-    def run_trace(run_id: str):
+    def run_trace(run_id: str, user: User = Depends(current_user)):
         """저장된 이벤트로 스팬(run/llm/tool/approval)을 재구성한다."""
         from ..observability.tracer import spans_from_events
         r = store.get_run(run_id)
@@ -166,7 +190,7 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         return {"summary": c.summary(), "spans": c.to_dicts()}
 
     @app.get("/runs/{run_id}/events")
-    def run_events(run_id: str, after_seq: int = 0):
+    def run_events(run_id: str, after_seq: int = 0, user: User = Depends(current_user)):
         if not store.get_run(run_id):
             raise HTTPException(404, "실행 없음")
         return store.events(run_id, after_seq)

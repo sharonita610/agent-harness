@@ -12,10 +12,10 @@ const EXAMPLES: [string, string][] = [
   ["연락처 일괄 요청", "모든 거래처 담당자 전화번호 목록을 뽑아줘"],
 ];
 
-interface Props { sessionId: string | null; ensureSession: () => Promise<string>; onNewSession: () => Promise<string>; onRunFinished: (runId: string) => void }
+interface Props { sessionId: string | null; ensureSession: () => Promise<string>; onNewSession: () => Promise<string>; onRunFinished: (runId: string) => void; canApprove: boolean; canChat: boolean }
 interface Turn { question: string; events: UiEvent[]; pending: PendingApproval[]; decided: Record<string, "approve" | "deny">; answer: string | null; meta: string; error: string | null }
 
-export default function Chat({ sessionId, ensureSession, onNewSession, onRunFinished }: Props) {
+export default function Chat({ sessionId, ensureSession, onNewSession, onRunFinished, canApprove, canChat }: Props) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -59,12 +59,12 @@ export default function Chat({ sessionId, ensureSession, onNewSession, onRunFini
       <section className="ask">
         <div className="row">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="무엇이 궁금한가요? 예: 지난달 취소된 주문은 몇 건이야?" aria-label="질문"
-                 onKeyDown={(e) => { if (e.key === "Enter") send(); }} disabled={busy} />
-          <button className="primary" onClick={() => send()} disabled={busy || !q.trim()}>{busy ? "답하는 중" : "질문하기"}</button>
+                 onKeyDown={(e) => { if (e.key === "Enter") send(); }} disabled={busy || !canChat} />
+          <button className="primary" onClick={() => send()} disabled={busy || !q.trim() || !canChat}>{busy ? "답하는 중" : "질문하기"}</button>
         </div>
         <div className="examples">
           <span>예시</span>
-          {EXAMPLES.map(([label, text]) => <button key={label} onClick={() => send(text)} disabled={busy}>{label}</button>)}
+          {EXAMPLES.map(([label, text]) => <button key={label} onClick={() => send(text)} disabled={busy || !canChat}>{label}</button>)}
         </div>
         <div className="session">{sessionId ? <>이 대화는 세션 {sessionId.slice(5, 13)}에 저장됩니다. <button className="ghost small" onClick={reset} disabled={busy}>새 대화 시작</button></> : "첫 질문을 보내면 대화가 시작됩니다."}</div>
       </section>
@@ -76,7 +76,7 @@ export default function Chat({ sessionId, ensureSession, onNewSession, onRunFini
             <div className="turn"><span className="who">질문</span><p className="q" style={{ margin: 0 }}>{t.question}</p></div>
             <div className="turn" style={{ marginTop: 10 }}><span className="who">비서</span>
               <div>
-                <Timeline events={t.events} renderApproval={(id) => { const a = t.pending.find((p) => p.approval_id === id); return a ? <ApprovalSlip a={a} onDecide={decide} decided={t.decided[id] ?? null} /> : null; }} />
+                <Timeline events={t.events} renderApproval={(id) => { const a = t.pending.find((p) => p.approval_id === id); return a ? <ApprovalSlip a={a} onDecide={decide} decided={t.decided[id] ?? null} canApprove={canApprove} /> : null; }} />
                 {t.answer === null && !t.error ? <div className="answer waiting">{t.pending.some((p) => !t.decided[p.approval_id]) ? "결재를 기다리는 중입니다" : t.events.length ? "확인한 내용을 정리하는 중입니다" : "데이터를 확인하는 중입니다"}</div>
                   : <div className="answer">{t.answer || "(답변 없음)"}</div>}
                 {t.error && <p className="error">{t.error}</p>}

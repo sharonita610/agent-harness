@@ -118,3 +118,7 @@ pre,code{font-family:var(--mono);font-size:12.5px}
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);margin:0 0 10px}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
 .events{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}.events td,.events th{padding:5px 8px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}.events th{color:var(--ink-2);font-weight:500}
 .muted{color:var(--ink-2)}
+
+/* 로그인 */
+.login{display:inline-flex;align-items:center;gap:6px;font-size:14px}.login input{width:180px;min-height:34px;padding:6px 10px;font-size:13px}
+.notice{background:var(--warn-tint);border:1px solid var(--warn);border-radius:var(--radius);padding:8px 12px;font-size:14px;margin:0 0 16px}

@@ -1,6 +1,6 @@
 export type Tier = "read" | "write" | "destructive";
 
-export interface Health { status: string; tools: number; provider: string; pending_approvals: number }
+export interface Health { status: string; tools: number; provider: string; pending_approvals: number; auth_required?: boolean }
 export interface Tool { name: string; tier: Tier; policy: string; description: string }
 export interface Session { id: string; created_at: string; provider: string; title: string | null; messages: { role: string; content: string; created_at: string }[] }
 export interface Run {
