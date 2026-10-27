@@ -213,8 +213,14 @@ def rescore(path: Path, tasks_path: Path | None = None) -> dict[str, Any]:
                                tool_calls=r.get("tool_calls", []), approvals=[{"name": n} for n in r.get("approvals", [])])
             r.update(score(task, fake, r.get("truth", [])))
         t["pass_rate"] = sum(r["pass"] for r in t["runs"]) / len(t["runs"])
-    meta = {k: data["summary"][k] for k in ("provider", "model", "n", "tag") if k in data["summary"]}
+    meta = {k: data["summary"][k] for k in ("provider", "model", "n", "tag", "prompt_version") if k in data["summary"]}
+    old_judge = data["summary"].get("judge")
     data["summary"] = {**_summarize(data["tasks"], **meta), "rescored_at": datetime.now().isoformat(timespec="seconds")}
+    judged = [r for t in data["tasks"] for r in t["runs"] if r.get("judge")]
+    if judged:  # 판정자 결과는 보존하고 규칙 채점과의 일치율만 다시 계산
+        data["summary"]["judge"] = {**(old_judge or {}), "judged": len(judged),
+                                    "pass_rate": round(sum(r["judge"]["pass"] for r in judged) / len(judged), 3),
+                                    "agree_with_rules": round(sum(r["judge"]["pass"] == r["pass"] for r in judged) / len(judged), 3)}
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     path.with_suffix(".md").write_text(render_markdown(data["summary"], data["tasks"]), encoding="utf-8")
     return data["summary"]
