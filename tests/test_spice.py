@@ -196,3 +196,10 @@ def test_op_ignores_measurements_with_warning(reg):
 def test_prompt_v2_differs():
     from harness.packs.spice.tools import SYSTEM_PROMPTS
     assert SYSTEM_PROMPTS["v1"] != SYSTEM_PROMPTS["v2"] and "반드시 search_manual" in SYSTEM_PROMPTS["v2"]
+
+
+@needs_ngspice
+def test_get_waveform_on_op_returns_values(reg):
+    r = reg.get("run_simulation").run({"netlist": "* div\nV1 in 0 dc 12\nR1 in out 3k\nR2 out 0 1k\n.op", "measurements": []})
+    w = reg.get("get_waveform").run({"run_id": r["run_id"]})
+    assert w["values"]["out"] == 3.0 and "동작점" in w["note"]

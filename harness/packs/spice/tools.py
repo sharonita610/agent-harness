@@ -165,6 +165,10 @@ def build_tools(circuits_dir: Path = CIRCUITS_DIR, docs_dir: Path = DOCS_DIR, ru
 
     def get_waveform(a: WaveformArgs) -> Any:
         d = _run_dir(a.run_id)
+        meta = run_meta(d)
+        if meta.get("analysis_kind") == "op":
+            return {"run_id": a.run_id, "note": "동작점(.op) 해석은 파형이 없습니다. 아래가 모든 노드 전압과 전원 전류이며 이것이 최종 결과입니다.",
+                    "values": meta.get("measurements", {}), "columns": [], "rows": []}
         cols, rows = load_data(d, max_points=a.max_points)
         if a.vectors:
             keep = [0] + [i for i, c in enumerate(cols) if c.lower() in {v.lower() for v in a.vectors}]

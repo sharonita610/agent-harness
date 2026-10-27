@@ -43,6 +43,8 @@ def embedder_available(base_url: str | None = None, timeout: float = 2.0) -> boo
     import urllib.request
 
     base = (base_url or os.getenv("HARNESS_EMBED_BASE_URL", DEFAULT_EMBED_BASE_URL)).rstrip("/").removesuffix("/v1")
+    if not any(h in base for h in ("127.0.0.1", "localhost", "0.0.0.0", "embed:")):
+        return bool(os.getenv("OPENAI_API_KEY"))  # 호스팅 API(OpenAI 등)는 /health 가 없다. 키가 있으면 쓸 수 있다고 본다
     try:
         with urllib.request.urlopen(base + "/health", timeout=timeout) as r:
             return json.load(r).get("status") == "ok"

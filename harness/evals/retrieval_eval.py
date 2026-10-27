@@ -34,6 +34,7 @@ def evaluate(index: DocIndex, queries: list[dict], mode: str, k: int = 3) -> dic
 def run(console=None) -> dict:
     queries = yaml.safe_load(QUERIES.read_text(encoding="utf-8"))
     modes = ["bm25"]
+    emb = None
     if embedder_available():
         emb = OpenAIEmbedder()
         index = DocIndex(DOCS_DIR, embedder=emb, embed_model=emb.model, cache_path=RESULTS_DIR.parent.parent.parent / "data" / "doc_embeddings.json")
@@ -41,10 +42,15 @@ def run(console=None) -> dict:
     else:
         index = DocIndex(DOCS_DIR)
     results = [evaluate(index, queries, m) for m in modes]
+    embed_model = emb.model if emb else None
+    for r in results:
+        r["embed_model"] = embed_model if r["mode"] != "bm25" else None
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     out = RESULTS_DIR / f"retrieval_{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
-    out.write_text(json.dumps({"queries": len(queries), "results": results}, ensure_ascii=False, indent=2), encoding="utf-8")
-    table = ["| 모드 | hit@1 | hit@3 | MRR |", "|---|---|---|---|"] + [f"| {r['mode']} | {r['hit@1']:.0%} | {r['hit@3']:.0%} | {r['mrr']:.2f} |" for r in results]
+    out.write_text(json.dumps({"queries": len(queries), "embed_model": embed_model, "embed_base_url": emb.base_url if emb else None, "results": results},
+                              ensure_ascii=False, indent=2), encoding="utf-8")
+    table = ["| 모드 | hit@1 | hit@3 | MRR |", "|---|---|---|---|"] + [
+        f"| {r['mode']}{(' (' + r['embed_model'] + ')') if r.get('embed_model') else ''} | {r['hit@1']:.0%} | {r['hit@3']:.0%} | {r['mrr']:.2f} |" for r in results]
     if console:
         console.print("\n".join(table))
         for r in results:

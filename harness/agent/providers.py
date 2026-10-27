@@ -155,6 +155,8 @@ class OpenAICompatProvider:
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.extra_body = extra_body or {}
+        # OpenAI 의 추론 모델(gpt-5·o 시리즈)은 max_tokens 대신 max_completion_tokens 를 받고 temperature 를 바꿀 수 없다
+        self.reasoning_api = name == "openai" and model.lower().startswith(("gpt-5", "o1", "o3", "o4"))
         self._client = OpenAI(base_url=base_url, api_key=api_key or os.getenv("OPENAI_API_KEY") or "no-key", timeout=300)
 
     def complete(self, messages, tools=None, on_delta: OnDelta | None = None) -> LLMResponse:
@@ -193,10 +195,13 @@ class OpenAICompatProvider:
             messages=messages,
             tools=tools if tools else NOT_GIVEN,
             tool_choice="auto" if tools else NOT_GIVEN,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
             extra_body=self.extra_body or None,
         )
+        if self.reasoning_api:
+            kw["max_completion_tokens"] = self.max_tokens
+        else:
+            kw["temperature"] = self.temperature
+            kw["max_tokens"] = self.max_tokens
         if stream:
             kw["stream"] = True
             kw["stream_options"] = {"include_usage": True}

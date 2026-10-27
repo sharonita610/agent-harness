@@ -172,3 +172,25 @@ def test_truncated_empty_completion_is_retried_once():
     res = Agent(prov, ToolRegistry([]), "sys").run("질문")
     assert res.answer == "짧은 답" and prov.calls == 2 and res.stopped_reason == "final"
     assert any(e.kind == "nudge" and e.data.get("reason") == "truncated_empty" for e in res.events)
+
+
+def test_openai_reasoning_models_use_max_completion_tokens():
+    from harness.agent.providers import OpenAICompatProvider
+
+    seen = {}
+
+    class FakeCompletions:
+        def create(self, **kw):
+            seen.update(kw)
+            raise RuntimeError("stop")
+
+    for model, reasoning in (("gpt-5-mini", True), ("gpt-4.1-mini", False)):
+        p = OpenAICompatProvider(model=model, api_key="x", name="openai")
+        p._client.chat.completions = FakeCompletions()
+        seen.clear()
+        try:
+            p._create([{"role": "user", "content": "hi"}], None, object())
+        except RuntimeError:
+            pass
+        assert p.reasoning_api is reasoning
+        assert ("max_completion_tokens" in seen) is reasoning and ("temperature" in seen) is (not reasoning)
