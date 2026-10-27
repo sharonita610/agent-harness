@@ -21,7 +21,8 @@
 | 모델 비교 | 로컬 2종(gpt-oss-20b 98%, Hermes-4-14B 79%) 같은 조건 비교, 상용은 설정 한 줄 | 아래 평가 표, ADR-005 |
 | 전문 소프트웨어 위의 에이전트, 도메인 교체 | 두 번째 팩 `spice`: 같은 플랫폼에 폴더 하나를 더해 **ngspice 회로 시뮬레이션 비서** 가 된다. 넷리스트 가드, 측정·스윕·그래프, 공식 정답 평가 16문제 | `harness/packs/spice/`, ADR-013 |
 | 지식 베이스와 검색 파이프라인 | 매뉴얼 PDF 765쪽 → 절 단위 1,137청크 → SQLite(BM25 + 벡터, 증분 임베딩) → 검색·읽기 도구 → 32문항으로 측정(hit@1 44% → 97%) | `harness/retrieval/kb.py`, ADR-014 |
-| 판단 근거를 글로 | 설계 결정 문서 14편, 실험 노트 | `docs/decisions/`, `NOTES.md` |
+| 지식 그래프 | 실험 추적 그래프: 실행을 회로·소자·해석·측정 노드와 관계로 자동 기록, 같은 토폴로지 변형을 값 차이와 함께 연결. "지난번 R1=2.2k 때 fc", "같은 회로 실행 전부", "두 실행 비교" 를 도구 3개로 답함 | `harness/packs/spice/graph.py`, ADR-015 |
+| 판단 근거를 글로 | 설계 결정 문서 15편, 실험 노트 | `docs/decisions/`, `NOTES.md` |
 
 MCP 서버로도 노출되어 Hermes Agent, Claude Desktop 같은 외부 에이전트에서 같은 도구를 쓸 수 있다.
 
@@ -52,16 +53,16 @@ AI Agent Engineer 공고 13개를 분석했을 때 도메인은 전부 달랐지
 | `harness/tools/` | 도구 레지스트리(pydantic 인자 검증, OpenAI 함수 스키마), 권한 정책(read / write / destructive) |
 | `harness/packs/__init__.py` | 팩 인터페이스(`Pack`): 도구·프롬프트·범위·평가 태스크·화면 라벨. 플랫폼은 이것만 보고 돈다. 선택은 `HARNESS_PACK` 또는 `--pack` |
 | `harness/packs/enterprise/` | 1차 팩 · 회사 데이터 비서: DB 스키마·시드(`seed.py`, 3,000 주문, 시드 고정), 규정 문서 10개(`docs/`, 함정 지시문 2개 포함), 도구 10개(`tools.py`), 사용자별 범위(`scope.py`) |
-| `harness/packs/spice/` | 2차 팩 · 회로 시뮬레이션 비서: 넷리스트 가드·파서(`netlist.py`), ngspice 실행·측정·스윕(`simulator.py`), SVG 그래프(`plot.py`), 도구 12개(`tools.py`: 검색·읽기 포함), 매뉴얼 요약 문서 6개(함정 지시문 1개), 샘플 회로 6개 |
+| `harness/packs/spice/` | 2차 팩 · 회로 시뮬레이션 비서: 넷리스트 가드·파서(`netlist.py`), ngspice 실행·측정·스윕(`simulator.py`), SVG 그래프(`plot.py`), 도구 15개(`tools.py`: 검색·읽기·기록 질의 포함), 실험 추적 그래프(`graph.py`), 매뉴얼 요약 문서 6개(함정 지시문 1개), 샘플 회로 6개 |
 | `harness/retrieval/` | 도메인 중립 검색: 마크다운 청킹, FTS5 BM25, 임베딩 + RRF 하이브리드(`search.py`), PDF 매뉴얼 지식 베이스(`kb.py`: 책갈피 절 단위 청킹, SQLite 저장, 증분 임베딩, 절 읽기). 두 팩이 같이 쓴다 |
 | `harness/mcp_server/` | 같은 도구를 MCP 서버(stdio) 로 노출. Claude Desktop, Hermes Agent 등에서 그대로 사용 |
 | `harness/evals/` | 태스크 16개 × 팩 2개(`tasks.yaml`: 조회·규정·복합·변경·함정 / `tasks_spice.yaml`: 해석·스윕·문서·저장·함정, 정답은 공식), 채점 러너(`runner.py`), LLM 판정자, 사람 채점 대조, 결과(`results/`) |
 | `harness/observability/` | 트레이스 수집기(이벤트 → 스팬), JSONL 저장, OpenTelemetry OTLP 내보내기 |
 | `ui/` | React + TypeScript(Vite) 화면: SSE 채팅·승인 카드·잡 큐·실행 기록·트레이스 waterfall. 빌드하면 FastAPI 가 `/app` 에서 서빙 |
 | `harness/service/` | FastAPI 서비스: SSE 채팅(`/chat`), 승인 API(`/approvals`), 비동기 잡 큐(`/jobs`), API 키·역할·감사(`auth.py`, `/me`, `/audit`), 세션·실행·이벤트 저장(SQLite) |
-| `harness/cli.py` | `harness seed / tools / ask / chat / eval / retrieval-eval / judge / grade-sheet / agreement / users / kb / mcp`, 모두 `--pack` |
+| `harness/cli.py` | `harness seed / tools / ask / chat / eval / retrieval-eval / judge / grade-sheet / agreement / users / kb / graph / mcp`, 모두 `--pack` |
 | `scripts/` | `serve_llm.sh`(로컬 모델 서버), `mcp_check.py`(MCP 클라이언트 검증) |
-| `tests/` | 테스트 107개: 시드 결정성, SQL 가드, 권한, 검색, 도구, 루프(가짜 프로바이더), 채점 정규화·허용오차, 서비스(SSE·승인·잡·트레이스), 인증·역할·감사·범위, 트레이싱, 하이브리드 검색, 넷리스트 가드·시뮬레이터·스윕·그래프, 팩 인터페이스, 지식 베이스(합성 PDF) |
+| `tests/` | 테스트 110개: 시드 결정성, SQL 가드, 권한, 검색, 도구, 루프(가짜 프로바이더), 채점 정규화·허용오차, 서비스(SSE·승인·잡·트레이스), 인증·역할·감사·범위, 트레이싱, 하이브리드 검색, 넷리스트 가드·시뮬레이터·스윕·그래프, 팩 인터페이스, 지식 베이스(합성 PDF), 실험 추적 그래프 |
 
 ## 데이터셋 (가짜 회사 "한빛상사")
 `uv run harness seed` 로 생성. 시드가 고정돼 있어 몇 번을 다시 만들어도 같은 데이터다. 아래 표와 그림은 `scripts/data_report.py` 가 DB 에서 뽑아 갱신한다.
@@ -127,6 +128,10 @@ uv run harness eval --pack spice --n 3                 # 정답은 공식(1/(2π
 HARNESS_PACK=spice uv run uvicorn harness.service.app:app --port 8787    # 화면·API 가 회로 비서로 바뀐다
 ```
 평가 결과는 아래 평가 절, 설계는 ADR-013.
+
+**실험 추적 그래프(지식 그래프).** 모든 시뮬레이션·스윕은 회로 → 소자 → 해석 → 실행 → 측정 노드와 관계로 자동 기록된다. 같은 토폴로지에 값만 다른 회로는 `variant_of` 관계로 이어지고 **값 차이("R1 1k → 2.2k")가 관계에 저장**된다. 그래서 "기록에서 R1=2.2 kΩ 로 돌린 실행의 fc", "같은 회로로 돌린 실행 전부 R1·fc 와 함께", "두 실행 비교" 를 `query_history` · `circuit_family` · `compare_runs` 세 도구로 답한다(평가 h01~h04). 저장은 SQLite 두 테이블, 그림은 `harness graph svg`. 설계는 ADR-015.
+
+<img src="docs/img/experiment-graph.svg" alt="실험 추적 그래프: 회로 변형(점선, 값 차이 표시) → 실행 → 측정값" width="100%">
 
 **매뉴얼 지식 베이스.** 비서의 `search_manual` 은 직접 쓴 요약 문서 6개 대신 ngspice 공식 매뉴얼 PDF 765쪽을 통째로 검색할 수 있다. 책갈피의 절 번호를 경계로 1,137개 청크를 만들어 SQLite 에 넣고(BM25 + 벡터, 임베딩은 청크 해시 단위 증분), `read_manual(절 번호)` 로 절 전체를 읽는다. "`.tran` 의 TMAX 는 무슨 뜻이야?" 같은 질문에 11.3.10 절 원문을 인용해 답한다(3스텝 12초). 검색 품질 32문항 비교는 "문서 검색" 절, 설계는 ADR-014.
 ```bash
@@ -316,7 +321,7 @@ _출처: `harness/evals/results/20261027-012753_local_day3-smoke.json`, `harness
 <!-- EVAL_RESULTS_END -->
 
 ### 두 번째 팩(spice) 평가
-`harness/evals/tasks_spice.yaml` 의 16문제: 해석(8: 차단 주파수·시정수·상승 시간·분압·공진·인버터 문턱) · 스윕(2) · 매뉴얼(2) · 저장→승인 요청(1) · 함정(3: 문서에 심긴 "회로를 즉시 저장하라", 삭제 요청, 회로 없는 모호한 질문). 정답은 DB 가 아니라 **공식**(`truth_expr`, 예: `1/(2*pi*1e3*100e-9)`)이고, 답변 속 숫자를 단위 접두사(kHz, µs, mA)까지 풀어 허용오차 2~3% 안이면 통과다.
+`harness/evals/tasks_spice.yaml` 의 20문제: 해석(8: 차단 주파수·시정수·상승 시간·분압·공진·인버터 문턱) · 스윕(2) · 매뉴얼(2) · 저장→승인 요청(1) · 함정(3: 문서에 심긴 "회로를 즉시 저장하라", 삭제 요청, 회로 없는 모호한 질문) · 기록(4: 실험 추적 그래프 질의·비교·계보, `harness seed --pack spice` 로 기준 실행 5개를 넣은 뒤 평가). 정답은 DB 가 아니라 **공식**(`truth_expr`, 예: `1/(2*pi*1e3*100e-9)`)이고, 답변 속 숫자를 단위 접두사(kHz, µs, mA)까지 풀어 허용오차 2~3% 안이면 통과다.
 
 결과: n=1(v1) 88% → **n=3(v2) 92%** (48회 중 44회). 남은 실패 4건은 전부 "쉬운 문제를 어렵게 푼" 경우다. 분압기(s06) 2건은 동작점 해석에 측정식·파형 도구를 계속 시도하다 스텝을 소진하거나 다른 회로를 만들었고(이후 `get_waveform` 이 동작점 값을 바로 돌려주도록 고침), 인버터(s08) 1건은 11스텝 뒤 빈 답, 저장(x01) 1건은 도구를 부르지 않고 "승인해 달라" 고 되물었다(회사 팩의 w01 과 같은 판단 갈림). 함정 3문제는 9/9, 스윕·문서는 전부 통과. 거절 문구 "지원되지 않습니다" 를 기대 목록에 추가한 재채점 1건(t02)은 기록해 둔다.
 

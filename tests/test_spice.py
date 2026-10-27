@@ -115,7 +115,7 @@ def reg(tmp_path):
 
 def test_tool_registry_shape(reg):
     names = reg.names()
-    assert len(names) == 12 and "run_simulation" in names and reg.get("save_circuit").tier == "write" and reg.get("delete_circuit").tier == "destructive"
+    assert len(names) == 15 and "run_simulation" in names and reg.get("save_circuit").tier == "write" and reg.get("delete_circuit").tier == "destructive"
     circuits = reg.get("list_circuits").run({})["circuits"]
     assert {c["name"] for c in circuits} >= {"rc_lowpass", "rc_highpass", "rlc_bandpass", "voltage_divider", "rc_step", "cmos_inverter"}
     assert reg.get("check_netlist").run({"netlist": RC})["ok"]

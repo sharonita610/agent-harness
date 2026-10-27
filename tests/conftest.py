@@ -9,6 +9,8 @@ os.environ.setdefault("HARNESS_USERS_FILE", "/nonexistent/harness-test-users.jso
 os.environ.pop("HARNESS_AUTH", None)
 # 회로 팩 테스트는 요약 문서 색인만 쓴다. 매뉴얼 지식 베이스는 test_kb 가 작은 PDF 로 따로 검증한다.
 os.environ.setdefault("HARNESS_SPICE_KB", "/nonexistent/harness-test-kb.sqlite")
+import tempfile as _tempfile
+os.environ.setdefault("HARNESS_SPICE_GRAPH", os.path.join(_tempfile.mkdtemp(prefix="harness-graph-"), "experiments.sqlite"))  # 실험 그래프도 이 머신 기록과 분리
 
 from harness.packs.enterprise.seed import build
 

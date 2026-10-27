@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" width="960" height="400" font-family="Pretendard, -apple-system, sans-serif" font-size="12">
+<text x="16" y="64" fill="#5C6672" font-size="11">회로 (점선 = 같은 토폴로지, 값만 다른 변형)</text>
+<text x="16" y="184" fill="#5C6672" font-size="11">실행</text>
+<text x="16" y="304" fill="#5C6672" font-size="11">측정값</text>
+<path d="M672 82 Q384 40 96 82" fill="none" stroke="#0E6B63" stroke-dasharray="5 4" stroke-width="1.2"/>
+<text x="384" y="58" text-anchor="middle" fill="#0E6B63" font-size="10">R1 3.3k→2.2k</text>
+<path d="M480 82 Q384 18 288 82" fill="none" stroke="#0E6B63" stroke-dasharray="5 4" stroke-width="1.2"/>
+<text x="384" y="36" text-anchor="middle" fill="#0E6B63" font-size="10">R1 470→1k</text>
+<path d="M288 82 Q192 40 96 82" fill="none" stroke="#0E6B63" stroke-dasharray="5 4" stroke-width="1.2"/>
+<text x="192" y="58" text-anchor="middle" fill="#0E6B63" font-size="10">R1 1k→2.2k</text>
+<line x1="80" y1="204" x2="96" y2="116" stroke="#D9DEE3" stroke-width="1.2"/>
+<line x1="240" y1="204" x2="288" y2="116" stroke="#D9DEE3" stroke-width="1.2"/>
+<line x1="400" y1="204" x2="480" y2="116" stroke="#D9DEE3" stroke-width="1.2"/>
+<line x1="560" y1="204" x2="288" y2="116" stroke="#D9DEE3" stroke-width="1.2"/>
+<line x1="720" y1="204" x2="672" y2="116" stroke="#D9DEE3" stroke-width="1.2"/>
+<line x1="880" y1="204" x2="864" y2="116" stroke="#D9DEE3" stroke-width="1.2"/>
+<line x1="69" y1="326" x2="80" y2="236" stroke="#D9DEE3" stroke-width="1.2"/>
+<line x1="206" y1="326" x2="240" y2="236" stroke="#D9DEE3" stroke-width="1.2"/>
+<line x1="343" y1="326" x2="400" y2="236" stroke="#D9DEE3" stroke-width="1.2"/>
+<line x1="480" y1="326" x2="560" y2="236" stroke="#D9DEE3" stroke-width="1.2"/>
+<line x1="617" y1="326" x2="720" y2="236" stroke="#D9DEE3" stroke-width="1.2"/>
+<line x1="754" y1="326" x2="880" y2="236" stroke="#D9DEE3" stroke-width="1.2"/>
+<line x1="891" y1="326" x2="880" y2="236" stroke="#D9DEE3" stroke-width="1.2"/>
+<rect x="30" y="82" width="132" height="36" rx="8" fill="#E6F2F0" stroke="#0E6B63"/>
+<text x="96" y="97" text-anchor="middle" fill="#1B2430" font-weight="600">RC 저역통과 기준 회로</text>
+<text x="96" y="111" text-anchor="middle" fill="#5C6672" font-size="10">V1=0 R1=2.2k C1=100n</text>
+<rect x="222" y="82" width="132" height="36" rx="8" fill="#E6F2F0" stroke="#0E6B63"/>
+<text x="288" y="97" text-anchor="middle" fill="#1B2430" font-weight="600">RC 저역통과 기준 회로</text>
+<text x="288" y="111" text-anchor="middle" fill="#5C6672" font-size="10">V1=0 R1=1k C1=100n</text>
+<rect x="414" y="82" width="132" height="36" rx="8" fill="#E6F2F0" stroke="#0E6B63"/>
+<text x="480" y="97" text-anchor="middle" fill="#1B2430" font-weight="600">RC 저역통과 기준 회로</text>
+<text x="480" y="111" text-anchor="middle" fill="#5C6672" font-size="10">V1=0 R1=470 C1=100n</text>
+<rect x="606" y="82" width="132" height="36" rx="8" fill="#E6F2F0" stroke="#0E6B63"/>
+<text x="672" y="97" text-anchor="middle" fill="#1B2430" font-weight="600">RC low-pass filt</text>
+<text x="672" y="111" text-anchor="middle" fill="#5C6672" font-size="10">V1=0 R1=3.3k C1=100n</text>
+<rect x="798" y="82" width="132" height="36" rx="8" fill="#E6F2F0" stroke="#0E6B63"/>
+<text x="864" y="97" text-anchor="middle" fill="#1B2430" font-weight="600">RC 저역통과 필터</text>
+<text x="864" y="111" text-anchor="middle" fill="#5C6672" font-size="10">R1=1k C1=100n V1=0</text>
+<rect x="20" y="204" width="120" height="32" rx="6" fill="#fff" stroke="#2F5D9E"/>
+<text x="80" y="217" text-anchor="middle" fill="#1B2430" font-size="11">sim_9870ab1e</text>
+<text x="80" y="230" text-anchor="middle" fill="#5C6672" font-size="10">ac · 101점</text>
+<rect x="180" y="204" width="120" height="32" rx="6" fill="#fff" stroke="#2F5D9E"/>
+<text x="240" y="217" text-anchor="middle" fill="#1B2430" font-size="11">sim_b6f1f5de</text>
+<text x="240" y="230" text-anchor="middle" fill="#5C6672" font-size="10">ac · 101점</text>
+<rect x="340" y="204" width="120" height="32" rx="6" fill="#fff" stroke="#2F5D9E"/>
+<text x="400" y="217" text-anchor="middle" fill="#1B2430" font-size="11">sim_d1eba788</text>
+<text x="400" y="230" text-anchor="middle" fill="#5C6672" font-size="10">ac · 101점</text>
+<rect x="500" y="204" width="120" height="32" rx="6" fill="#fff" stroke="#2F5D9E"/>
+<text x="560" y="217" text-anchor="middle" fill="#1B2430" font-size="11">sim_60fcdc6b</text>
+<text x="560" y="230" text-anchor="middle" fill="#5C6672" font-size="10">ac · 101점</text>
+<rect x="660" y="204" width="120" height="32" rx="6" fill="#fff" stroke="#2F5D9E"/>
+<text x="720" y="217" text-anchor="middle" fill="#1B2430" font-size="11">sim_a8899a94</text>
+<text x="720" y="230" text-anchor="middle" fill="#5C6672" font-size="10">ac · 101점</text>
+<rect x="820" y="204" width="120" height="32" rx="6" fill="#fff" stroke="#2F5D9E"/>
+<text x="880" y="217" text-anchor="middle" fill="#1B2430" font-size="11">sim_6ef66165</text>
+<text x="880" y="230" text-anchor="middle" fill="#5C6672" font-size="10">ac · 101점</text>
+<rect x="21" y="326" width="96" height="28" rx="14" fill="#FDF4DC" stroke="#B7791F"/>
+<text x="69" y="344" text-anchor="middle" fill="#1B2430" font-size="11">fc = 721.7</text>
+<rect x="158" y="326" width="96" height="28" rx="14" fill="#FDF4DC" stroke="#B7791F"/>
+<text x="206" y="344" text-anchor="middle" fill="#1B2430" font-size="11">fc = 1588</text>
+<rect x="295" y="326" width="96" height="28" rx="14" fill="#FDF4DC" stroke="#B7791F"/>
+<text x="343" y="344" text-anchor="middle" fill="#1B2430" font-size="11">fc = 3378</text>
+<rect x="432" y="326" width="96" height="28" rx="14" fill="#FDF4DC" stroke="#B7791F"/>
+<text x="480" y="344" text-anchor="middle" fill="#1B2430" font-size="11">fc = 1588</text>
+<rect x="569" y="326" width="96" height="28" rx="14" fill="#FDF4DC" stroke="#B7791F"/>
+<text x="617" y="344" text-anchor="middle" fill="#1B2430" font-size="11">fc = 481.1</text>
+<rect x="706" y="326" width="96" height="28" rx="14" fill="#FDF4DC" stroke="#B7791F"/>
+<text x="754" y="344" text-anchor="middle" fill="#1B2430" font-size="11">fc = 1588</text>
+<rect x="843" y="326" width="96" height="28" rx="14" fill="#FDF4DC" stroke="#B7791F"/>
+<text x="891" y="344" text-anchor="middle" fill="#1B2430" font-size="11">g1k = -1.445</text>
+</svg>

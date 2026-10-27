@@ -71,10 +71,14 @@ def _build_agent(provider: str, approve: str, max_steps: int, verbose: bool, sco
 
 
 @app.command()
-def seed():
-    """가짜 회사 DB(data/enterprise.db) 를 시드 고정으로 다시 만든다."""
-    from .packs.enterprise.seed import build
-    info = build()
+def seed(pack: Optional[str] = typer.Option(None, help="enterprise: 가짜 회사 DB · spice: 실험 추적 그래프 기준 실행(기존 기록 삭제)")):
+    """팩의 데이터를 시드 고정으로 다시 만든다. enterprise 는 data/enterprise.db, spice 는 실험 그래프."""
+    from .packs import load_pack
+    pk = load_pack(pack)
+    if pk.seed is None:
+        console.print(f"{pk.name}: 시드할 데이터가 없습니다.")
+        raise typer.Exit(0)
+    info = pk.seed()
     for k, v in info.items():
         console.print(f"{k}: {v}")
 
@@ -306,6 +310,33 @@ def kb_search(query: str, mode: str = typer.Option("auto", help="auto | bm25 | v
 def kb_stats(kb: Path = typer.Option(DEFAULT_KB)):
     from .retrieval.kb import KnowledgeBase
     console.print(KnowledgeBase(kb).stats())
+
+
+graph_app = typer.Typer(help="실험 추적 그래프(회로 팩): 실행 기록을 보거나 그림으로 내보낸다.")
+app.add_typer(graph_app, name="graph")
+
+
+@graph_app.command("stats")
+def graph_stats():
+    from .packs.spice.graph import ExperimentGraph
+    console.print(ExperimentGraph().stats())
+
+
+@graph_app.command("runs")
+def graph_runs(component: Optional[str] = None, value: Optional[float] = None, measurement: Optional[str] = None, limit: int = 10):
+    """조건에 맞는 실행 기록."""
+    from .packs.spice.graph import ExperimentGraph
+    for r in ExperimentGraph().query_runs(component=component, value=value, measurement=measurement, limit=limit):
+        console.print(f"[bold]{r['run_id']}[/bold] {r['circuit']} · {r['components']} · {r['measurements']}")
+
+
+@graph_app.command("svg")
+def graph_svg(out: Path = typer.Option(Path("docs/img/experiment-graph.svg")), max_runs: int = 10):
+    """그래프를 SVG 로 그린다(회로 → 실행 → 측정)."""
+    from .packs.spice.graph import ExperimentGraph, render_graph_svg
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(render_graph_svg(ExperimentGraph(), max_runs=max_runs), encoding="utf-8")
+    console.print(f"저장: {out}")
 
 
 @app.command()

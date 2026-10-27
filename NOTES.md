@@ -176,3 +176,9 @@ uv run harness eval --n 1            # 평가 16개
 - 멘토가 말한 "일부 기능만 있는 경량 레포" = Hugging Face Tiny Agents(huggingface_hub[mcp], `tiny-agents run <폴더>`). agent.json(model·endpointUrl·apiKey·servers[stdio]) + PROMPT.md 가 전부. `uv tool install "huggingface_hub[mcp]"` 로 격리 설치.
 - 로컬 gpt-oss-20b(8080) + 우리 MCP 서버(`uv run harness mcp [--pack spice]`): 회사 팩 "지연 주문 몇 건" → 도구 6회(list_tables/describe/run_sql 반복) 12.9s, 255건 정답. 회로 팩 "RC 1k/100n 차단 주파수" → run_simulation 1회 14.9s, 1.588 kHz 정답. 비대화형 실행은 docs/experiments/tiny-agents/run.py(Agent.run 스트림을 그대로 소비).
 - 관찰: Tiny Agents 는 루프·도구 호출·스트리밍만 있고 승인/권한·실패 모드 보정·컨텍스트 예산·평가가 없다. write 도구(save_circuit 등)도 그대로 노출되어 사람 확인 없이 실행된다(MCP 서버 쪽 destructive 제외만 적용). 우리 루프가 그 위에 얹은 것이 무엇인지 설명하기 좋은 대조군.
+
+### 실험 추적 그래프 (2026-10-28)
+- `packs/spice/graph.py`: SQLite nodes/edges. circuit(본문 해시)·component·analysis·run(sim/sweep/sweep_point)·measurement, 관계 simulates/has_component/has_analysis/measured/has_point/varies/variant_of(값 diff 저장). run_simulation·run_sweep 이 자동 기록. 도구 query_history / compare_runs / circuit_family. `harness seed --pack spice` 로 기준 실행 5개, `harness graph svg|runs|stats`.
+- 기록 문제 4개(h01~h04) 로컬 gpt-oss n=1: 1차 h01·h04 통과, h02(compare_runs 안 쓰고 암산), h03(query_history 에 샘플 파일명 'rc_lowpass' 로 제목 필터 → 0건 → "이전 실행 없음") 실패 → 규칙 8 을 도구별로 명시 + query_history 설명에 "제목 글자로". 2차: h02·h03·h04 통과, h01 실패 — 기록을 찾고도(query_history 결과 346자) 다시 시뮬레이션(금지 도구). 원인은 규칙 1 "숫자는 반드시 run_simulation" 과의 충돌 → 규칙 1 에 "과거 실행 질문은 기록 값을 그대로" 추가. 3차 h01 통과.
+- 교훈: 프롬프트 규칙끼리의 충돌은 평가 없이는 안 보인다. 새 도구를 넣을 때 기존 "반드시" 규칙을 같이 고쳐야 한다.
+- SVG: 변형 관계가 완전 그래프(5개 회로 → 20 간선)라 다 그리면 엉킴 → 값 차이(log 비율) 최소 신장 트리만 그림.
