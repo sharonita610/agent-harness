@@ -14,6 +14,7 @@ runs = []
 for p in paths:
     d = json.loads(p.read_text(encoding="utf-8"))
     label = p.stem.split("_", 2)[-1] if p.stem.count("_") >= 2 else p.stem
+    label = f"{label} (n={d['summary'].get('n', 1)})"
     runs.append((label, d))
 
 types = []

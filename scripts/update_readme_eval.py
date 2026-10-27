@@ -17,7 +17,7 @@ if len(jsons) >= 2:
 else:
     body = jsons[0].with_suffix(".md").read_text(encoding="utf-8").split("\n", 1)[1].strip()
     src = f"`{jsons[0].relative_to(root)}`"
-block = f"<!-- EVAL_RESULTS_START -->\n_출처: {src}_ · 태스크당 n=1, 같은 16문제, 같은 프롬프트\n\n{body}\n<!-- EVAL_RESULTS_END -->"
+block = f"<!-- EVAL_RESULTS_START -->\n_출처: {src}_ · 같은 16문제, 같은 프롬프트, n = 태스크당 반복 횟수\n\n{body}\n<!-- EVAL_RESULTS_END -->"
 readme = root / "README.md"
 text = readme.read_text(encoding="utf-8")
 readme.write_text(re.sub(r"<!-- EVAL_RESULTS_START -->.*?<!-- EVAL_RESULTS_END -->", lambda _: block, text, flags=re.S), encoding="utf-8")
