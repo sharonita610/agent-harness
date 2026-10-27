@@ -104,3 +104,21 @@ def test_dev_mode_without_users_is_open(tmp_path, seeded_db):
     with TestClient(app) as c:
         me = c.get("/me").json()
         assert me["anonymous"] is True and me["role"] == "admin" and me["auth_required"] is False
+
+
+def test_admin_can_approve_too(tmp_path, seeded_db):
+    """관리자(admin)는 결재자(approver) 권한을 포함한다: 승인 API 200, /me can.approve True."""
+    db, _ = seeded_db
+    us = UserStore(path=tmp_path / "users.json")
+    k_ad = us.add("관리자", "admin")
+    app = create_app(db_path=tmp_path / "svc.db", registry=ToolRegistry(build_tools(db)), system_prompt=SYSTEM_PROMPT, users=us)
+    with TestClient(app) as c:
+        me = c.get("/me", headers=H(k_ad)).json()
+        assert me["can"] == {"chat": True, "approve": True, "admin": True}
+        store = app.state.harness.store
+        broker = app.state.harness.broker
+        sid = store.create_session("fake")["id"]
+        rid = store.create_run(sid, "chat", "q")
+        aid = broker.request(rid, "create_note", {"order_id": 1}, "write")
+        r = c.post(f"/approvals/{aid}", json={"decision": "approve"}, headers=H(k_ad))
+        assert r.status_code == 200 and r.json()["decided_by"] == "관리자" and r.json()["status"] == "approved"
