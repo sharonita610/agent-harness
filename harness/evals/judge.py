@@ -59,6 +59,8 @@ def parse_verdict(text: str) -> dict[str, Any]:
 def judge_run(provider, task: dict[str, Any], run: dict[str, Any]) -> dict[str, Any]:
     resp = provider.complete([{"role": "system", "content": JUDGE_SYSTEM}, {"role": "user", "content": build_judge_prompt(task, run)}], None)
     v = parse_verdict(resp.text or "")
+    if v.get("parse_error") and not (resp.text or "").strip():
+        v["reason"] = "판정자 본문이 비었음(추론 토큰 소진 가능)"
     v["judge_model"] = getattr(provider, "model", "?")
     v["tokens"] = resp.usage.prompt_tokens + resp.usage.completion_tokens
     return v
@@ -71,7 +73,11 @@ def judge_results(path: Path, provider_spec: str = "local", tasks_path: Path | N
     from .runner import TASKS_PATH
     data = json.loads(path.read_text(encoding="utf-8"))
     tasks = {t["id"]: t for t in yaml.safe_load((tasks_path or TASKS_PATH).read_text(encoding="utf-8"))}
-    provider = make_provider(provider_spec, temperature=0.0, max_tokens=300)
+    kw: dict[str, Any] = {"temperature": 0.0, "max_tokens": 1500}
+    if not provider_spec.startswith("anthropic"):
+        # gpt-oss 류는 reasoning 에 토큰을 쓰고 본문이 비는 경우가 있어 추론 노력을 낮추고 예산을 넉넉히 준다
+        kw["extra_body"] = {"chat_template_kwargs": {"reasoning_effort": "low"}}
+    provider = make_provider(provider_spec, **kw)
     n = agree = 0
     for t in data["tasks"]:
         for r in t["runs"]:
