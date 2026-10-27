@@ -163,11 +163,24 @@ def grade_sheet(results: Path, n: int = 20):
 
 
 @app.command()
-def agreement(results: Path, human: Path):
+def agreement(results: Path, human: Optional[Path] = typer.Argument(None, help="채점표에서 내보낸 human-*.json. 생략하면 results/ 와 ~/Downloads 에서 찾는다")):
     """규칙 채점 · 판정자 · 사람 채점의 일치율과 kappa."""
     import json as _json
     from .evals.agreement import compute_agreement
-    out = compute_agreement(_json.loads(results.read_text(encoding="utf-8")), _json.loads(human.read_text(encoding="utf-8")))
+    name = f"human-{results.stem}.json"
+    candidates = [human] if human else [results.parent / name, Path.home() / "Downloads" / name]
+    found = next((p for p in candidates if p and p.exists()), None)
+    if not found:
+        console.print(f"[red]사람 채점 파일이 없습니다.[/red] 찾은 곳: {', '.join(str(p) for p in candidates)}\n"
+                      f"채점표(results/grading/{results.stem}.html)에서 20개를 채점한 뒤 '채점 JSON 내보내기' 를 누르면 ~/Downloads/{name} 이 생깁니다. 그 뒤 이 명령을 다시 실행하세요.")
+        raise typer.Exit(1)
+    if found.parent != results.parent:  # Downloads 에 있으면 results 로 복사해 둔다
+        (results.parent / name).write_bytes(found.read_bytes())
+        console.print(f"[dim]{found} → {results.parent / name} 복사[/dim]")
+    out = compute_agreement(_json.loads(results.read_text(encoding="utf-8")), _json.loads(found.read_text(encoding="utf-8")))
+    if out["n"] == 0:
+        console.print("[yellow]채점된 항목이 0개입니다. 채점표에서 통과/실패를 고른 뒤 다시 내보내세요.[/yellow]")
+        raise typer.Exit(1)
     console.print(_json.dumps(out, ensure_ascii=False, indent=2))
     (results.parent / f"agreement_{results.stem}.json").write_text(_json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
 
