@@ -5,7 +5,9 @@
 """
 from __future__ import annotations
 
+import ast
 import json
+import math
 import re
 import sqlite3
 import statistics
@@ -18,8 +20,8 @@ import yaml
 from ..agent.loop import Agent
 from ..agent.providers import make_provider
 from ..observability.tracer import TraceCollector, maybe_export, write_jsonl
+from ..packs import load_pack
 from ..packs.enterprise.seed import DEFAULT_DB
-from ..packs.enterprise.tools import SYSTEM_PROMPT, SYSTEM_PROMPTS, build_tools
 from ..tools.permissions import auto_deny
 from ..tools.registry import ToolRegistry
 
@@ -70,13 +72,75 @@ def _num_in_answer(value: Any, answer: str) -> bool:
     return str(value) in answer
 
 
+_SAFE_FUNCS = {k: getattr(math, k) for k in ("sqrt", "log", "log10", "log2", "exp", "sin", "cos", "tan", "atan", "fabs", "pow")}
+_SAFE_NAMES = {"pi": math.pi, "e": math.e, "ln9": math.log(9)}
+
+
+def safe_eval(expr: str) -> float:
+    """태스크 정답 공식(truth_expr)을 안전하게 계산한다: 사칙연산·거듭제곱·math 함수·pi 만 허용."""
+    tree = ast.parse(expr, mode="eval")
+
+    def ev(node):
+        if isinstance(node, ast.Expression):
+            return ev(node.body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            return node.value
+        if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow)):
+            a, b = ev(node.left), ev(node.right)
+            op = {ast.Add: lambda: a + b, ast.Sub: lambda: a - b, ast.Mult: lambda: a * b, ast.Div: lambda: a / b, ast.Pow: lambda: a ** b}
+            return op[type(node.op)]()
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
+            v = ev(node.operand)
+            return -v if isinstance(node.op, ast.USub) else v
+        if isinstance(node, ast.Name) and node.id in _SAFE_NAMES:
+            return _SAFE_NAMES[node.id]
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in _SAFE_FUNCS and not node.keywords:
+            return _SAFE_FUNCS[node.func.id](*[ev(a) for a in node.args])
+        raise ValueError(f"허용되지 않는 식: {ast.dump(node)[:60]}")
+
+    return float(ev(tree))
+
+
+_PREFIX = {"T": 1e12, "G": 1e9, "M": 1e6, "k": 1e3, "K": 1e3, "m": 1e-3, "µ": 1e-6, "μ": 1e-6, "u": 1e-6, "n": 1e-9, "p": 1e-12, "f": 1e-15}
+_UNIT_WORDS = r"(?:Hz|hz|HZ|V|v|A|a|s|S|sec|F|H|Ω|ohm|Ohm|Ω|W|dB|db|°|도|%)"
+_NUM_UNIT = re.compile(r"(?<![\w.])([-+]?\d[\d,]*\.?\d*(?:[eE][-+]?\d+)?)\s*(?:([TGMkKmµμunpf])(?=" + _UNIT_WORDS + r"))?(" + _UNIT_WORDS + r")?")
+_KO_UNITS = (("킬로헤르츠", 1e3), ("헤르츠", 1), ("마이크로초", 1e-6), ("밀리초", 1e-3), ("나노초", 1e-9), ("밀리암페어", 1e-3), ("볼트", 1))
+
+
+def extract_numbers(answer: str) -> list[float]:
+    """답변 속 숫자를 SI 접두사(kHz, µs, mA …)까지 해석해 기본 단위 값으로 모은다. 접두사 없는 원래 숫자도 함께 둔다."""
+    text = answer.replace("\u202f", " ").replace("\u00a0", " ")
+    out: list[float] = []
+    for m in _NUM_UNIT.finditer(text):
+        raw = m.group(1).replace(",", "")
+        try:
+            v = float(raw)
+        except ValueError:
+            continue
+        out.append(v)
+        if m.group(2):
+            out.append(v * _PREFIX[m.group(2)])
+        tail = text[m.end():m.end() + 6]
+        for word, mult in _KO_UNITS:
+            if tail.startswith(word):
+                out.append(v * mult)
+    return out
+
+
+def within_tolerance(truth: float, answer: str, tolerance_pct: float) -> bool:
+    tol = abs(truth) * tolerance_pct / 100
+    return any(abs(n - truth) <= tol for n in extract_numbers(answer))
+
+
 def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
     answer = normalize(res.answer or "")
     truth = [normalize(v) if isinstance(v, str) else v for v in truth]
     executed = [t["name"] for t in res.tool_calls if t.get("status") == "ok"]
     approved_requests = [a["name"] for a in res.approvals]
     checks: dict[str, bool] = {}
-    if truth:
+    if truth and task.get("tolerance_pct"):
+        checks["truth_within_tolerance"] = all(within_tolerance(float(v), answer, float(task["tolerance_pct"])) for v in truth)
+    elif truth:
         checks["truth_in_answer"] = all(_num_in_answer(v, answer) for v in truth)
     if task.get("expect_tools_any"):
         checks["tools_any"] = any(t in executed for t in task["expect_tools_any"])
@@ -96,30 +160,44 @@ def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
     return {"pass": all(checks.values()), "checks": checks, "truth": truth, "executed_tools": executed, "approvals": approved_requests}
 
 
-def resolve(task: dict, conn: sqlite3.Connection) -> tuple[str, list[Any]]:
+def resolve(task: dict, conn: sqlite3.Connection | None) -> tuple[str, list[Any]]:
+    """질문의 {변수} 를 채우고 정답을 만든다. truth_sql(DB) · truth_expr(공식, 팩 무관) · truth_value(상수) 순으로 본다."""
     question = task["question"]
     for key, sql in (task.get("params_sql") or {}).items():
+        if conn is None:
+            raise ValueError(f"{task['id']}: params_sql 은 DB 가 있는 팩에서만 쓸 수 있습니다")
         row = conn.execute(sql).fetchone()
         question = question.replace("{" + key + "}", str(row[0]) if row else "?")
     truth: list[Any] = []
     if task.get("truth_sql"):
+        if conn is None:
+            raise ValueError(f"{task['id']}: truth_sql 은 DB 가 있는 팩에서만 쓸 수 있습니다")
         row = conn.execute(task["truth_sql"]).fetchone()
         truth = list(row) if row else []
+    elif task.get("truth_expr"):
+        exprs = task["truth_expr"] if isinstance(task["truth_expr"], list) else [task["truth_expr"]]
+        truth = [safe_eval(str(e)) for e in exprs]
+    elif task.get("truth_value") is not None:
+        tv = task["truth_value"]
+        truth = list(tv) if isinstance(tv, list) else [tv]
     return question, truth
 
 
 def run_eval(provider: str = "local", n: int = 1, tasks_path: Path | None = None, limit: int | None = None,
-             tag: str | None = None, console=None, db_path: Path = DEFAULT_DB, prompt_version: str = "v1") -> dict[str, Any]:
-    tasks = yaml.safe_load((tasks_path or TASKS_PATH).read_text(encoding="utf-8"))
+             tag: str | None = None, console=None, db_path: Path = DEFAULT_DB, prompt_version: str = "v1",
+             pack: str | None = None) -> dict[str, Any]:
+    pk = load_pack(pack)
+    tasks = yaml.safe_load((tasks_path or pk.tasks_path).read_text(encoding="utf-8"))
     if limit:
         tasks = tasks[:limit]
-    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True) if pk.name == "enterprise" else None
     prov = make_provider(provider)
-    registry = ToolRegistry(build_tools(db_path))
+    registry = ToolRegistry(pk.build_tools(db_path=db_path) if pk.name == "enterprise" else pk.build_tools())
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    trace_dir = RESULTS_DIR / "traces" / f"{stamp}_{provider.replace(':', '-').replace('/', '-')}{('_' + tag) if tag else ''}"
+    suffix = f"{provider.replace(':', '-').replace('/', '-')}{('_' + pk.name) if pk.name != 'enterprise' else ''}{('_' + tag) if tag else ''}"
+    trace_dir = RESULTS_DIR / "traces" / f"{stamp}_{suffix}"
     collector_box: dict[str, TraceCollector] = {}
-    system_prompt = SYSTEM_PROMPTS[prompt_version]
+    system_prompt = pk.system_prompts[prompt_version]
     agent = Agent(prov, registry, system_prompt, approval_handler=auto_deny, max_steps=12,
                   on_event=lambda ev: collector_box["c"].on_event(ev) if "c" in collector_box else None)
 
@@ -144,9 +222,9 @@ def run_eval(provider: str = "local", n: int = 1, tasks_path: Path | None = None
                 console.print(f"{mark} {task['id']:4} run{i + 1} {res.steps}스텝 {res.latency_s:6.1f}s  {('실패: ' + ','.join(failed)) if failed else ''}")
         rows.append({"id": task["id"], "type": task["type"], "question": question, "pass_rate": sum(r["pass"] for r in runs) / n, "runs": runs})
 
-    summary = _summarize(rows, provider=provider, model=getattr(prov, "model", "?"), n=n, tag=tag, prompt_version=prompt_version)
+    summary = _summarize(rows, provider=provider, model=getattr(prov, "model", "?"), n=n, tag=tag, prompt_version=prompt_version, pack=pk.name)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    base = RESULTS_DIR / f"{stamp}_{provider.replace(':', '-').replace('/', '-')}{('_' + tag) if tag else ''}"
+    base = RESULTS_DIR / f"{stamp}_{suffix}"
     base.with_suffix(".json").write_text(json.dumps({"summary": summary, "tasks": rows}, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     base.with_suffix(".md").write_text(render_markdown(summary, rows), encoding="utf-8")
     if console:
@@ -179,7 +257,7 @@ def _summarize(rows, **meta) -> dict[str, Any]:
 
 def render_markdown(summary: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     lines = [
-        f"# 평가 결과 · {summary['provider']} ({summary['model']}) · n={summary['n']}",
+        f"# 평가 결과 · {summary['provider']} ({summary['model']}) · n={summary['n']}" + (f" · 팩 {summary['pack']}" if summary.get("pack") not in (None, "enterprise") else ""),
         "",
         f"- 통과율 {summary['pass_rate']:.0%} ({summary['runs']}회 실행, 태스크 {summary['tasks']}개) · 유형별 " + ", ".join(f"{k} {v:.0%}" for k, v in summary["by_type"].items()),
         f"- 평균 스텝 {summary['avg_steps']} · 지연 p50 {summary['p50_latency_s']}s / p95 {summary['p95_latency_s']}s · 실행당 토큰 {summary['tokens_per_run']}"
@@ -205,7 +283,7 @@ def rescore(path: Path, tasks_path: Path | None = None) -> dict[str, Any]:
     data = json.loads(path.read_text(encoding="utf-8"))
     if "tasks" not in data:  # 검색 평가·일치율 파일 등은 건너뛴다
         return {"skipped": path.name}
-    tasks = {t["id"]: t for t in yaml.safe_load((tasks_path or TASKS_PATH).read_text(encoding="utf-8"))}
+    tasks = {t["id"]: t for t in yaml.safe_load((tasks_path or load_pack(data["summary"].get("pack")).tasks_path).read_text(encoding="utf-8"))}
     for t in data["tasks"]:
         task = tasks[t["id"]]
         for r in t["runs"]:
@@ -213,7 +291,7 @@ def rescore(path: Path, tasks_path: Path | None = None) -> dict[str, Any]:
                                tool_calls=r.get("tool_calls", []), approvals=[{"name": n} for n in r.get("approvals", [])])
             r.update(score(task, fake, r.get("truth", [])))
         t["pass_rate"] = sum(r["pass"] for r in t["runs"]) / len(t["runs"])
-    meta = {k: data["summary"][k] for k in ("provider", "model", "n", "tag", "prompt_version") if k in data["summary"]}
+    meta = {k: data["summary"][k] for k in ("provider", "model", "n", "tag", "prompt_version", "pack") if k in data["summary"]}
     old_judge = data["summary"].get("judge")
     data["summary"] = {**_summarize(data["tasks"], **meta), "rescored_at": datetime.now().isoformat(timespec="seconds")}
     judged = [r for t in data["tasks"] for r in t["runs"] if r.get("judge")]

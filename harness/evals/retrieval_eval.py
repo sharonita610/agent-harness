@@ -7,8 +7,8 @@ from pathlib import Path
 
 import yaml
 
-from ..packs.enterprise.embeddings import OpenAIEmbedder, embedder_available
-from ..packs.enterprise.search import DocIndex
+from ..retrieval import OpenAIEmbedder, embedder_available
+from ..retrieval import DocIndex
 from ..packs.enterprise.tools import DOCS_DIR
 from .runner import RESULTS_DIR
 

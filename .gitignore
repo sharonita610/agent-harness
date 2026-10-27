@@ -83,3 +83,8 @@ data/users.json
 
 # ---- docker 로컬 테스트 데이터 ----
 .docker-test-data/
+
+# spice 팩 실행 결과(그래프·파형)와 사용자 저장 회로
+data/spice_runs/
+data/spice_circuits/
+data/spice_doc_embeddings.json

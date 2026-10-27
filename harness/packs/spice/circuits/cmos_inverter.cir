@@ -1,0 +1,10 @@
+* CMOS 인버터 전달 특성 (Level 1 모델, VDD=3.3 V)
+* desc: 입력 0→3.3 V 를 DC 스윕. 출력이 VDD/2 를 지나는 입력 전압이 스위칭 문턱(Vm). 대칭 설계면 Vm ≈ VDD/2
+VDD vdd 0 dc 3.3
+VIN in 0 dc 0
+MP out in vdd vdd PMOS W=20u L=1u
+MN out in 0 0 NMOS W=10u L=1u
+.model NMOS NMOS (level=1 VTO=0.7 KP=120u LAMBDA=0.02)
+.model PMOS PMOS (level=1 VTO=-0.7 KP=60u LAMBDA=0.02)
+.dc VIN 0 3.3 0.01
+.end

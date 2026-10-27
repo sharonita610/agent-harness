@@ -70,9 +70,9 @@ def judge_results(path: Path, provider_spec: str = "local", tasks_path: Path | N
     """결과 JSON 의 모든 run 에 judge 필드를 채워 넣고 같은 파일에 저장한다."""
     import yaml
 
-    from .runner import TASKS_PATH
+    from ..packs import load_pack
     data = json.loads(path.read_text(encoding="utf-8"))
-    tasks = {t["id"]: t for t in yaml.safe_load((tasks_path or TASKS_PATH).read_text(encoding="utf-8"))}
+    tasks = {t["id"]: t for t in yaml.safe_load((tasks_path or load_pack(data["summary"].get("pack")).tasks_path).read_text(encoding="utf-8"))}
     kw: dict[str, Any] = {"temperature": 0.0, "max_tokens": 1500}
     if not provider_spec.startswith("anthropic"):
         # gpt-oss 류는 reasoning 에 토큰을 쓰고 본문이 비는 경우가 있어 추론 노력을 낮추고 예산을 넉넉히 준다

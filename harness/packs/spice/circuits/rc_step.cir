@@ -1,0 +1,7 @@
+* RC 계단 응답 (R1=1k, C1=100n, 0→1 V 계단)
+* desc: 시정수 tau = R*C = 100 us. v(out) 가 63.2% 에 이르는 시간 = tau, 10%→90% 상승 시간 = 2.197*tau = 219.7 us
+V1 in 0 PULSE(0 1 0 1n 1n 10m 20m)
+R1 in out 1k
+C1 out 0 100n
+.tran 1u 1m
+.end

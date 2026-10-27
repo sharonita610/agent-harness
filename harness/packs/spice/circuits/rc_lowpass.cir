@@ -1,0 +1,7 @@
+* RC 저역통과 필터 (R1=1k, C1=100n)
+* desc: 1차 RC 저역통과. 차단 주파수 fc = 1/(2*pi*R*C) = 1.5915 kHz, 통과대역 이득 0 dB, 그 위로 -20 dB/decade
+V1 in 0 dc 0 ac 1
+R1 in out 1k
+C1 out 0 100n
+.ac dec 20 10 1meg
+.end

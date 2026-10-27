@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..agent.providers import make_provider
-from ..packs.enterprise.scope import Scope
+from ..packs import Pack, load_pack
 from ..tools.permissions import Policy, describe
 from ..tools.registry import ToolRegistry
 from .auth import User, UserStore, make_dependencies
@@ -39,12 +39,17 @@ class AppState:
     max_steps: int = 12
     jobs: JobQueue | None = field(default=None)
     users: UserStore | None = field(default=None)
-    registry_factory: Callable[[Scope | None], ToolRegistry] | None = field(default=None)
+    registry_factory: Callable[[Any], ToolRegistry] | None = field(default=None)
+    pack: Pack | None = field(default=None)
     _scoped: dict[str, ToolRegistry] = field(default_factory=dict)
+
+    def scope_of(self, user):
+        spec = getattr(user, "scope", None) if user is not None else None
+        return self.pack.parse_scope(spec) if self.pack else None
 
     def registry_for(self, user) -> ToolRegistry:
         """범위가 없으면 공용 레지스트리, 있으면 범위별로 만들어 캐시."""
-        scope = Scope.parse(getattr(user, "scope", None)) if user is not None else None
+        scope = self.scope_of(user)
         if scope is None or self.registry_factory is None:
             return self.registry
         key = str(sorted(scope.to_dict().items()))
@@ -53,27 +58,27 @@ class AppState:
         return self._scoped[key]
 
     def system_prompt_for(self, user) -> str:
-        from ..packs.enterprise.tools import scope_note
-        scope = Scope.parse(getattr(user, "scope", None)) if user is not None else None
-        return self.system_prompt + scope_note(scope)
+        scope = self.scope_of(user)
+        return self.system_prompt + (self.pack.scope_note(scope) if self.pack else "")
 
 
 def create_app(db_path: str | Path | None = None, provider_factory: Callable[[str], Any] | None = None,
                registry: ToolRegistry | None = None, system_prompt: str | None = None,
                approval_timeout_s: float = 600, default_provider: str | None = None, job_concurrency: int = 1,
                users: UserStore | None = None, model_probe: Callable[[], bool] | None = None,
-               kwargs_registry_factory: Callable[[Scope | None], ToolRegistry] | None = None) -> FastAPI:
+               kwargs_registry_factory: Callable[[Any], ToolRegistry] | None = None, pack: str | Pack | None = None) -> FastAPI:
+    pk = pack if isinstance(pack, Pack) else load_pack(pack)
     registry_factory = None
     if registry is None or system_prompt is None:
-        from ..packs.enterprise.tools import SYSTEM_PROMPT, build_tools, make_index
-        shared_index = make_index()
-        registry = registry or ToolRegistry(build_tools(index=shared_index))
-        system_prompt = system_prompt or SYSTEM_PROMPT
-        registry_factory = lambda scope: ToolRegistry(build_tools(index=shared_index, scope=scope))
+        shared = pk.shared_kwargs()
+        registry = registry or ToolRegistry(pk.build_tools(**shared))
+        system_prompt = system_prompt or pk.system_prompt
+        registry_factory = lambda scope: ToolRegistry(pk.build_tools(scope=scope, **shared))
     store = Store(db_path or os.getenv("HARNESS_SERVICE_DB", str(DEFAULT_DB)))
     state = AppState(store=store, broker=ApprovalBroker(store, approval_timeout_s), registry=registry, system_prompt=system_prompt,
                      provider_factory=provider_factory or make_provider,
                      default_provider=default_provider or os.getenv("HARNESS_PROVIDER", "local"))
+    state.pack = pk
     state.jobs = JobQueue(state, concurrency=job_concurrency)
     state.registry_factory = registry_factory or kwargs_registry_factory
     state.users = users or UserStore.load()
@@ -127,12 +132,14 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
     @app.get("/health")
     def health():
         return {"status": "ok", "tools": len(registry), "provider": state.default_provider, "pending_approvals": len(state.broker.pending()),
-                "auth_required": state.users.required, "model": model_status()}
+                "auth_required": state.users.required, "model": model_status(),
+                "pack": {"name": pk.name, "title": pk.title, "description": pk.description, "welcome": pk.welcome, "examples": pk.examples,
+                         "tool_labels": pk.tool_labels}}
 
     @app.get("/me")
     def me(user: User = Depends(current_user)):
-        sc = Scope.parse(user.scope)
-        return {"name": user.name, "role": user.role, "anonymous": user.anonymous, "auth_required": state.users.required,
+        sc = state.scope_of(user)
+        return {"name": user.name, "role": user.role, "anonymous": user.anonymous, "auth_required": state.users.required, "pack": pk.name,
                 "scope": sc.to_dict() if sc else None, "scope_text": sc.describe() if sc else None,
                 "can": {"chat": user.has("operator"), "approve": user.has("approver"), "admin": user.has("admin")}}
 
@@ -159,7 +166,8 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
 
     @app.get("/tools")
     def tools(user: User = Depends(current_user)):
-        return [{"name": t.name, "tier": str(t.tier), "policy": describe(policy.decide(t)), "description": t.description} for t in state.registry_for(user)]
+        return [{"name": t.name, "tier": str(t.tier), "policy": describe(policy.decide(t)), "description": t.description,
+                 "label": pk.tool_labels.get(t.name, t.name)} for t in state.registry_for(user)]
 
     @app.post("/sessions")
     def create_session(body: SessionCreate, user: User = Depends(require("operator"))):
@@ -273,6 +281,9 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
             raise HTTPException(404, "실행 없음")
         return store.events(run_id, after_seq)
 
+    for key, folder in pk.files.items():  # 팩이 만든 파일(그래프 등). 결과 카드가 /files/<key>/... 로 연다
+        Path(folder).mkdir(parents=True, exist_ok=True)
+        app.mount(f"/files/{key}", StaticFiles(directory=str(folder)), name=f"files-{key}")
     if ui_built:
         app.mount("/app", StaticFiles(directory=str(UI_DIST), html=True), name="ui")
     return app

@@ -1,0 +1,8 @@
+* 직렬 RLC 대역통과 (R1=10, L1=1m, C1=1u), 출력은 R1 양단
+* desc: 공진 주파수 f0 = 1/(2*pi*sqrt(L*C)) = 5.0329 kHz, Q = sqrt(L/C)/R = 3.162, 대역폭 BW = f0/Q = 1.5915 kHz
+V1 in 0 dc 0 ac 1
+L1 in n1 1m
+C1 n1 out 1u
+R1 out 0 10
+.ac dec 50 100 1meg
+.end

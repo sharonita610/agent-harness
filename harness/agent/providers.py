@@ -147,7 +147,7 @@ class OpenAICompatProvider:
     supports_stream = True
 
     def __init__(self, model: str, base_url: str | None = None, api_key: str | None = None,
-                 temperature: float = 0.2, max_tokens: int = 1024, extra_body: dict | None = None, name: str = "openai-compat"):
+                 temperature: float = 0.2, max_tokens: int = 2048, extra_body: dict | None = None, name: str = "openai-compat"):
         from openai import OpenAI
 
         self.name = name
@@ -202,7 +202,7 @@ class OpenAICompatProvider:
 class AnthropicProvider:
     """Anthropic Messages API. OpenAI 형식 메시지/툴 스키마를 변환해서 보낸다."""
 
-    def __init__(self, model: str, api_key: str | None = None, temperature: float = 0.2, max_tokens: int = 1024):
+    def __init__(self, model: str, api_key: str | None = None, temperature: float = 0.2, max_tokens: int = 2048):
         import anthropic
 
         self.name = "anthropic"

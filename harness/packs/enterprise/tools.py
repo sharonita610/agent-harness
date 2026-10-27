@@ -12,9 +12,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from ...tools.registry import Tier, Tool
-from .embeddings import OpenAIEmbedder, embedder_available
+from ...retrieval import OpenAIEmbedder, embedder_available
 from .scope import Scope, apply_scope
-from .search import DocIndex
+from ...retrieval import DocIndex
 from .seed import DEFAULT_DB, REFERENCE_DATE
 
 PACK_DIR = Path(__file__).parent

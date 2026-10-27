@@ -31,6 +31,7 @@ class Agent:
         context_budget_tokens: int = 24000,
         max_nudges: int = 1,
         max_calls_per_step: int = 4,
+        max_truncation_retries: int = 1,
         on_event: EventSink | None = None,
     ):
         self.provider = provider
@@ -43,6 +44,7 @@ class Agent:
         self.result_max_chars = result_max_chars
         self.context_budget_tokens = context_budget_tokens
         self.max_nudges = max_nudges
+        self.max_truncation_retries = max_truncation_retries
         self.max_calls_per_step = max_calls_per_step
         self.on_event = on_event
         names = "|".join(re.escape(n) for n in registry.names()) or "__none__"
@@ -59,6 +61,7 @@ class Agent:
         usage = Usage()
         tool_errors = 0
         nudges = 0
+        truncations = 0
 
         def emit(kind: str, step: int, **data: Any) -> None:
             ev = AgentEvent(kind=kind, step=step, data=data)  # type: ignore[arg-type]
@@ -101,6 +104,12 @@ class Agent:
             calls, dropped_note = self._dedupe_and_cap(calls, step, emit)
             if not calls:
                 text = (resp.text or "").strip()
+                if not text and resp.finish_reason == "length" and truncations < self.max_truncation_retries:
+                    # 추론(reasoning) 토큰이 출력 예산을 다 써서 본문이 빈 경우(gpt-oss 류): 짧게 가라고 한 번 되묻는다
+                    truncations += 1
+                    messages.append({"role": "user", "content": "출력이 길이 제한에 걸려 답이 비었습니다. 길게 생각하지 말고, 필요한 도구를 바로 함수 호출로 실행하거나 짧게 답하세요."})
+                    emit("nudge", step, reason="truncated_empty", completion_tokens=resp.usage.completion_tokens)
+                    continue
                 if nudges < self.max_nudges and self._text_tool_pattern.search(text):
                     # 도구를 글로만 쓴 경우: 한 번 되묻어 실제 호출을 유도한다
                     nudges += 1

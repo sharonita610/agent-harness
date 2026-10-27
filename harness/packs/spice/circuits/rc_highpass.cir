@@ -1,0 +1,7 @@
+* RC 고역통과 필터 (C1=100n, R1=1k)
+* desc: 1차 RC 고역통과. 차단 주파수 fc = 1/(2*pi*R*C) = 1.5915 kHz, 그 아래로 +20 dB/decade 로 감쇠
+V1 in 0 dc 0 ac 1
+C1 in out 100n
+R1 out 0 1k
+.ac dec 20 10 1meg
+.end

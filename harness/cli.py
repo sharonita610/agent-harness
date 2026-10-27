@@ -41,16 +41,19 @@ def _printer(verbose: bool):
     return on_event
 
 
-def _build_agent(provider: str, approve: str, max_steps: int, verbose: bool, scope: Optional[str] = None):
+PACK_HELP = "도메인 팩: enterprise | spice (기본은 HARNESS_PACK, 없으면 enterprise)"
+
+
+def _build_agent(provider: str, approve: str, max_steps: int, verbose: bool, scope: Optional[str] = None, pack: Optional[str] = None):
     from .agent.loop import Agent
     from .agent.providers import make_provider
-    from .packs.enterprise.scope import Scope
-    from .packs.enterprise.tools import SYSTEM_PROMPT, build_tools, scope_note
+    from .packs import load_pack
     from .tools.permissions import auto_approve, auto_deny, cli_approval
     from .tools.registry import ToolRegistry
 
+    pk = load_pack(pack)
     handler = {"ask": cli_approval, "deny": auto_deny, "approve": auto_approve}[approve]
-    sc = Scope.parse(scope)
+    sc = pk.parse_scope(scope)
     prov = make_provider(provider)
     if provider.startswith(("local", "compat")):
         from .agent.providers import DEFAULT_LOCAL_BASE_URL, wait_ready
@@ -61,7 +64,9 @@ def _build_agent(provider: str, approve: str, max_steps: int, verbose: bool, sco
             raise typer.Exit(1)
     if sc:
         console.print(f"[dim]데이터 범위: {sc.describe()}[/dim]")
-    return Agent(prov, ToolRegistry(build_tools(scope=sc)), SYSTEM_PROMPT + scope_note(sc), approval_handler=handler,
+    if pk.name != "enterprise":
+        console.print(f"[dim]팩: {pk.title} ({pk.name})[/dim]")
+    return Agent(prov, ToolRegistry(pk.build_tools(scope=sc)), pk.system_prompt + pk.scope_note(sc), approval_handler=handler,
                  max_steps=max_steps, on_event=_printer(verbose))
 
 
@@ -75,12 +80,14 @@ def seed():
 
 
 @app.command()
-def tools():
+def tools(pack: Optional[str] = typer.Option(None, help=PACK_HELP)):
     """등록된 도구와 권한 등급을 보여준다."""
-    from .packs.enterprise.tools import build_tools
+    from .packs import load_pack
     from .tools.permissions import Policy, describe
     pol = Policy()
-    for t in build_tools():
+    pk = load_pack(pack)
+    console.print(f"[bold]{pk.title}[/bold] ({pk.name}) · {pk.description}")
+    for t in pk.build_tools():
         console.print(f"[bold]{t.name:22}[/bold] {t.tier:12} {describe(pol.decide(t)):10} {t.description[:60]}")
 
 
@@ -89,9 +96,10 @@ def ask(question: str, provider: str = typer.Option("local", help="local | opena
         approve: str = typer.Option("ask", help="ask | deny | approve"), max_steps: int = 12,
         verbose: bool = True, json_out: Optional[Path] = typer.Option(None, help="결과를 JSON 으로 저장"),
         trace: bool = typer.Option(False, help="실행 트레이스를 traces/<run_id>.jsonl 로 저장 (HARNESS_OTLP_ENDPOINT 가 있으면 OTLP 로도 내보냄)"),
-        scope: Optional[str] = typer.Option(None, help="데이터 범위 시뮬레이션. 예: 'region=부산'")):
+        scope: Optional[str] = typer.Option(None, help="데이터 범위 시뮬레이션. 예: 'region=부산'"),
+        pack: Optional[str] = typer.Option(None, help=PACK_HELP)):
     """질문 하나를 에이전트에게 던진다."""
-    agent = _build_agent(provider, approve, max_steps, verbose, scope)
+    agent = _build_agent(provider, approve, max_steps, verbose, scope, pack)
     collector = None
     if trace:
         from .observability.tracer import TraceCollector
@@ -115,11 +123,13 @@ def ask(question: str, provider: str = typer.Option("local", help="local | opena
 
 
 @app.command()
-def chat(provider: str = "local", approve: str = "ask", max_steps: int = 12, verbose: bool = False):
+def chat(provider: str = "local", approve: str = "ask", max_steps: int = 12, verbose: bool = False,
+         pack: Optional[str] = typer.Option(None, help=PACK_HELP)):
     """대화형. 종료는 /q"""
-    agent = _build_agent(provider, approve, max_steps, verbose)
+    from .packs import load_pack
+    agent = _build_agent(provider, approve, max_steps, verbose, None, pack)
     history: list[dict] = []
-    console.print("[dim]회사 데이터 비서. /q 로 종료[/dim]")
+    console.print(f"[dim]{load_pack(pack).title}. /q 로 종료[/dim]")
     while True:
         try:
             q = console.input("[bold green]나> [/bold green]").strip()
@@ -138,10 +148,11 @@ def chat(provider: str = "local", approve: str = "ask", max_steps: int = 12, ver
 @app.command("eval")
 def eval_cmd(provider: str = "local", n: int = typer.Option(1, help="태스크당 반복 횟수"),
              tasks: Optional[Path] = None, limit: Optional[int] = None, tag: Optional[str] = None,
-             prompt: str = typer.Option("v1", help="시스템 프롬프트 버전: v1 | v2")):
+             prompt: str = typer.Option("v1", help="시스템 프롬프트 버전: v1 | v2"),
+             pack: Optional[str] = typer.Option(None, help=PACK_HELP)):
     """평가 태스크를 돌리고 성적표를 저장한다."""
     from .evals.runner import run_eval
-    run_eval(provider=provider, n=n, tasks_path=tasks, limit=limit, tag=tag, console=console, prompt_version=prompt)
+    run_eval(provider=provider, n=n, tasks_path=tasks, limit=limit, tag=tag, console=console, prompt_version=prompt, pack=pack)
 
 
 @app.command("retrieval-eval")
@@ -236,10 +247,10 @@ def users_remove(name: str):
 
 
 @app.command()
-def mcp():
+def mcp(pack: Optional[str] = typer.Option(None, help=PACK_HELP)):
     """회사 데이터 비서 도구를 MCP 서버(stdio) 로 노출한다."""
     from .mcp_server.enterprise_server import main
-    main()
+    main(pack)
 
 
 if __name__ == "__main__":

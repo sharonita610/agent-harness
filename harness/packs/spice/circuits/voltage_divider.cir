@@ -1,0 +1,7 @@
+* 저항 분압기 (12 V, R1=3k, R2=1k)
+* desc: Vout = Vin * R2/(R1+R2) = 3 V, 전류 I = Vin/(R1+R2) = 3 mA, R1 소비 전력 = I^2*R1 = 27 mW
+V1 in 0 dc 12
+R1 in out 3k
+R2 out 0 1k
+.op
+.end

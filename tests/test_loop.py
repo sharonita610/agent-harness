@@ -146,3 +146,29 @@ def test_salvages_fenced_json_tool_call_block():
     single = salvage_text_tool_calls('```json\n{"name": "add", "arguments": {"a": 1, "b": 2}}\n```')
     assert single[0].name == "add"
     assert salvage_text_tool_calls("```sql\nSELECT 1\n```") == []
+
+
+def test_truncated_empty_completion_is_retried_once():
+    """추론 토큰이 예산을 다 써 본문이 빈 채 finish=length 로 끝나면 한 번 되묻고, 두 번째엔 정상 답을 받는다."""
+    from harness.agent.loop import Agent
+    from harness.agent.types import LLMResponse
+    from harness.agent.types import Usage
+    from harness.tools.registry import ToolRegistry
+
+    class Trunc:
+        model = "fake"
+
+        def __init__(self):
+            self.calls = 0
+
+        def complete(self, messages, schemas, **_):
+            self.calls += 1
+            if self.calls == 1:
+                return LLMResponse(text=None, tool_calls=[], usage=Usage(prompt_tokens=10, completion_tokens=1024), finish_reason="length")
+            assert any("길이 제한" in (m.get("content") or "") for m in messages if m["role"] == "user")
+            return LLMResponse(text="짧은 답", tool_calls=[], usage=Usage(prompt_tokens=10, completion_tokens=3), finish_reason="stop")
+
+    prov = Trunc()
+    res = Agent(prov, ToolRegistry([]), "sys").run("질문")
+    assert res.answer == "짧은 답" and prov.calls == 2 and res.stopped_reason == "final"
+    assert any(e.kind == "nudge" and e.data.get("reason") == "truncated_empty" for e in res.events)
