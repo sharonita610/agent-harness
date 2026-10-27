@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="388" viewBox="0 0 760 388" role="img" aria-label="한빛상사 더미 데이터 개요" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', Helvetica, Arial, sans-serif">
+<rect width="760" height="388" fill="#fcfcfb" rx="12"/>
+<text x="20" y="30" font-size="16" font-weight="600" fill="#0b0b0b">한빛상사 더미 데이터 개요</text>
+<text x="20" y="50" font-size="12" fill="#52514e">주문 3,000건 · 거래처 50곳 · 상품 200개 · 규정 문서 10개 · 시드 고정(재생성해도 동일)</text>
+<text x="20" y="86" font-size="13" font-weight="600" fill="#0b0b0b">주문 상태별 건수</text>
+<text x="98" y="112" font-size="12" text-anchor="end" fill="#52514e">완료</text>
+<path d="M106 100 h196 a4 4 0 0 1 4 4 v8 a4 4 0 0 1 -4 4 h-196 z" fill="#2a78d6"/>
+<text x="312" y="112" font-size="12" fill="#0b0b0b">2,523건</text>
+<text x="98" y="138" font-size="12" text-anchor="end" fill="#52514e">지연</text>
+<path d="M106 126 h16 a4 4 0 0 1 4 4 v8 a4 4 0 0 1 -4 4 h-16 z" fill="#2a78d6"/>
+<text x="132" y="138" font-size="12" fill="#0b0b0b">255건</text>
+<text x="98" y="164" font-size="12" text-anchor="end" fill="#52514e">취소</text>
+<path d="M106 152 h10 a4 4 0 0 1 4 4 v8 a4 4 0 0 1 -4 4 h-10 z" fill="#2a78d6"/>
+<text x="126" y="164" font-size="12" fill="#0b0b0b">175건</text>
+<text x="98" y="190" font-size="12" text-anchor="end" fill="#52514e">출고</text>
+<path d="M106 178 h2 a0 0 0 0 1 0 0 v16 a0 0 0 0 1 -0 0 h-2 z" fill="#2a78d6"/>
+<text x="114" y="190" font-size="12" fill="#0b0b0b">19건</text>
+<text x="98" y="216" font-size="12" text-anchor="end" fill="#52514e">배송중</text>
+<path d="M106 204 h2 a0 0 0 0 1 0 0 v16 a0 0 0 0 1 -0 0 h-2 z" fill="#2a78d6"/>
+<text x="114" y="216" font-size="12" fill="#0b0b0b">15건</text>
+<text x="98" y="242" font-size="12" text-anchor="end" fill="#52514e">접수</text>
+<path d="M106 230 h2 a0 0 0 0 1 0 0 v16 a0 0 0 0 1 -0 0 h-2 z" fill="#2a78d6"/>
+<text x="114" y="242" font-size="12" fill="#0b0b0b">13건</text>
+<text x="390" y="86" font-size="13" font-weight="600" fill="#0b0b0b">지연 사유 (지연 주문 기준)</text>
+<text x="468" y="112" font-size="12" text-anchor="end" fill="#52514e">재고 부족</text>
+<path d="M476 100 h196 a4 4 0 0 1 4 4 v8 a4 4 0 0 1 -4 4 h-196 z" fill="#2a78d6"/>
+<text x="682" y="112" font-size="12" fill="#0b0b0b">112건</text>
+<text x="468" y="138" font-size="12" text-anchor="end" fill="#52514e">배송사 지연</text>
+<path d="M476 126 h142 a4 4 0 0 1 4 4 v8 a4 4 0 0 1 -4 4 h-142 z" fill="#2a78d6"/>
+<text x="628" y="138" font-size="12" fill="#0b0b0b">82건</text>
+<text x="468" y="164" font-size="12" text-anchor="end" fill="#52514e">주소 오류</text>
+<path d="M476 152 h66 a4 4 0 0 1 4 4 v8 a4 4 0 0 1 -4 4 h-66 z" fill="#2a78d6"/>
+<text x="552" y="164" font-size="12" fill="#0b0b0b">39건</text>
+<text x="468" y="190" font-size="12" text-anchor="end" fill="#52514e">결제 확인 지연</text>
+<path d="M476 178 h35 a4 4 0 0 1 4 4 v8 a4 4 0 0 1 -4 4 h-35 z" fill="#2a78d6"/>
+<text x="521" y="190" font-size="12" fill="#0b0b0b">22건</text>
+<text x="20" y="286" font-size="13" font-weight="600" fill="#0b0b0b">거래처 등급</text>
+<text x="98" y="312" font-size="12" text-anchor="end" fill="#52514e">등급 A</text>
+<path d="M106 300 h66 a4 4 0 0 1 4 4 v8 a4 4 0 0 1 -4 4 h-66 z" fill="#2a78d6"/>
+<text x="182" y="312" font-size="12" fill="#0b0b0b">8곳</text>
+<text x="98" y="338" font-size="12" text-anchor="end" fill="#52514e">등급 B</text>
+<path d="M106 326 h161 a4 4 0 0 1 4 4 v8 a4 4 0 0 1 -4 4 h-161 z" fill="#2a78d6"/>
+<text x="277" y="338" font-size="12" fill="#0b0b0b">19곳</text>
+<text x="98" y="364" font-size="12" text-anchor="end" fill="#52514e">등급 C</text>
+<path d="M106 352 h196 a4 4 0 0 1 4 4 v8 a4 4 0 0 1 -4 4 h-196 z" fill="#2a78d6"/>
+<text x="312" y="364" font-size="12" fill="#0b0b0b">23곳</text>
+<text x="390" y="286" font-size="13" font-weight="600" fill="#0b0b0b">재고 항목 (안전재고 기준)</text>
+<text x="468" y="312" font-size="12" text-anchor="end" fill="#52514e">미달</text>
+<path d="M476 300 h115 a4 4 0 0 1 4 4 v8 a4 4 0 0 1 -4 4 h-115 z" fill="#2a78d6"/>
+<text x="601" y="312" font-size="12" fill="#0b0b0b">149개</text>
+<text x="468" y="338" font-size="12" text-anchor="end" fill="#52514e">정상</text>
+<path d="M476 326 h196 a4 4 0 0 1 4 4 v8 a4 4 0 0 1 -4 4 h-196 z" fill="#2a78d6"/>
+<text x="682" y="338" font-size="12" fill="#0b0b0b">251개</text>
+</svg>
