@@ -40,6 +40,13 @@ uv run harness eval --n 1            # 평가 → harness/evals/results/*.md
 ```
 다른 모델: `--provider anthropic:claude-sonnet-4-5` (ANTHROPIC_API_KEY), `--provider openai:gpt-5-mini` (OPENAI_API_KEY), `--provider compat:http://host:port/v1|model`.
 
+로컬 모델 두 가지 (24GB 맥 기준, 한 번에 하나만):
+| 모델 | 띄우기 | 생성 속도 | 용도 |
+|---|---|---|---|
+| Hermes-4-14B Q4_K_M (9GB) | `scripts/serve_llm.sh` | ~24 tok/s | 하네스 비교군. 64K 는 YaRN 자동 적용 |
+| gpt-oss-20b MXFP4 (12GB) | `LLM_MODEL_PATH=~/.cache/local-agent-lab/models/gpt-oss-20b-MXFP4.gguf scripts/serve_llm.sh` | ~65 tok/s | 추천. 네이티브 128K, 툴콜 안정, Hermes Agent 에서도 동작 |
+gpt-oss-20b 파일은 `curl -L -C - -o ~/.cache/local-agent-lab/models/gpt-oss-20b-MXFP4.gguf https://huggingface.co/ggml-org/gpt-oss-20b-GGUF/resolve/main/gpt-oss-20b-MXFP4.gguf` 로 받는다.
+
 ## MCP 로 쓰기
 ```bash
 uv run python scripts/mcp_check.py   # 서버 띄워 도구 목록·호출·리소스 확인
@@ -49,6 +56,18 @@ Claude Desktop `claude_desktop_config.json` 예시:
 {"mcpServers": {"hanbit-enterprise": {"command": "uv", "args": ["run", "--directory", "/절대/경로/local-agent-lab", "harness", "mcp"]}}}
 ```
 read 도구는 `readOnlyHint`, write 도구는 설명에 "실행 전 사용자 확인 필요" 를 달아 노출하고, destructive 도구는 노출하지 않는다.
+
+Hermes Agent 연결 (검증 완료, gpt-oss-20b 기준 27초에 답):
+```yaml
+# ~/.hermes/config.yaml
+model: {default: "local-llm", provider: "custom", base_url: "http://127.0.0.1:8080/v1", api_key: "llama.cpp", context_length: 65536}
+mcp_servers:
+  hanbit: {command: "uv", args: ["run", "--directory", "/절대/경로/local-agent-lab", "harness", "mcp"], prompts: false, resources: false}
+```
+```bash
+hermes chat -q "hanbit 도구로 현재 상태가 '지연'인 주문이 몇 건인지 조회해서 숫자만 답해." --oneshot -Q -t mcp-hanbit
+```
+Hermes 는 64K 미만 컨텍스트를 거부하고, 자체 프롬프트가 1.8만 토큰이라 로컬 모델은 gpt-oss-20b 급이 필요하다. `-t mcp-hanbit` 으로 우리 도구만 켜면 Hermes 의 터미널 도구가 붙지 않아 안전하다.
 
 ## 설계 결정 (요약, 상세는 `docs/decisions/`)
 - **도구를 작게, 에러를 모델이 고칠 수 있게**: `run_sql` 은 SELECT 단일 문장만, LIMIT 강제, 읽기 전용 연결 + SQLite authorizer 이중 방어. 실패 메시지는 "describe_table 로 컬럼명을 확인하세요" 처럼 다음 행동을 알려준다.

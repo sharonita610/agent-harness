@@ -58,3 +58,12 @@ uv run harness eval --n 1            # 평가 16개
 - 대안: gpt-oss-20b (네이티브 128K, 활성 3.6B, Apache 2.0) 를 `~/.cache/local-agent-lab/models/` 로 받는 중. `LLM_MODEL_PATH=` 로 띄운다.
 - 포트 주의: 8081 은 Expo 개발 서버가 쓰고 있었음(다른 세션). 테스트는 8099 사용 후 종료.
 - Hermes 소스 메모: Hermes 3/4 모델은 "agentic 아님" 경고가 내장돼 있음(툴콜 불안정) → 비교 실험 거리.
+
+### gpt-oss-20b 로 교체 후 (2026-10-27 10:40)
+- 파일: `~/.cache/local-agent-lab/models/gpt-oss-20b-MXFP4.gguf` (12.1GB, curl 로 ~29분). 서버: `LLM_MODEL_PATH=… scripts/serve_llm.sh 65536` → n_ctx_slot 65536, YaRN 불필요(네이티브 128K).
+- 메모리: 모델 로드 후 여유 10% (Hermes-4-14B 때 13%). 한 번에 하나만.
+- 속도: 프롬프트 277 tok/s, 생성 65.6 tok/s (Hermes-4-14B: ~130 / 24). MoE 활성 3.6B 효과.
+- 함수 호출: 네이티브 동작, reasoning_content 분리 반환(Harmony 템플릿, --jinja).
+- 우리 하네스: "지난달 재고 부족 지연 주문 + 책임" 질문 정답(5건, 회사 책임, 출처 인용).
+- **Hermes Agent + hanbit MCP: 성공.** "지연 주문 몇 건" → `255` 를 27초 만에 답함. Hermes-4-14B 로는 20분 넘게 도구 호출을 못 끝냈음.
+- 결론: Hermes Agent 안에서 돌릴 로컬 모델은 gpt-oss-20b. Hermes-4-14B 는 우리 하네스 비교군으로만.
