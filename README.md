@@ -203,12 +203,15 @@ docker run -d --name jaeger -p 16686:16686 -p 4318:4318 jaegertracing/jaeger:2.4
 scripts/serve_embed.sh            # embeddinggemma-300m 임베딩 서버(8082). 없으면 자동으로 BM25 만 사용
 uv run harness retrieval-eval     # bm25 / vector / hybrid 의 hit@1, hit@3, MRR
 ```
-| 모드 | hit@1 | hit@3 | MRR |
-|---|---|---|---|
-| bm25 | 89% | 94% | 0.91 |
-| vector | 100% | 100% | 1.00 |
-| hybrid | 94% | 100% | 0.97 |
-질문 18개, 문서 10개 기준. 융합은 RRF. 설계와 해석: ADR-008.
+| 모드 | 임베딩 | hit@1 | hit@3 | MRR |
+|---|---|---|---|---|
+| bm25 | - | 89% | 94% | 0.91 |
+| vector | embeddinggemma-300m (로컬, 8082) | 100% | 100% | 1.00 |
+| hybrid | embeddinggemma-300m (로컬) | 94% | 100% | 0.97 |
+| vector | text-embedding-3-small (OpenAI) | 100% | 100% | 1.00 |
+| hybrid | text-embedding-3-small (OpenAI) | 100% | 100% | 1.00 |
+
+질문 18개, 문서 10개 기준. 융합은 RRF. 로컬 하이브리드가 놓친 1문항("거래처 등급은 어떻게 정해져")은 BM25 가 '거래처 등급' 단어가 많은 할인 규정을 1위로 올렸고 로컬 임베딩의 순위 차가 작아 융합에서 밀린 경우다. OpenAI 임베딩에선 순위 차가 커서 복구됐다. 호스팅 임베딩은 `HARNESS_EMBED_BASE_URL=https://api.openai.com/v1 HARNESS_EMBED_MODEL=text-embedding-3-small` 로 바꿔 끼운다(키는 `OPENAI_API_KEY`). 설계와 해석: ADR-008.
 
 ## MCP 로 쓰기
 ```bash

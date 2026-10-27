@@ -155,3 +155,7 @@ uv run harness eval --n 1            # 평가 16개
 - 플랫폼 변경: `harness/packs/__init__.py`(Pack 인터페이스, load_pack), 검색 모듈 `harness/retrieval/` 로 이동(enterprise 쪽은 재노출 셈), 평가 러너에 `truth_expr`(안전 산술 평가기)·`tolerance_pct`·단위 접두사 숫자 추출, 루프 `tool_result` 에 `url` 첨부, 서비스 `/files/<팩>` 마운트·`/health.pack`(제목·예시·라벨), 화면은 팩 정보로 머리말·예시·라벨을 그리고 그래프를 타임라인에 바로 표시.
 - 평가 16문제(해석 8·스윕 2·문서 2·저장 1·함정 3). n=1 v1: 88%(s06 llama-server 500 "peg-native" 파싱 오류 → 프로바이더 1회 재시도 추가, d01 모델이 '1M=메가' 로 오답+매뉴얼 미검색 → v2 "반드시 search_manual"). n=3 v2: 92%(44/48). 실패: s06 ×2(.op 에 측정식·파형 도구를 반복 시도, 1건은 max_steps 빈 답 → get_waveform 이 .op 값을 바로 돌려주게 수정), s08 ×1(11스텝 뒤 빈 답), x01 ×1(도구 대신 "승인해 달라" 되물음). t02 "지원되지 않습니다" 거절을 기대 목록에 추가해 재채점(1건). p50 12s, p95 118s(인버터·분압기 문제가 길다), 실행당 토큰 14.9k(회사 팩의 4배: 넷리스트·결과가 길다).
 - 비교: 회사 팩 gpt-oss-20b 98~100% vs 회로 팩 92%. 차이는 도구 결과가 길고(파형·스윕 표) 추론형 모델이 생각에 토큰을 많이 써서 빈 답이 나오는 데서 온다. 다음 개선 후보: 결과 요약 압축, 빈 출력 되묻기 2회, .op 전용 안내 강화.
+
+### OpenAI 키로 두 가지 비교 (2026-10-28)
+- 검색 평가 18문항, OpenAI text-embedding-3-small: vector 100% / hybrid 100%(로컬 embeddinggemma 100% / 94%). 로컬 하이브리드 미스 1건("거래처 등급은 어떻게 정해져" → 할인 승인 규정)은 BM25 오답이 RRF 에서 이긴 경우. 비용: 청크 37개 + 질문 18개 임베딩, 사실상 0.
+- 모델 비교 행: gpt-5-mini 로 회사 팩(v1) n=3, 회로 팩(v2) n=3. gpt-5 계열은 max_tokens 대신 max_completion_tokens, temperature 고정 → 프로바이더가 모델명으로 분기. 결과는 README 두 표.
