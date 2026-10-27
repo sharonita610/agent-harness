@@ -9,7 +9,7 @@ RUN npm run build
 # ---- 2) 파이썬 서비스
 FROM python:3.12-slim AS app
 ENV PYTHONUNBUFFERED=1 UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends curl ngspice && rm -rf /var/lib/apt/lists/*   # ngspice: spice 팩(회로 시뮬레이션)
 COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /usr/local/bin/uv
 WORKDIR /app
 COPY pyproject.toml uv.lock ./

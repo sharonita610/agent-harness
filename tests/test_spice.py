@@ -37,6 +37,11 @@ def test_guard_blocks_dangerous_or_empty(bad):
         parse_netlist(bad)
 
 
+def test_escaped_newlines_are_unescaped():
+    nl = parse_netlist("* RC\\nV1 in 0 dc 0 ac 1\\nR1 in out 1k\\nC1 out 0 100n\\n.ac dec 20 10 1meg\\n.end")
+    assert [c.name for c in nl.components] == ["V1", "R1", "C1"] and nl.analysis_kind == "ac"
+
+
 def test_inline_measure_is_absorbed():
     nl = parse_netlist(RC + "\n.measure ac fc WHEN vdb(out)=-3\n.end")
     assert nl.inline_measurements == ["ac fc WHEN vdb(out)=-3"] and not any(ln.startswith(".meas") for ln in nl.lines)
@@ -180,3 +185,14 @@ def test_save_and_delete_circuit(reg, tmp_path):
     with pytest.raises(ValueError):
         reg.get("delete_circuit").run({"name": "rc_lowpass"})
     assert reg.get("delete_circuit").run({"name": "my_rc"}) == {"deleted": "my_rc"}
+
+
+@needs_ngspice
+def test_op_ignores_measurements_with_warning(reg):
+    r = reg.get("run_simulation").run({"netlist": "* div\nV1 in 0 dc 12\nR1 in out 3k\nR2 out 0 1k\n.op", "measurements": ["v(out)", "i(V1)"]})
+    assert r["measurements"]["out"] == 3.0 and any("무시" in w for w in r["warnings"])
+
+
+def test_prompt_v2_differs():
+    from harness.packs.spice.tools import SYSTEM_PROMPTS
+    assert SYSTEM_PROMPTS["v1"] != SYSTEM_PROMPTS["v2"] and "반드시 search_manual" in SYSTEM_PROMPTS["v2"]

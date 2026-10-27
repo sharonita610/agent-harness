@@ -70,6 +70,7 @@ pre,code{font-family:var(--mono);font-size:12.5px}
 .step .label{font-weight:600}.step.err .label{color:var(--stamp)}.step.warn .label{color:var(--warn)}
 .step .brief{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60ch}
 .step details{margin-top:4px}.step summary{cursor:pointer;color:var(--act);font-size:13px;list-style:none}.step summary::-webkit-details-marker{display:none}
+.step img.plot{display:block;margin:8px 0 2px;max-width:100%;height:auto;background:#fff;border:1px solid var(--rule);border-radius:6px}
 .step pre{margin:6px 0 0;white-space:pre-wrap;word-break:break-all;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:8px 10px;max-height:220px;overflow:auto}
 .empty{color:var(--ink-3);font-size:14px}
 

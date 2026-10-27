@@ -11,6 +11,7 @@ services:
     environment:
       LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:8080/v1}
       HARNESS_PROVIDER: ${HARNESS_PROVIDER:-local}
+      HARNESS_PACK: ${HARNESS_PACK:-enterprise}      # enterprise(회사 데이터) | spice(회로 시뮬레이션)
       HARNESS_EMBED_BASE_URL: http://embed:8082/v1
       HARNESS_OTLP_ENDPOINT: http://jaeger:4318/v1/traces
       HARNESS_SERVICE_DB: /app/data/service.db

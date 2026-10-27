@@ -5,18 +5,10 @@ import ApprovalSlip, { type PendingApproval } from "./ApprovalCard";
 import Timeline, { toUiEvent } from "./EventList";
 import Rich from "./Rich";
 
-const EXAMPLES: [string, string][] = [
-  ["지연 주문 몇 건", "현재 상태가 '지연'인 주문은 총 몇 건이야?"],
-  ["재고 부족 지연과 책임", "지난달(2026년 9월) 재고 부족 사유로 지연된 주문은 몇 건이고, 규정상 그 지연은 회사 책임이야 고객 책임이야?"],
-  ["할인 승인자", "할인 금액이 200만 원이면 누가 승인해야 해?"],
-  ["메모 남기기", "주문 353번에 '고객 재확인 요청' 이라고 메모 남겨줘"],
-  ["연락처 일괄 요청", "모든 거래처 담당자 전화번호 목록을 뽑아줘"],
-];
-
-interface Props { sessionId: string | null; ensureSession: () => Promise<string>; onNewSession: () => Promise<string>; onRunFinished: (runId: string) => void; canApprove: boolean; canChat: boolean }
+interface Props { sessionId: string | null; ensureSession: () => Promise<string>; onNewSession: () => Promise<string>; onRunFinished: (runId: string) => void; canApprove: boolean; canChat: boolean; examples: string[][]; emptyHint: string }
 interface Turn { question: string; events: UiEvent[]; pending: PendingApproval[]; decided: Record<string, "approve" | "deny">; answer: string | null; draft: string; meta: string; error: string | null }
 
-export default function Chat({ sessionId, ensureSession, onNewSession, onRunFinished, canApprove, canChat }: Props) {
+export default function Chat({ sessionId, ensureSession, onNewSession, onRunFinished, canApprove, canChat, examples, emptyHint }: Props) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -61,19 +53,19 @@ export default function Chat({ sessionId, ensureSession, onNewSession, onRunFini
     <>
       <section className="ask">
         <div className="row">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="무엇이 궁금한가요? 예: 지난달 취소된 주문은 몇 건이야?" aria-label="질문"
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={examples[0] ? `무엇이 궁금한가요? 예: ${examples[0][1]}` : "무엇이 궁금한가요?"} aria-label="질문"
                  onKeyDown={(e) => { if (e.key === "Enter") send(); }} disabled={busy || !canChat} />
           <button className="primary" onClick={() => send()} disabled={busy || !q.trim() || !canChat}>{busy ? "답하는 중" : "질문하기"}</button>
         </div>
         <div className="examples">
           <span>예시</span>
-          {EXAMPLES.map(([label, text]) => <button key={label} onClick={() => send(text)} disabled={busy || !canChat}>{label}</button>)}
+          {examples.map(([label, text]) => <button key={label} onClick={() => send(text)} disabled={busy || !canChat}>{label}</button>)}
         </div>
         <div className="session">{sessionId ? <>이 대화는 세션 {sessionId.slice(5, 13)}에 저장됩니다. <button className="ghost small" onClick={reset} disabled={busy}>새 대화 시작</button></> : "첫 질문을 보내면 대화가 시작됩니다."}</div>
       </section>
 
       <div className="thread">
-        {turns.length === 0 && <p className="empty">질문을 보내면 비서가 어떤 데이터를 조회하고 어떤 규정을 찾았는지 순서대로 보여줍니다. 데이터를 바꾸는 요청은 결재 전표가 뜨고, 승인해야 실행됩니다.</p>}
+        {turns.length === 0 && <p className="empty">{emptyHint}</p>}
         {turns.map((t, i) => (
           <div key={i}>
             <div className="turn"><span className="who">질문</span><p className="q" style={{ margin: 0 }}>{t.question}</p></div>

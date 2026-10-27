@@ -32,8 +32,9 @@ class Pack:
     seed: Callable[[], Any] | None = None             # 데이터 준비(없으면 None)
     mcp_name: str = "agent-harness"
     mcp_instructions: str = ""
-    welcome: str = ""                                 # 화면 빈 상태 문구
-    examples: list[str] = field(default_factory=list)  # 화면 예시 질문
+    welcome: str = ""                                 # 화면 머리말 한 줄
+    examples: list[list[str]] = field(default_factory=list)  # 화면 예시 [라벨, 질문]
+    empty_hint: str = ""                              # 대화가 비었을 때 안내
 
     @property
     def system_prompt(self) -> str:

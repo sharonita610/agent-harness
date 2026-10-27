@@ -200,7 +200,7 @@ def build_tools(circuits_dir: Path = CIRCUITS_DIR, docs_dir: Path = DOCS_DIR, ru
         out = d / "plot.svg"
         out.write_text(svg, encoding="utf-8")
         return {"run_id": a.run_id, "svg_path": str(out), "url": f"/files/spice/{a.run_id}/plot.svg", "series": [s.label for s in fig.series],
-                "points": len(rows), "note": "그래프는 화면의 결과 카드에 표시된다. 답변에는 '그래프를 첨부했다' 고만 적는다."}
+                "points": len(rows), "note": "그래프는 화면의 결과 카드에 자동으로 표시된다. 답변에는 핵심 수치(측정값·범위)를 적고 '그래프를 첨부했다' 고 덧붙인다. 그림을 글로 그리지 않는다."}
 
     def run_sweep(a: SweepArgs) -> Any:
         if not ngspice_available():
@@ -294,7 +294,11 @@ SYSTEM_PROMPT = """당신은 회로 시뮬레이션 비서입니다. ngspice 를
 - 시정수 'tau WHEN v(out)=0.632' · 상승 시간 'trise TRIG v(out) VAL=0.1 RISE=1 TARG v(out) VAL=0.9 RISE=1' · 최대 'vmax MAX v(out)'
 """
 
-SYSTEM_PROMPT_V2 = SYSTEM_PROMPT  # 프롬프트 개선 실험은 enterprise 팩에서 했다. 여기선 같은 내용으로 두고 버전 키만 맞춘다.
+# v2: n=1 평가에서 d01("1M 은 메가야 밀리야?")에 모델이 자기 지식(틀림)으로 답하고 매뉴얼을 안 찾았다 → 규칙 3을 "확실하지 않으면" 에서 "항상" 으로.
+SYSTEM_PROMPT_V2 = SYSTEM_PROMPT.replace(
+    "3. 문법·측정식·오류·공식이 확실하지 않으면 search_manual 로 찾고, 답에 출처(문서 > 절)를 적습니다.",
+    "3. 넷리스트 문법·접미사(k/m/meg)·측정식·오류 메시지·공식을 묻는 질문은 자기 지식으로 답하지 말고 반드시 search_manual 로 먼저 확인한 뒤, 답에 출처(문서 > 절)를 적습니다.")
+assert SYSTEM_PROMPT_V2 != SYSTEM_PROMPT
 SYSTEM_PROMPTS = {"v1": SYSTEM_PROMPT, "v2": SYSTEM_PROMPT_V2}
 
 TOOL_LABELS = {

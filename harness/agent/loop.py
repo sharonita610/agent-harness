@@ -198,7 +198,8 @@ class Agent:
             return msg, False
         content = truncate_result(result, self.result_max_chars)
         entry["result_preview"] = content[:300]
-        emit("tool_result", step, name=call.name, preview=content[:300], chars=len(content))
+        extra = {"url": result["url"]} if isinstance(result, dict) and isinstance(result.get("url"), str) else {}
+        emit("tool_result", step, name=call.name, preview=content[:300], chars=len(content), **extra)
         return content, True
 
     def _dedupe_and_cap(self, calls: list[ToolCall], step: int, emit) -> tuple[list[ToolCall], str | None]:

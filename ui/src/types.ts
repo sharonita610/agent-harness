@@ -1,6 +1,7 @@
 export type Tier = "read" | "write" | "destructive";
 
-export interface Health { status: string; tools: number; provider: string; pending_approvals: number; auth_required?: boolean; model?: { provider: string; reachable: boolean; hosted: boolean } }
+export interface Pack { name: string; title: string; description: string; welcome: string; examples: string[][]; empty_hint: string; tool_labels: Record<string, string> }
+export interface Health { status: string; tools: number; provider: string; pending_approvals: number; auth_required?: boolean; model?: { provider: string; reachable: boolean; hosted: boolean }; pack?: Pack }
 export interface Tool { name: string; tier: Tier; policy: string; description: string }
 export interface Session { id: string; created_at: string; provider: string; title: string | null; messages: { role: string; content: string; created_at: string }[] }
 export interface Run {
@@ -17,4 +18,4 @@ export interface Span {
 export interface Trace { summary: { spans: number; llm_calls: number; tool_calls: number; tool_errors: number; approvals?: number; llm_ms: number; tool_ms: number; human_ms?: number; total_ms: number }; spans: Span[] }
 
 /** 채팅 스트림에서 화면에 쌓는 한 줄 */
-export interface UiEvent { id: number; kind: string; label: string; detail: string; tone: "" | "tool" | "ok" | "err" | "warn"; approvalId?: string }
+export interface UiEvent { id: number; kind: string; label: string; detail: string; tone: "" | "tool" | "ok" | "err" | "warn"; approvalId?: string; image?: string }

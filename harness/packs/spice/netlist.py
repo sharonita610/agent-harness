@@ -108,7 +108,9 @@ _NODE_COUNT = {"R": 2, "L": 2, "C": 2, "V": 2, "I": 2, "D": 2, "B": 2, "S": 4, "
 
 
 def _split_lines(text: str) -> list[str]:
-    """줄 연속(+), 주석($ ;), CRLF 정리."""
+    """줄 연속(+), 주석($ ;), CRLF 정리. 모델이 JSON 이스케이프된 '\\n' 을 글자 그대로 보낸 경우도 줄바꿈으로 되돌린다."""
+    if "\n" not in text and "\\n" in text:
+        text = text.replace("\\n", "\n").replace("\\t", " ")
     raw = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     out: list[str] = []
     for ln in raw:

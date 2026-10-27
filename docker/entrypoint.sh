@@ -2,7 +2,7 @@
 # DB 가 없으면 시드. 그 다음 API 서버.
 set -e
 cd /app
-if [ ! -f data/enterprise.db ]; then
+if [ "${HARNESS_PACK:-enterprise}" = "enterprise" ] && [ ! -f data/enterprise.db ]; then
   echo "[entrypoint] data/enterprise.db 없음 → 시드 생성"
   uv run --no-sync harness seed
 fi

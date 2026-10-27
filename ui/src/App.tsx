@@ -6,6 +6,7 @@ import Approvals from "./components/Approvals";
 import Jobs from "./components/Jobs";
 import Runs from "./components/Runs";
 import RunDetail from "./components/RunDetail";
+import { setToolLabels } from "./components/EventList";
 import type { Health } from "./types";
 
 type Tab = "runs" | "jobs" | "approvals";
@@ -25,18 +26,19 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const refreshHealth = useCallback(async () => {
-    try { setHealth(await api.health()); setDown(false); } catch { setDown(true); }
+    try { const h = await api.health(); setToolLabels(h.pack?.tool_labels); setHealth(h); setDown(false); } catch { setDown(true); }
     try { setMe(await api.me()); setAuthErr(null); } catch (e) { setMe(null); setAuthErr(String((e as Error).message)); }
   }, []);
   useEffect(() => { refreshHealth(); const t = setInterval(refreshHealth, 5000); return () => clearInterval(t); }, [refreshHealth]);
+  useEffect(() => { if (health?.pack?.title) document.title = health.pack.title; }, [health?.pack?.title]);
   const newSession = useCallback(async () => { const s = await api.createSession(); setSessionId(s.id); return s.id; }, []);
 
   return (
     <div className="app">
       <header className="masthead">
         <div>
-          <h1>한빛상사 비서</h1>
-          <p>주문과 재고를 조회하고 규정을 찾아 답합니다. 데이터를 바꾸는 일은 결재를 받은 뒤에만 합니다.</p>
+          <h1>{health?.pack?.title ?? "비서"}</h1>
+          <p>{health?.pack?.welcome ?? "도구를 호출해 답하고, 바꾸는 일은 결재를 받은 뒤에만 합니다."}</p>
         </div>
         <div className="status">
           <span><i className={`dot ${down ? "off" : ""}`} />{down ? "서버에 연결되지 않았습니다" : health ? <>도구 <b>{health.tools}개</b></> : "연결 확인 중"}</span>
@@ -52,6 +54,7 @@ export default function App() {
       <div className="layout">
         <main>
           <Chat sessionId={sessionId} ensureSession={newSession} onNewSession={newSession} canApprove={me?.can.approve ?? false} canChat={(me?.can.chat ?? false) && (health?.model ? health.model.hosted || health.model.reachable : true)}
+                examples={health?.pack?.examples ?? []} emptyHint={health?.pack?.empty_hint ?? "질문을 보내면 비서가 한 일을 순서대로 보여줍니다."}
                 onRunFinished={(runId) => { setRefreshKey((k) => k + 1); setSelectedRun(runId); refreshHealth(); }} />
         </main>
         <aside className="ledger">

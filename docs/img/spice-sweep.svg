@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" width="720" height="400" role="img" font-family="Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif" font-size="12">
+<text x="72" y="24" fill="#1B2430" font-size="14" font-weight="600">R1 스윕: 차단 주파수 (C=100nF, 9점)</text>
+<line x1="166.5" y1="44" x2="166.5" y2="348" stroke="#D9DEE3" stroke-width="0.5" stroke-dasharray="2 3"/>
+<line x1="291.5" y1="44" x2="291.5" y2="348" stroke="#D9DEE3" stroke-width="0.5" stroke-dasharray="2 3"/>
+<line x1="480.5" y1="44" x2="480.5" y2="348" stroke="#D9DEE3" stroke-width="0.5" stroke-dasharray="2 3"/>
+<line x1="605.5" y1="44" x2="605.5" y2="348" stroke="#D9DEE3" stroke-width="0.5" stroke-dasharray="2 3"/>
+<line x1="72.0" y1="44" x2="72.0" y2="348" stroke="#D9DEE3" stroke-width="1"/>
+<text x="72.0" y="366" fill="#5C6672" text-anchor="middle">100 Ω</text>
+<line x1="386.0" y1="44" x2="386.0" y2="348" stroke="#D9DEE3" stroke-width="1"/>
+<text x="386.0" y="366" fill="#5C6672" text-anchor="middle">1 kΩ</text>
+<line x1="700.0" y1="44" x2="700.0" y2="348" stroke="#D9DEE3" stroke-width="1"/>
+<text x="700.0" y="366" fill="#5C6672" text-anchor="middle">10 kΩ</text>
+<line x1="72" y1="329.7" x2="700" y2="329.7" stroke="#D9DEE3" stroke-width="1"/>
+<text x="64" y="333.7" fill="#5C6672" text-anchor="end">0 Hz</text>
+<line x1="72" y1="246.3" x2="700" y2="246.3" stroke="#D9DEE3" stroke-width="1"/>
+<text x="64" y="250.3" fill="#5C6672" text-anchor="end">5 kHz</text>
+<line x1="72" y1="163.0" x2="700" y2="163.0" stroke="#D9DEE3" stroke-width="1"/>
+<text x="64" y="167.0" fill="#5C6672" text-anchor="end">10 kHz</text>
+<line x1="72" y1="79.6" x2="700" y2="79.6" stroke="#D9DEE3" stroke-width="1"/>
+<text x="64" y="83.6" fill="#5C6672" text-anchor="end">15 kHz</text>
+<rect x="72" y="44" width="628" height="304" fill="none" stroke="#5C6672" stroke-width="1"/>
+<text x="386.0" y="390" fill="#1B2430" text-anchor="middle">R1 (Ω)</text>
+<text transform="translate(14 196.0) rotate(-90)" fill="#1B2430" text-anchor="middle">fc (Hz)</text>
+<path d="M72.0 65.0 L150.5 180.8 L229.0 246.0 L307.5 282.6 L386.0 303.2 L464.5 314.8 L543.0 321.3 L621.5 325.0 L700.0 327.0" fill="none" stroke="#0E6B63" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="72.0" cy="65.0" r="3.5" fill="#0E6B63" stroke="#fff" stroke-width="1.5"/>
+<circle cx="150.5" cy="180.8" r="3.5" fill="#0E6B63" stroke="#fff" stroke-width="1.5"/>
+<circle cx="229.0" cy="246.0" r="3.5" fill="#0E6B63" stroke="#fff" stroke-width="1.5"/>
+<circle cx="307.5" cy="282.6" r="3.5" fill="#0E6B63" stroke="#fff" stroke-width="1.5"/>
+<circle cx="386.0" cy="303.2" r="3.5" fill="#0E6B63" stroke="#fff" stroke-width="1.5"/>
+<circle cx="464.5" cy="314.8" r="3.5" fill="#0E6B63" stroke="#fff" stroke-width="1.5"/>
+<circle cx="543.0" cy="321.3" r="3.5" fill="#0E6B63" stroke="#fff" stroke-width="1.5"/>
+<circle cx="621.5" cy="325.0" r="3.5" fill="#0E6B63" stroke="#fff" stroke-width="1.5"/>
+<circle cx="700.0" cy="327.0" r="3.5" fill="#0E6B63" stroke="#fff" stroke-width="1.5"/>
+</svg>

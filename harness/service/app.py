@@ -134,7 +134,7 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         return {"status": "ok", "tools": len(registry), "provider": state.default_provider, "pending_approvals": len(state.broker.pending()),
                 "auth_required": state.users.required, "model": model_status(),
                 "pack": {"name": pk.name, "title": pk.title, "description": pk.description, "welcome": pk.welcome, "examples": pk.examples,
-                         "tool_labels": pk.tool_labels}}
+                         "empty_hint": pk.empty_hint, "tool_labels": pk.tool_labels}}
 
     @app.get("/me")
     def me(user: User = Depends(current_user)):

@@ -146,3 +146,11 @@ uv run harness eval --n 1            # 평가 16개
 - `guard_select(scoped=True)` 는 `main.`/`temp.` 차단. 쓰기 도구는 범위 연결에서 존재 확인 후 실행.
 - 서비스: User.scope → registry_for(user) 캐시, 프롬프트에 scope_note. /me 에 scope_text. CLI `ask --scope`, `users add --scope`.
 - 실제 모델: 지연 주문 전체 255 → 부산 39, 범위 밖 주문 1번 → "존재하지 않습니다".
+
+### E: 두 번째 팩 spice (ngspice) · 1~2일차 (2026-10-28)
+- ngspice 47 (brew). 배치 실행 `ngspice -n -b circuit.cir`: RC 교류 해석 101점 11~30 ms, 과도 1,022점 13 ms. 스윕 9점 85 ms. "오래 걸리는 작업" 은 점수 상한(60)·해석 크기 상한(200만 점)·20초 제한으로 막고, 화면에선 잡 큐로 보낸다.
+- 격자 오차: `.ac dec 20` 에서 -3dB 교차점이 공식값과 0.2~0.5% 차이(보간). `dec 50` 이면 0.1%. 평가 허용오차는 2~3%.
+- ngspice 함정 3개를 도구가 흡수: 첫 줄이 제목으로 먹힘(제목 자동 삽입), `vp()` 가 라디안(제어 블록에 `set units=degrees`), `FIND … AT=끝점` 이 "out of interval"(문서에 안쪽 값 안내).
+- 모델(gpt-oss-20b) 첫 질문 "RC 1kΩ·100nF 차단 주파수": 2스텝 20초, 넷리스트·측정식 정확, 답 1.588 kHz + 공식값 비교까지. 스윕 질문 1차: **본문 빈 채 finish=length(1,024 토큰)** — 추론 토큰이 예산을 다 씀 → 루프에 "빈 출력 되묻기" 1회 + 기본 max_tokens 2048. 2차: `.measure` 를 넷리스트에 써서 가드에 걸림 → 오류 문장을 읽고 스스로 measurements 로 옮겨 성공(4스텝 42초). 이후 `.measure` 는 흡수하도록 변경.
+- 플랫폼 변경: `harness/packs/__init__.py`(Pack 인터페이스, load_pack), 검색 모듈 `harness/retrieval/` 로 이동(enterprise 쪽은 재노출 셈), 평가 러너에 `truth_expr`(안전 산술 평가기)·`tolerance_pct`·단위 접두사 숫자 추출, 루프 `tool_result` 에 `url` 첨부, 서비스 `/files/<팩>` 마운트·`/health.pack`(제목·예시·라벨), 화면은 팩 정보로 머리말·예시·라벨을 그리고 그래프를 타임라인에 바로 표시.
+- 평가 16문제(해석 8·스윕 2·문서 2·저장 1·함정 3): 결과는 README 평가 절.

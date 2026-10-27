@@ -110,6 +110,7 @@ _KO_UNITS = (("킬로헤르츠", 1e3), ("헤르츠", 1), ("마이크로초", 1e-
 def extract_numbers(answer: str) -> list[float]:
     """답변 속 숫자를 SI 접두사(kHz, µs, mA …)까지 해석해 기본 단위 값으로 모은다. 접두사 없는 원래 숫자도 함께 둔다."""
     text = answer.replace("\u202f", " ").replace("\u00a0", " ")
+    text = re.sub(r"(?<=\d) (?=\d{3}(?![\d]))", "", text)  # 천 단위 공백 구분 "15 877.8" → "15877.8"
     out: list[float] = []
     for m in _NUM_UNIT.finditer(text):
         raw = m.group(1).replace(",", "")
@@ -128,8 +129,9 @@ def extract_numbers(answer: str) -> list[float]:
 
 
 def within_tolerance(truth: float, answer: str, tolerance_pct: float) -> bool:
+    """부호는 무시한다(전원 전류처럼 관례에 따라 음수로 보고되는 값이 있다)."""
     tol = abs(truth) * tolerance_pct / 100
-    return any(abs(n - truth) <= tol for n in extract_numbers(answer))
+    return any(abs(abs(n) - abs(truth)) <= tol for n in extract_numbers(answer))
 
 
 def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:

@@ -229,7 +229,11 @@ def simulate(netlist_text: str, measurements: Iterable[str] = (), save_vectors: 
     meas_lines: list[str] = []
     meas_names: list[str] = []
     warnings = list(nl.warnings)
-    for spec in [*measurements, *nl.inline_measurements]:
+    specs = [*measurements, *nl.inline_measurements]
+    if nl.analysis_kind == "op" and specs:
+        warnings.append(f"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 {len(specs)}개는 무시했습니다.")
+        specs = []
+    for spec in specs:
         name, line, warn = normalize_measurement(spec, nl.analysis_kind or "")
         meas_names.append(name)
         meas_lines.append(line)

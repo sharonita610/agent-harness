@@ -167,6 +167,10 @@ class OpenAICompatProvider:
                 resp = self._create(messages, tools, NOT_GIVEN)
                 break
             except APIStatusError as e:
+                if e.status_code >= 500 and e.status_code != 503 and attempt < 1:
+                    # llama-server 가 모델 출력을 도구 호출 문법으로 못 읽은 경우("does not match the expected … format") 등. 샘플링이 달라지므로 한 번 더 시도
+                    time.sleep(0.5)
+                    continue
                 if e.status_code == 503 and attempt < 59:
                     time.sleep(2)
                     continue

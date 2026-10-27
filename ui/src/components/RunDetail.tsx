@@ -3,6 +3,7 @@ import { api } from "../api";
 import type { Approval, Run, RunEvent, Trace } from "../types";
 import TraceView from "./TraceView";
 import Rich from "./Rich";
+import Timeline, { toUiEvent } from "./EventList";
 
 const STATUS_KO: Record<string, string> = { done: "완료", failed: "실패", cancelled: "취소됨", running: "실행 중", queued: "대기" };
 
@@ -34,6 +35,8 @@ export default function RunDetail({ runId, refreshKey, onClose }: { runId: strin
         <span>{run.steps ?? "-"}단계</span><span>{run.latency_s ?? "-"}초</span><span>토큰 {(run.prompt_tokens ?? 0) + (run.completion_tokens ?? 0)}</span>
         {run.approvals.length > 0 && <span>결재 {run.approvals.map((a) => `${a.tool} ${a.status === "approved" ? "승인" : a.status === "denied" ? "반려" : a.status}`).join(", ")}</span>}
       </div>
+      <h3>비서가 한 일</h3>
+      <Timeline events={run.events.map((e) => toUiEvent(e.seq, e.kind, e.data)).filter((e): e is NonNullable<typeof e> => e !== null)} />
       <h3>시간이 어디에 쓰였나</h3>
       <TraceView trace={trace} />
       <button className="ghost small" style={{ marginTop: 10 }} onClick={() => setShowEvents((v) => !v)}>{showEvents ? "이벤트 원문 숨기기" : `이벤트 원문 ${run.events.length}개 보기`}</button>
