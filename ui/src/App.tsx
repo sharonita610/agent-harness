@@ -42,7 +42,7 @@ export default function App() {
           <Login me={me} onChange={refreshHealth} />
         </div>
       </header>
-      {authErr && health && !down && <p className="notice">이 서비스는 API 키가 필요합니다. 운영자나 결재자 키로 로그인하세요. ({authErr})</p>}
+      {authErr && health && !down && <p className="notice">이 서비스는 API 키가 필요합니다. 오른쪽 위에 운영자나 결재자 키를 넣고 로그인하세요.</p>}
 
       <div className="layout">
         <main>
