@@ -97,8 +97,8 @@ class ConfirmLabelArgs(BaseModel):
 class ActionArgs(BaseModel):
     line: int
     station: str = Field(description="스테이션 번호 또는 공정 이름")
-    title: str
-    description: str = ""
+    title: str = Field("", description="티켓 제목(한 줄). 비우면 description 앞부분을 쓴다")
+    description: str = Field("", description="조치 내용")
     owner: str = Field(description="담당 공정 엔지니어: " + " | ".join(ENGINEERS))
     equipment_code: str | None = Field(None, description="설비 코드(예 EQ-203). 비우면 스테이션 설비")
 
@@ -176,7 +176,8 @@ def build_tools(db_path: Path = DEFAULT_DB, docs_dir: Path = DOCS_DIR, runs_dir:
         m = re.search(r"(\d)\s*라인", s)
         if m and line is None:
             line = int(m.group(1))
-        name = re.sub(r"\d\s*라인", "", s).strip()
+        name = re.sub(r"\d\s*라인", "", s)
+        name = re.sub(r"(설비|스테이션|공정|라인)", "", name).strip()
         ids = [r["id"] for r in q("SELECT id FROM stations WHERE (? IS NULL OR line_id=?) AND (name LIKE ? OR process LIKE ?) ORDER BY id",
                                    (line, line, f"%{name}%", f"%{name}%"))]
         if not ids:
@@ -399,6 +400,9 @@ def build_tools(db_path: Path = DEFAULT_DB, docs_dir: Path = DOCS_DIR, runs_dir:
     def create_action(a: ActionArgs) -> Any:
         if a.owner not in ENGINEERS:
             raise ValueError(f"담당자는 공정 엔지니어 {ENGINEERS} 중 하나여야 합니다(PE-006).")
+        title = (a.title or a.description).strip()[:60]
+        if not title:
+            raise ValueError("title 또는 description 중 하나는 있어야 합니다(PE-006: 제목·조치 내용).")
         sids = resolve_station(a.station, a.line)
         if len(sids) != 1:
             raise ValueError("스테이션 하나를 지정하세요.")
@@ -408,9 +412,9 @@ def build_tools(db_path: Path = DEFAULT_DB, docs_dir: Path = DOCS_DIR, runs_dir:
             eq = conn.execute("SELECT id FROM equipment WHERE station_id=?" + (" AND code=?" if a.equipment_code else ""), (sid, a.equipment_code) if a.equipment_code else (sid,)).fetchone()
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cur = conn.execute("INSERT INTO actions(created_at, line_id, station_id, equipment_id, title, description, owner, status, created_by) VALUES (?,?,?,?,?,?,?,?,?)",
-                               (now, a.line, sid, eq["id"] if eq else None, a.title, a.description, a.owner, "open", "ai_assistant(approved)"))
+                               (now, a.line, sid, eq["id"] if eq else None, title, a.description, a.owner, "open", "ai_assistant(approved)"))
             conn.commit()
-            return {"action_id": cur.lastrowid, "station": station_label(sid), "title": a.title, "owner": a.owner, "status": "open", "created_at": now}
+            return {"action_id": cur.lastrowid, "station": station_label(sid), "title": title, "owner": a.owner, "status": "open", "created_at": now}
         finally:
             conn.close()
 

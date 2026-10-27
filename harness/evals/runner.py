@@ -43,7 +43,7 @@ def cost_usd(provider: str, prompt_tokens: int, completion_tokens: int) -> dict[
     return {"cost_usd": round(actual, 5), "cost_usd_if_hosted": round(hosted, 5)}
 
 
-_SPACE_VARIANTS = {"\u202f": " ", "\u00a0": " ", "\u2009": " ", "\u2007": " "}
+_SPACE_VARIANTS = {"\u202f": " ", "\u00a0": " ", "\u2009": " ", "\u2007": " ", "\u2011": "-", "\u2010": "-", "\u2212": "-"}  # 특수 공백·하이픈(‑ ‐ −) → 보통 글자
 
 
 def normalize(text: str) -> str:

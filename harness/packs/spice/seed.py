@@ -17,9 +17,8 @@ STEP = "* RC 계단 응답 기준 회로 (R1=1k, C1=100n)\nV1 in 0 PULSE(0 1 0 1
 
 def seed_history(graph_path: Path = GRAPH_PATH, runs_dir: Path = RUNS_DIR) -> dict:
     graph_path = Path(graph_path)
-    if graph_path.exists():
-        graph_path.unlink()
     g = ExperimentGraph(graph_path)
+    g.clear()  # 파일을 지우면 이미 열린 연결(도구)이 깨진다("readonly database") → 표만 비운다
     recorded = []
     for R in ("470", "1k", "2.2k", "4.7k"):
         text = RC.replace("{R}", R)

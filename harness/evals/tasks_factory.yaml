@@ -23,8 +23,8 @@
   type: spike
   question: "지난 2주 동안 NG 율이 가장 크게 튄 라인과 스테이션은 어디고, 언제였어?"
   expect_tools_any: [detect_spikes]
-  answer_contains_any: ["2라인 권취", "2라인", "권취"]
-  answer_contains_all: ["18일", "권취"]
+  answer_contains_all: ["권취"]
+  answer_contains_any: ["10-18", "18일", "10월 18"]
 
 - id: s02
   type: spike
