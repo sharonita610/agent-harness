@@ -190,3 +190,4 @@ uv run harness eval --n 1            # 평가 16개
 - 공용화: SQL 가드·읽기 전용 연결 → harness/tools/sql.py, SVG 그래프 → harness/viz/. enterprise·spice 는 재노출 셈 유지. Pack.db_path 로 러너가 팩 DB 를 일반적으로 연다(truth_sql).
 - 평가 17문제(tasks_factory.yaml). forbid_approval_requested 검사 추가(함정: 일괄 확정 시도 자체를 실패로).
 - 라이브 평가는 회로 팩 재평가 뒤에(모델 서버 공유).
+- 20문제 2차(75%)도 폐기: `seed_before` 가 그래프 **파일을 지우는** 바람에 도구가 연 SQLite 연결이 지워진 inode 를 붙들고 "attempt to write a readonly database" 로 실패(h02·h03), 조회는 옛 데이터(스윕 점)를 봄(h04). 시드는 파일을 두고 표만 비우도록(`ExperimentGraph.clear`) 고치고 연결 유지 테스트 추가. x01 은 세 번 다 "저장하시겠습니까?" 되물음 → 규칙 4 를 "되묻지 말고 바로 호출" 로(회사 팩 v2 의 같은 교훈). 3차 실행.

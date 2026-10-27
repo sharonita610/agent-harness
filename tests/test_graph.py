@@ -47,3 +47,15 @@ def test_sweep_points_are_queryable_and_svg_renders(tmp_path):
     assert hit and hit[0]["kind"] == "sweep_point" and hit[0]["measurements"]["fc"] == 338.6
     svg = render_graph_svg(g)
     assert svg.startswith("<svg") and "sim_a" in svg and "swp_1" in svg and "fc = 1588" in svg
+
+
+def test_clear_keeps_other_connections_valid(tmp_path):
+    """시드가 파일을 지우면 도구가 연 연결이 'readonly database' 로 죽는다. 표만 비우면 두 연결 모두 계속 쓴다."""
+    path = tmp_path / "g.sqlite"
+    tool_side = ExperimentGraph(path)
+    tool_side.record_simulation(parse_netlist(RC.replace("{R}", "1k")), _res("sim_a", 1588.0))
+    seeder = ExperimentGraph(path)
+    seeder.clear()
+    assert tool_side.stats()["nodes"] == {} and seeder.stats()["nodes"] == {}
+    tool_side.record_simulation(parse_netlist(RC.replace("{R}", "2.2k")), _res("sim_b", 721.7))  # 여전히 쓸 수 있다
+    assert seeder.query_runs(component="R1", value=2200)[0]["run_id"] == "sim_b"

@@ -53,6 +53,12 @@ class ExperimentGraph:
         self.conn.executescript(_SCHEMA)
 
     # ----------------------------------------------------------------- 기본 연산
+    def clear(self) -> None:
+        """모든 노드·관계를 지운다. 파일을 지우지 않으므로 같은 파일을 연 다른 연결(도구 레지스트리)이 계속 유효하다."""
+        with self.conn:
+            self.conn.execute("DELETE FROM edges")
+            self.conn.execute("DELETE FROM nodes")
+
     def put_node(self, nid: str, ntype: str, label: str, props: dict[str, Any] | None = None) -> None:
         self.conn.execute("INSERT OR REPLACE INTO nodes(id, type, label, props, created_at) VALUES (?,?,?,?,COALESCE((SELECT created_at FROM nodes WHERE id=?), ?))",
                           (nid, ntype, label, json.dumps(props or {}, ensure_ascii=False), nid, datetime.now().isoformat(timespec="seconds")))
