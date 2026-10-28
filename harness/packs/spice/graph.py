@@ -32,7 +32,7 @@ CREATE INDEX IF NOT EXISTS edges_dst ON edges(dst, rel);
 """
 
 
-def _h(text: str) -> str:
+def _short_hash(text: str) -> str:
     return hashlib.sha1(text.encode("utf-8")).hexdigest()[:10]
 
 
@@ -107,7 +107,7 @@ class ExperimentGraph:
     def _circuit_id(self, nl: Netlist) -> tuple[str, str]:
         body = "\n".join(ln for ln in nl.lines if not ln.startswith("*"))
         topo = "|".join(f"{c.name}:{c.kind}:{','.join(c.nodes)}" for c in nl.components)
-        return "circuit:" + _h(body), "topology:" + _h(topo)
+        return "circuit:" + _short_hash(body), "topology:" + _short_hash(topo)
 
     def record_circuit(self, nl: Netlist) -> str:
         cid, topo = self._circuit_id(nl)
@@ -128,7 +128,7 @@ class ExperimentGraph:
             self.put_node(comp_id, "component", name, c)
             self.put_edge(cid, "has_component", comp_id)
         for a in nl.analyses:
-            aid = f"{cid}/analysis:{_h(a)}"
+            aid = f"{cid}/analysis:{_short_hash(a)}"
             self.put_node(aid, "analysis", a, {"kind": a.split()[0][1:].lower(), "line": a})
             self.put_edge(cid, "has_analysis", aid)
         # 같은 토폴로지의 기존 회로와 잇는다(값 차이를 관계에 적는다)
@@ -394,8 +394,8 @@ def render_graph_svg(graph: "ExperimentGraph", max_runs: int = 12) -> str:
     """회로(위) → 실행(가운데) → 측정(아래) 세 층으로 그린다. 같은 토폴로지 변형은 점선으로 잇는다. README·화면용."""
     from xml.sax.saxutils import escape
 
-    INK, SOFT, GRID = "#1B2430", "#5C6672", "#D9DEE3"
-    COLOR = {"circuit": "#0E6B63", "run": "#2F5D9E", "measurement": "#B7791F", "sweep": "#6B4C9A"}
+    ink, soft, grid = "#1B2430", "#5C6672", "#D9DEE3"
+    color_of = {"circuit": "#0E6B63", "run": "#2F5D9E", "measurement": "#B7791F", "sweep": "#6B4C9A"}
     runs = [
         graph.node(r["id"]) for r in graph.conn.execute("SELECT id FROM nodes WHERE type='run' ORDER BY created_at, id")
     ]
@@ -406,19 +406,19 @@ def render_graph_svg(graph: "ExperimentGraph", max_runs: int = 12) -> str:
         if c and c["id"] not in {x["id"] for x in circuits}:
             circuits.append(c)
     meas = [(r["id"], m) for r in runs for _, m, _ in graph.out(r["id"], "measured")][: max_runs * 3]
-    W = max(760, 150 * max(len(circuits), len(runs), 1) + 60)
-    H = 400
+    width = max(760, 150 * max(len(circuits), len(runs), 1) + 60)
+    height = 400
     pos: dict[str, tuple[float, float]] = {}
     out = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" font-family="Pretendard, -apple-system, sans-serif" font-size="12">'
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" font-family="Pretendard, -apple-system, sans-serif" font-size="12">'
     ]
     for y, label in ((100, "회로 (점선 = 같은 토폴로지, 값만 다른 변형)"), (220, "실행"), (340, "측정값")):
-        out.append(f'<text x="16" y="{y - 36}" fill="{SOFT}" font-size="11">{label}</text>')
+        out.append(f'<text x="16" y="{y - 36}" fill="{soft}" font-size="11">{label}</text>')
 
     def place(items, y, key):
         n = len(items) or 1
         for i, it in enumerate(items):
-            pos[key(it)] = (W * (i + 0.5) / n, y)
+            pos[key(it)] = (width * (i + 0.5) / n, y)
 
     place(circuits, 100, lambda c: c["id"])
     place(runs, 220, lambda r: r["id"])
@@ -426,7 +426,7 @@ def render_graph_svg(graph: "ExperimentGraph", max_runs: int = 12) -> str:
     # 간선: 변형 관계는 완전 그래프라 다 그리면 엉킨다 → 값 차이가 가장 작은 쌍만 잇는 최소 신장 트리(크루스칼)
     import math
 
-    def _w(diffs: list[dict]) -> float:
+    def _edge_weight(diffs: list[dict]) -> float:
         w = 0.0
         for d in diffs:
             try:
@@ -440,7 +440,7 @@ def render_graph_svg(graph: "ExperimentGraph", max_runs: int = 12) -> str:
     for c in circuits:
         for _, other, p in graph.out(c["id"], "variant_of"):
             if other["id"] in pos and c["id"] < other["id"]:
-                cand.append((_w(p.get("diffs") or []), c["id"], other["id"], p.get("diffs") or []))
+                cand.append((_edge_weight(p.get("diffs") or []), c["id"], other["id"], p.get("diffs") or []))
     parent = {c["id"]: c["id"] for c in circuits}
 
     def find(x):
@@ -458,23 +458,23 @@ def render_graph_svg(graph: "ExperimentGraph", max_runs: int = 12) -> str:
         lab = ", ".join(f"{x['component']} {str(x['from'])[:8]}→{str(x['to'])[:8]}" for x in d[:2])
         lift = 50 + 22 * (k % 2)
         out.append(
-            f'<path d="M{x1:.0f} {y1 - 18} Q{(x1 + x2) / 2:.0f} {y1 - lift - 10} {x2:.0f} {y2 - 18}" fill="none" stroke="{COLOR["circuit"]}" stroke-dasharray="5 4" stroke-width="1.2"/>'
+            f'<path d="M{x1:.0f} {y1 - 18} Q{(x1 + x2) / 2:.0f} {y1 - lift - 10} {x2:.0f} {y2 - 18}" fill="none" stroke="{color_of["circuit"]}" stroke-dasharray="5 4" stroke-width="1.2"/>'
         )
         out.append(
-            f'<text x="{(x1 + x2) / 2:.0f}" y="{y1 - lift + 8}" text-anchor="middle" fill="{COLOR["circuit"]}" font-size="10">{escape(lab)}</text>'
+            f'<text x="{(x1 + x2) / 2:.0f}" y="{y1 - lift + 8}" text-anchor="middle" fill="{color_of["circuit"]}" font-size="10">{escape(lab)}</text>'
         )
         k += 1
     for r in runs:
         if r["circuit"] in pos:
             (x1, y1), (x2, y2) = pos[r["id"]], pos[r["circuit"]]
             out.append(
-                f'<line x1="{x1:.0f}" y1="{y1 - 16}" x2="{x2:.0f}" y2="{y2 + 16}" stroke="{GRID}" stroke-width="1.2"/>'
+                f'<line x1="{x1:.0f}" y1="{y1 - 16}" x2="{x2:.0f}" y2="{y2 + 16}" stroke="{grid}" stroke-width="1.2"/>'
             )
     for rid, m in meas:
         if rid in pos:
             (x1, y1), (x2, y2) = pos[m["id"]], pos[rid]
             out.append(
-                f'<line x1="{x1:.0f}" y1="{y1 - 14}" x2="{x2:.0f}" y2="{y2 + 16}" stroke="{GRID}" stroke-width="1.2"/>'
+                f'<line x1="{x1:.0f}" y1="{y1 - 14}" x2="{x2:.0f}" y2="{y2 + 16}" stroke="{grid}" stroke-width="1.2"/>'
             )
     # 노드
     for c in circuits:
@@ -482,17 +482,17 @@ def render_graph_svg(graph: "ExperimentGraph", max_runs: int = 12) -> str:
         comps = c.get("components") or {}
         vals = " ".join(f"{n}={v.get('value')}" for n, v in list(comps.items())[:3] if v.get("value"))
         out.append(
-            f'<rect x="{x - 66:.0f}" y="{y - 18}" width="132" height="36" rx="8" fill="#E6F2F0" stroke="{COLOR["circuit"]}"/>'
+            f'<rect x="{x - 66:.0f}" y="{y - 18}" width="132" height="36" rx="8" fill="#E6F2F0" stroke="{color_of["circuit"]}"/>'
         )
         out.append(
-            f'<text x="{x:.0f}" y="{y - 3}" text-anchor="middle" fill="{INK}" font-weight="600">{escape((c.get("label") or "").split("(")[0].strip()[:16])}</text>'
+            f'<text x="{x:.0f}" y="{y - 3}" text-anchor="middle" fill="{ink}" font-weight="600">{escape((c.get("label") or "").split("(")[0].strip()[:16])}</text>'
         )
         out.append(
-            f'<text x="{x:.0f}" y="{y + 11}" text-anchor="middle" fill="{SOFT}" font-size="10">{escape(vals[:30])}</text>'
+            f'<text x="{x:.0f}" y="{y + 11}" text-anchor="middle" fill="{soft}" font-size="10">{escape(vals[:30])}</text>'
         )
     for r in runs:
         x, y = pos[r["id"]]
-        col = COLOR["sweep"] if r.get("kind") == "sweep" else COLOR["run"]
+        col = color_of["sweep"] if r.get("kind") == "sweep" else color_of["run"]
         sub = (
             f"{r.get('analysis_kind', '')} · {r.get('points') or 0}점"
             if r.get("kind") == "sim"
@@ -500,20 +500,20 @@ def render_graph_svg(graph: "ExperimentGraph", max_runs: int = 12) -> str:
         )
         out.append(f'<rect x="{x - 60:.0f}" y="{y - 16}" width="120" height="32" rx="6" fill="#fff" stroke="{col}"/>')
         out.append(
-            f'<text x="{x:.0f}" y="{y - 3}" text-anchor="middle" fill="{INK}" font-size="11">{escape(r["id"])}</text>'
+            f'<text x="{x:.0f}" y="{y - 3}" text-anchor="middle" fill="{ink}" font-size="11">{escape(r["id"])}</text>'
         )
         out.append(
-            f'<text x="{x:.0f}" y="{y + 10}" text-anchor="middle" fill="{SOFT}" font-size="10">{escape(sub)}</text>'
+            f'<text x="{x:.0f}" y="{y + 10}" text-anchor="middle" fill="{soft}" font-size="10">{escape(sub)}</text>'
         )
     for rid, m in meas:
         x, y = pos[m["id"]]
         v = m.get("value")
         txt = f"{m['name']} = {v:.4g}" if isinstance(v, (int, float)) else f"{m['name']} = -"
         out.append(
-            f'<rect x="{x - 48:.0f}" y="{y - 14}" width="96" height="28" rx="14" fill="#FDF4DC" stroke="{COLOR["measurement"]}"/>'
+            f'<rect x="{x - 48:.0f}" y="{y - 14}" width="96" height="28" rx="14" fill="#FDF4DC" stroke="{color_of["measurement"]}"/>'
         )
         out.append(
-            f'<text x="{x:.0f}" y="{y + 4}" text-anchor="middle" fill="{INK}" font-size="11">{escape(txt[:16])}</text>'
+            f'<text x="{x:.0f}" y="{y + 4}" text-anchor="middle" fill="{ink}" font-size="11">{escape(txt[:16])}</text>'
         )
     out.append("</svg>")
     return "\n".join(out)

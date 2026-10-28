@@ -26,21 +26,21 @@ TABLES = [
 ]
 
 
-def q(conn, sql, params=()):
+def query(conn, sql, params=()):
     return conn.execute(sql, params).fetchall()
 
 
 def collect():
     conn = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
-    counts = {t: q(conn, f"SELECT COUNT(*) FROM {t}")[0][0] for t, _, _ in TABLES}
-    status = q(conn, "SELECT status, COUNT(*), SUM(total_amount) FROM orders GROUP BY status ORDER BY 2 DESC")
-    reasons = q(
+    counts = {t: query(conn, f"SELECT COUNT(*) FROM {t}")[0][0] for t, _, _ in TABLES}
+    status = query(conn, "SELECT status, COUNT(*), SUM(total_amount) FROM orders GROUP BY status ORDER BY 2 DESC")
+    reasons = query(
         conn, "SELECT delay_reason, COUNT(*) FROM orders WHERE status='지연' GROUP BY delay_reason ORDER BY 2 DESC"
     )
-    grades = q(conn, "SELECT grade, COUNT(*) FROM customers GROUP BY grade ORDER BY grade")
-    low = q(conn, "SELECT SUM(on_hand < safety_stock), SUM(on_hand >= safety_stock) FROM inventory")[0]
-    cats = q(conn, "SELECT category, COUNT(*), MIN(unit_price), MAX(unit_price) FROM products GROUP BY category")
-    span = q(conn, "SELECT MIN(order_date), MAX(order_date) FROM orders")[0]
+    grades = query(conn, "SELECT grade, COUNT(*) FROM customers GROUP BY grade ORDER BY grade")
+    low = query(conn, "SELECT SUM(on_hand < safety_stock), SUM(on_hand >= safety_stock) FROM inventory")[0]
+    cats = query(conn, "SELECT category, COUNT(*), MIN(unit_price), MAX(unit_price) FROM products GROUP BY category")
+    span = query(conn, "SELECT MIN(order_date), MAX(order_date) FROM orders")[0]
     docs = sorted(p.stem for p in (ROOT / "harness/packs/enterprise/docs").glob("*.md"))
     conn.close()
     return {
@@ -123,13 +123,13 @@ def bars(x, y, w, title, rows, unit=""):
 
 
 def svg(d) -> str:
-    W = 760
+    width = 760
     parts = [
-        f'<rect width="{W}" height="H" fill="{SURF}" rx="12"/>',
+        f'<rect width="{width}" height="H" fill="{SURF}" rx="12"/>',
         f'<text x="20" y="30" font-size="16" font-weight="600" fill="{INK}">한빛상사 더미 데이터 개요</text>',
         f'<text x="20" y="50" font-size="12" fill="{INK2}">주문 {d["counts"]["orders"]:,}건 · 거래처 {d["counts"]["customers"]}곳 · 상품 {d["counts"]["products"]}개 · 규정 문서 {len(d["docs"])}개 · 시드 고정(재생성해도 동일)</text>',
     ]
-    col_w = (W - 60) // 2
+    col_w = (width - 60) // 2
     p1, y1 = bars(20, 86, col_w, "주문 상태별 건수", [(s, n) for s, n, _ in d["status"]], "건")
     p2, y2 = bars(40 + col_w, 86, col_w, "지연 사유 (지연 주문 기준)", [(r, n) for r, n in d["reasons"]], "건")
     top = max(y1, y2) + 16
@@ -140,7 +140,7 @@ def svg(d) -> str:
     bottom = max(y3, y4) + 10
     body = "\n".join([parts[0].replace("H", str(bottom)), *parts[1:], p1, p2, p3, p4])
     return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{bottom}" viewBox="0 0 {W} {bottom}" role="img" '
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{bottom}" viewBox="0 0 {width} {bottom}" role="img" '
         f'aria-label="한빛상사 더미 데이터 개요" font-family="{FONT}">\n{body}\n</svg>\n'
     )
 

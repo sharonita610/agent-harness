@@ -1,6 +1,6 @@
 """스트리밍 조립: 텍스트 조각은 즉시 콜백, 도구 호출 조각은 인덱스별로 모아 하나의 호출로."""
 
-from types import SimpleNamespace as NS
+from types import SimpleNamespace
 
 from harness.agent.loop import Agent
 from harness.agent.providers import assemble_stream
@@ -9,8 +9,8 @@ from tests.test_loop import make_registry
 
 
 def chunk(content=None, tool_calls=None, finish=None, usage=None):
-    delta = NS(content=content, tool_calls=tool_calls)
-    return NS(choices=[NS(delta=delta, finish_reason=finish)], usage=usage)
+    delta = SimpleNamespace(content=content, tool_calls=tool_calls)
+    return SimpleNamespace(choices=[SimpleNamespace(delta=delta, finish_reason=finish)], usage=usage)
 
 
 def test_assemble_text_stream_calls_on_delta_in_order():
@@ -20,7 +20,7 @@ def test_assemble_text_stream_calls_on_delta_in_order():
             chunk("지연 "),
             chunk("주문은 "),
             chunk("255건", finish="stop"),
-            NS(choices=[], usage=NS(prompt_tokens=10, completion_tokens=3)),
+            SimpleNamespace(choices=[], usage=SimpleNamespace(prompt_tokens=10, completion_tokens=3)),
         ],
         pieces.append,
     )
@@ -30,10 +30,23 @@ def test_assemble_text_stream_calls_on_delta_in_order():
 
 def test_assemble_tool_call_fragments():
     tcs = [
-        chunk(tool_calls=[NS(index=0, id="call_a", function=NS(name="run_sql", arguments='{"sql": "SEL'))]),
-        chunk(tool_calls=[NS(index=0, id=None, function=NS(name=None, arguments='ECT 1", "limit": 1}'))]),
         chunk(
-            tool_calls=[NS(index=1, id="call_b", function=NS(name="list_tables", arguments="{}"))], finish="tool_calls"
+            tool_calls=[
+                SimpleNamespace(
+                    index=0, id="call_a", function=SimpleNamespace(name="run_sql", arguments='{"sql": "SEL')
+                )
+            ]
+        ),
+        chunk(
+            tool_calls=[
+                SimpleNamespace(index=0, id=None, function=SimpleNamespace(name=None, arguments='ECT 1", "limit": 1}'))
+            ]
+        ),
+        chunk(
+            tool_calls=[
+                SimpleNamespace(index=1, id="call_b", function=SimpleNamespace(name="list_tables", arguments="{}"))
+            ],
+            finish="tool_calls",
         ),
     ]
     r = assemble_stream(tcs)

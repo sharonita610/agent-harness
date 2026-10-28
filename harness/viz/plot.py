@@ -79,11 +79,11 @@ def _fmt(v: float, unit: str) -> str:
 
 
 def render_svg(fig: Figure) -> str:
-    W, H = fig.width, fig.height
+    width, height = fig.width, fig.height
     left, right, top, bottom = 72, 20, 44 if fig.title else 20, 52
     if len(fig.series) > 1:
         top = max(top, 36)  # 범례는 그림 영역 밖(위쪽 오른쪽)에 둬 선·표시와 겹치지 않게 한다
-    pw, ph = W - left - right, H - top - bottom
+    pw, ph = width - left - right, height - top - bottom
     xs = [x for s in fig.series for x in s.x if math.isfinite(x) and (not fig.x_log or x > 0)]
     ys = [y for s in fig.series for y in s.y if math.isfinite(y)]
     if not xs or not ys:
@@ -107,7 +107,7 @@ def render_svg(fig: Figure) -> str:
     sy = lambda y: top + (yhi - y) / (yhi - ylo) * ph  # noqa: E731
 
     out = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" font-family="{FONT}" font-size="12">'
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" role="img" font-family="{FONT}" font-size="12">'
     ]
     if fig.title:
         out.append(f'<text x="{left}" y="24" fill="{INK}" font-size="14" font-weight="600">{escape(fig.title)}</text>')
@@ -140,7 +140,7 @@ def render_svg(fig: Figure) -> str:
     )
     if fig.x_label:
         out.append(
-            f'<text x="{left + pw / 2:.1f}" y="{H - 10}" fill="{INK}" text-anchor="middle">{escape(fig.x_label)}</text>'
+            f'<text x="{left + pw / 2:.1f}" y="{height - 10}" fill="{INK}" text-anchor="middle">{escape(fig.x_label)}</text>'
         )
     if fig.y_label:
         out.append(

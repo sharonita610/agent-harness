@@ -25,7 +25,7 @@ class NoArgs(BaseModel):
     pass
 
 
-class _Script:
+class ScriptedProvider:
     def __init__(self):
         self.n = 0
 
@@ -47,7 +47,7 @@ def test_loop_emits_progress_events_with_last_point_guaranteed():
         return {"ok": True}
 
     reg = ToolRegistry([Tool("slow", "느린 도구", NoArgs, slow, Tier.READ)])
-    res = Agent(_Script(), reg, "t", max_steps=3).run("가")
+    res = Agent(ScriptedProvider(), reg, "t", max_steps=3).run("가")
     prog = [e for e in res.events if e.kind == "progress"]
     assert [p.data["done"] for p in prog] == [1, 5]
     assert prog[-1].data == {"name": "slow", "done": 5, "total": 5, "label": "점 5"}

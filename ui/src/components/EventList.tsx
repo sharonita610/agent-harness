@@ -20,18 +20,18 @@ export function setToolLabels(labels: Record<string, string> | undefined) {
 export function toolLabel(name: string) {
   return TOOL_KO[name] ?? name;
 }
-const s = (v: unknown) => (typeof v === "string" ? v : JSON.stringify(v ?? ""));
+const asText = (v: unknown) => (typeof v === "string" ? v : JSON.stringify(v ?? ""));
 const IMAGE = /\.(svg|png|jpe?g|webp)(\?.*)?$/i;
 
 /** 도구별로 '무엇을 보냈는지' 한 줄 요약. 넷리스트 전문 같은 긴 값은 접힌 원문에만 둔다. */
 export function briefArgs(name: string, args: Record<string, unknown>): string {
   switch (name) {
     case "run_sql":
-      return s(args.sql);
+      return asText(args.sql);
     case "search_docs":
     case "search_manual":
     case "search_rules":
-      return `"${s(args.query)}"`;
+      return `"${asText(args.query)}"`;
     case "run_simulation": {
       const m = (args.measurements as string[]) ?? [];
       return m.length ? m.join(" · ") : "측정식 없음(동작점)";
@@ -39,22 +39,22 @@ export function briefArgs(name: string, args: Record<string, unknown>): string {
     case "run_sweep": {
       const vals = (args.values as number[]) ?? [];
       const n = vals.length || Number(args.points ?? 0);
-      return `${s(args.component)} ${n}점 · ${s(args.measurement)}`;
+      return `${asText(args.component)} ${n}점 · ${asText(args.measurement)}`;
     }
     case "plot_waveform":
       return (
-        [args.title, args.mark_x_label, args.mark_y_label].filter(Boolean).map(s).join(" · ") ||
-        s(args.run_id)
+        [args.title, args.mark_x_label, args.mark_y_label].filter(Boolean).map(asText).join(" · ") ||
+        asText(args.run_id)
       );
     case "check_netlist":
     case "save_circuit":
-      return s(args.name ?? "") || `${String(args.netlist ?? "").split("\n").length}줄`;
+      return asText(args.name ?? "") || `${String(args.netlist ?? "").split("\n").length}줄`;
     case "delegate":
-      return `${s(args.agent)} 비서에게: ${s(args.question)}`;
+      return `${asText(args.agent)} 비서에게: ${asText(args.question)}`;
     default:
       return Object.values(args)
         .filter((v) => v !== null && v !== undefined && v !== "")
-        .map(s)
+        .map(asText)
         .join(", ");
   }
 }
@@ -66,7 +66,7 @@ export function toUiEvent(id: number, event: string, d: Record<string, unknown>)
       const name = String(d.name);
       const args = (d.arguments as Record<string, unknown>) ?? {};
       const full = ["run_simulation", "run_sweep", "check_netlist", "save_circuit"].includes(name)
-        ? s(args.netlist)
+        ? asText(args.netlist)
         : "";
       return {
         id,
@@ -85,7 +85,7 @@ export function toUiEvent(id: number, event: string, d: Record<string, unknown>)
         id,
         kind: event,
         label: url ? "그래프" : "결과",
-        detail: s(d.preview),
+        detail: asText(d.preview),
         tone: "",
         image: url,
         result: d.result,
@@ -97,7 +97,7 @@ export function toUiEvent(id: number, event: string, d: Record<string, unknown>)
         id,
         kind: event,
         label: "도구 오류",
-        detail: s(d.error),
+        detail: asText(d.error),
         tone: "err",
         tool: typeof d.name === "string" ? d.name : undefined,
       };
@@ -142,11 +142,11 @@ export function toUiEvent(id: number, event: string, d: Record<string, unknown>)
         id,
         kind: event,
         label: "중단",
-        detail: `${s(d.reason)} ${s(d.error ?? "")}`.trim(),
+        detail: `${asText(d.reason)} ${asText(d.error ?? "")}`.trim(),
         tone: "err",
       };
     case "error":
-      return { id, kind: event, label: "오류", detail: s(d.error), tone: "err" };
+      return { id, kind: event, label: "오류", detail: asText(d.error), tone: "err" };
     case "run":
     case "step":
     case "llm":
@@ -157,7 +157,7 @@ export function toUiEvent(id: number, event: string, d: Record<string, unknown>)
     case "progress":
       return null;
     default:
-      return { id, kind: event, label: event, detail: s(d), tone: "" };
+      return { id, kind: event, label: event, detail: asText(d), tone: "" };
   }
 }
 

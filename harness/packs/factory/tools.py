@@ -174,20 +174,21 @@ def build_tools(
     ro = connect_readonly(db_path)
     index = index or make_index(docs_dir)
 
-    def q(sql: str, params: tuple = ()) -> list[dict[str, Any]]:
+    def query(sql: str, params: tuple = ()) -> list[dict[str, Any]]:
         return [dict(r) for r in ro.execute(sql, params).fetchall()]
 
     def resolve_station(station: str | int | None, line: int | None) -> list[int]:
         """스테이션 지정 → id 목록(없으면 전체 또는 라인 전체)."""
         if station is None:
             return [
-                r["id"] for r in q("SELECT id FROM stations WHERE (? IS NULL OR line_id=?) ORDER BY id", (line, line))
+                r["id"]
+                for r in query("SELECT id FROM stations WHERE (? IS NULL OR line_id=?) ORDER BY id", (line, line))
             ]
         s = str(station).strip()
         if s.isdigit():
             n = int(s)
             if n >= 10:
-                if not q("SELECT 1 FROM stations WHERE id=?", (n,)):
+                if not query("SELECT 1 FROM stations WHERE id=?", (n,)):
                     raise ValueError(f"스테이션 {n} 없음. 번호는 라인×10+순서(예 2라인 3번째 = 23).")
                 return [n]
             if line is None:
@@ -203,7 +204,7 @@ def build_tools(
         name = re.sub(r"(설비|스테이션|공정|라인)", "", name).strip()
         ids = [
             r["id"]
-            for r in q(
+            for r in query(
                 "SELECT id FROM stations WHERE (? IS NULL OR line_id=?) AND (name LIKE ? OR process LIKE ?) ORDER BY id",
                 (line, line, f"%{name}%", f"%{name}%"),
             )
@@ -215,16 +216,16 @@ def build_tools(
         return ids
 
     def station_label(sid: int) -> str:
-        r = q("SELECT s.line_id, s.seq, s.name FROM stations s WHERE s.id=?", (sid,))[0]
+        r = query("SELECT s.line_id, s.seq, s.name FROM stations s WHERE s.id=?", (sid,))[0]
         return f"{r['line_id']}라인 {r['name']}(S{sid})"
 
     # ---- read: 구조
     def list_tables(_: NoArgs) -> Any:
-        tables = [r["name"] for r in q("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")]
+        tables = [r["name"] for r in query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")]
         return [{"table": t, "rows": ro.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]} for t in tables]
 
     def describe_table(a: DescribeTableArgs) -> Any:
-        names = {r["name"] for r in q("SELECT name FROM sqlite_master WHERE type='table'")}
+        names = {r["name"] for r in query("SELECT name FROM sqlite_master WHERE type='table'")}
         if a.table not in names:
             raise ValueError(f"테이블 없음: {a.table}. 가능한 테이블: {sorted(names)}")
         cols = [{"name": r[1], "type": r[2]} for r in ro.execute(f"PRAGMA table_info({a.table})")]
@@ -246,7 +247,7 @@ def build_tools(
         sids = resolve_station(a.station, a.line)
         ph = ",".join("?" * len(sids))
         if a.group_by == "defect":
-            data = q(
+            data = query(
                 f"SELECT COALESCE(confirmed_label, suggested_label) AS defect, COUNT(*) AS ng, SUM(label_status='confirmed') AS confirmed "
                 f"FROM ng_events WHERE station_id IN ({ph}) AND ts>=? AND ts<? GROUP BY 1 ORDER BY 2 DESC",
                 (*sids, f, t),
@@ -267,7 +268,7 @@ def build_tools(
             "station": "station_id",
             "line": "line_id",
         }[a.group_by]
-        data = q(
+        data = query(
             f"SELECT {key} AS k, SUM(inspected) AS inspected, SUM(ng) AS ng, ROUND(100.0*SUM(ng)/SUM(inspected), 3) AS ng_rate_pct "
             f"FROM inspections WHERE station_id IN ({ph}) AND hour_start>=? AND hour_start<? GROUP BY 1 ORDER BY 1",
             (*sids, f, t),
@@ -297,7 +298,7 @@ def build_tools(
         sids = resolve_station(a.station, a.line)
         segments = []
         for sid in sids:
-            hours = q(
+            hours = query(
                 "SELECT hour_start, inspected, ng, 1.0*ng/inspected AS rate FROM inspections WHERE station_id=? ORDER BY hour_start",
                 (sid,),
             )
@@ -344,7 +345,7 @@ def build_tools(
             )
             s["rate_pct"] = round(100.0 * s["ng"] / s["inspected"], 3)
             s["multiplier"] = round(s["rate_pct"] / s["baseline_rate_pct"], 2) if s["baseline_rate_pct"] else None
-            top = q(
+            top = query(
                 "SELECT COALESCE(confirmed_label, suggested_label) AS d, COUNT(*) AS n FROM ng_events WHERE station_id=? AND ts>=? AND ts<? GROUP BY 1 ORDER BY 2 DESC LIMIT 1",
                 (s["station_id"], s["start"], s["end"]),
             )
@@ -370,19 +371,19 @@ def build_tools(
             )
         sid = sids[0]
         f, t = _parse_ts(a.from_ts, PERIOD_START), _parse_ts(a.to_ts, PERIOD_END)
-        eq = q("SELECT id, code, model, last_maintenance_at FROM equipment WHERE station_id=?", (sid,))[0]
+        eq = query("SELECT id, code, model, last_maintenance_at FROM equipment WHERE station_id=?", (sid,))[0]
         candidates = []
-        for p in [r["param"] for r in q("SELECT DISTINCT param FROM param_logs WHERE equipment_id=?", (eq["id"],))]:
+        for p in [r["param"] for r in query("SELECT DISTINCT param FROM param_logs WHERE equipment_id=?", (eq["id"],))]:
             win = [
                 r["value"]
-                for r in q(
+                for r in query(
                     "SELECT value FROM param_logs WHERE equipment_id=? AND param=? AND ts>=? AND ts<?",
                     (eq["id"], p, f, t),
                 )
             ]
             base = [
                 r["value"]
-                for r in q(
+                for r in query(
                     "SELECT value FROM param_logs WHERE equipment_id=? AND param=? AND (ts<? OR ts>=?)",
                     (eq["id"], p, f, t),
                 )
@@ -404,15 +405,15 @@ def build_tools(
             )
         candidates.sort(key=lambda c: -abs(c["z"]))
         lo = (datetime.strptime(f, "%Y-%m-%d %H:%M:%S") - timedelta(hours=48)).strftime("%Y-%m-%d %H:%M:%S")
-        maint = q(
+        maint = query(
             "SELECT ts, kind, note FROM maintenance WHERE equipment_id=? AND ts>=? AND ts<? ORDER BY ts",
             (eq["id"], lo, t),
         )
-        lots = q(
+        lots = query(
             "SELECT DISTINCT l.id, l.material_batch FROM ng_events e JOIN lots l ON l.id=e.lot_id WHERE e.station_id=? AND e.ts>=? AND e.ts<?",
             (sid, f, t),
         )
-        defects = q(
+        defects = query(
             "SELECT COALESCE(confirmed_label, suggested_label) AS d, COUNT(*) AS n FROM ng_events WHERE station_id=? AND ts>=? AND ts<? GROUP BY 1 ORDER BY 2 DESC",
             (sid, f, t),
         )
@@ -458,8 +459,8 @@ def build_tools(
             "SELECT e.id, e.ts, e.line_id, e.station_id, e.lot_id, l.material_batch, e.image_path, e.suggested_label, e.suggested_confidence, e.label_status, e.confirmed_label, e.labeled_by "
             f"FROM ng_events e JOIN lots l ON l.id=e.lot_id WHERE {' AND '.join(where)} ORDER BY e.ts DESC LIMIT ?"
         )
-        data = q(sql, (*params, a.limit))
-        total = q(
+        data = query(sql, (*params, a.limit))
+        total = query(
             f"SELECT COUNT(*) AS n FROM ng_events e JOIN lots l ON l.id=e.lot_id WHERE {' AND '.join(where)}",
             tuple(params),
         )[0]["n"]
@@ -471,7 +472,7 @@ def build_tools(
         }
 
     def classify_image(a: EventIdArgs) -> Any:
-        ev = q(
+        ev = query(
             "SELECT id, image_path, suggested_label, suggested_confidence, label_status, confirmed_label FROM ng_events WHERE id=?",
             (a.event_id,),
         )
@@ -499,7 +500,7 @@ def build_tools(
         }
 
     def compare_before_after(a: ActionIdArgs) -> Any:
-        act = q("SELECT * FROM actions WHERE id=?", (a.action_id,))
+        act = query("SELECT * FROM actions WHERE id=?", (a.action_id,))
         if not act:
             raise ValueError(f"조치 {a.action_id} 없음")
         act = act[0]
@@ -510,7 +511,7 @@ def build_tools(
         a0, a1 = act["applied_at"], (ap + timedelta(days=a.days)).strftime("%Y-%m-%d %H:%M:%S")
 
         def rate(f, t):
-            r = q(
+            r = query(
                 "SELECT SUM(inspected) AS i, SUM(ng) AS n FROM inspections WHERE station_id=? AND hour_start>=? AND hour_start<?",
                 (act["station_id"], f, t),
             )[0]
@@ -546,7 +547,7 @@ def build_tools(
         sids = resolve_station(a.station, a.line)
         ph = ",".join("?" * len(sids))
         key = "hour_start" if a.group_by == "hour" else "substr(hour_start,1,10)"
-        data = q(
+        data = query(
             f"SELECT {key} AS k, SUM(inspected) AS i, SUM(ng) AS n FROM inspections WHERE station_id IN ({ph}) AND hour_start>=? AND hour_start<? GROUP BY 1 ORDER BY 1",
             (*sids, f, t),
         )
@@ -592,7 +593,7 @@ def build_tools(
         return index.list_docs()
 
     # ---- write (승인 필요)
-    def _rw() -> sqlite3.Connection:
+    def _connect_rw() -> sqlite3.Connection:
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         return conn
@@ -600,7 +601,7 @@ def build_tools(
     def confirm_label(a: ConfirmLabelArgs) -> Any:
         if a.label not in DEFECTS:
             raise ValueError(f"라벨은 {DEFECTS} 중 하나여야 합니다(QA-001).")
-        conn = _rw()
+        conn = _connect_rw()
         try:
             row = conn.execute(
                 "SELECT label_status, confirmed_label FROM ng_events WHERE id=?", (a.event_id,)
@@ -633,7 +634,7 @@ def build_tools(
         if len(sids) != 1:
             raise ValueError("스테이션 하나를 지정하세요.")
         sid = sids[0]
-        conn = _rw()
+        conn = _connect_rw()
         try:
             eq = conn.execute(
                 "SELECT id FROM equipment WHERE station_id=?" + (" AND code=?" if a.equipment_code else ""),
@@ -671,7 +672,7 @@ def build_tools(
         if len(sids) != 1:
             raise ValueError("스테이션 하나를 지정하세요.")
         sid = sids[0]
-        conn = _rw()
+        conn = _connect_rw()
         try:
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             conn.execute("DELETE FROM alert_rules WHERE station_id=?", (sid,))
@@ -692,7 +693,7 @@ def build_tools(
 
     # ---- destructive (차단)
     def delete_ng_events(a: LotArgs) -> Any:
-        conn = _rw()
+        conn = _connect_rw()
         try:
             cur = conn.execute("DELETE FROM ng_events WHERE lot_id=?", (a.lot_id,))
             conn.commit()

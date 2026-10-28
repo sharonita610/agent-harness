@@ -7,7 +7,7 @@ import { briefArgs, setToolLabels, toUiEvent } from "./components/EventList";
 import ResultCard from "./components/ResultCard";
 import Rich from "./components/Rich";
 import Chart from "./components/Chart";
-import { Heat, Stats } from "./components/DataView";
+import { HeatGrid, Stats } from "./components/DataView";
 import QueueBoard from "./components/QueueBoard";
 import type { Span } from "./types";
 
@@ -190,7 +190,7 @@ describe("data tab", () => {
     expect(st).toContain("2.35");
     expect(st).toContain("stat bad");
     const heat = renderToStaticMarkup(
-      createElement(Heat, {
+      createElement(HeatGrid, {
         data: { rows: ["1라인"], cols: ["코팅", "권취"], values: [[0.5, 2.0]], unit: "%" },
       }),
     );

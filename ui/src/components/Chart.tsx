@@ -4,18 +4,18 @@ import { Table } from "./ResultCard";
 
 /** 계열 색은 고정 순서(청록·파랑·주황·보라). 필터로 계열 수가 바뀌어도 같은 이름은 같은 색이어야 하므로 이름이 아니라 자리로 준다. */
 export const SERIES_COLORS = ["#1f4e79", "#1a9c8f", "#e07a2d", "#7b4fa6"]; // 남색(포인트)·청록·주황·보라
-const W = 640,
-  H = 220,
-  L = 46,
-  R = 16,
-  T = 14,
-  B = 30;
-const fmt = (v: number | null | undefined, unit = "") =>
+const WIDTH = 640,
+  HEIGHT = 220,
+  PAD_LEFT = 46,
+  PAD_RIGHT = 16,
+  PAD_TOP = 14,
+  PAD_BOTTOM = 30;
+const formatNumber = (v: number | null | undefined, unit = "") =>
   v === null || v === undefined
     ? "값 없음"
     : `${Number.isInteger(v) ? v.toLocaleString("ko-KR") : v.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}${unit ? " " + unit : ""}`;
 
-function ticks(max: number): number[] {
+function yTicks(max: number): number[] {
   if (max <= 0) return [0];
   const raw = max / 4;
   const p = Math.pow(10, Math.floor(Math.log10(raw)));
@@ -29,7 +29,7 @@ function ticks(max: number): number[] {
 export default function Chart({
   kind,
   data,
-  height = H,
+  height = HEIGHT,
 }: {
   kind: "line" | "bar";
   data: SeriesData;
@@ -42,11 +42,14 @@ export default function Chart({
   const unit = data.unit ?? "";
   const vals = series.flatMap((s) => s.values).filter((v): v is number => typeof v === "number");
   const max = Math.max(0, ...vals);
-  const tk = ticks(max);
-  const yMax = tk[tk.length - 1] || 1;
-  const right = series.length > 1 ? R + 64 : R;
-  const px = (i: number) => (n <= 1 ? L + (W - L - right) / 2 : L + ((W - L - right) * i) / (n - 1));
-  const py = (v: number) => T + (height - T - B) * (1 - v / yMax);
+  const yTickValues = yTicks(max);
+  const yMax = yTickValues[yTickValues.length - 1] || 1;
+  const right = series.length > 1 ? PAD_RIGHT + 64 : PAD_RIGHT;
+  const xAt = (i: number) =>
+    n <= 1
+      ? PAD_LEFT + (WIDTH - PAD_LEFT - right) / 2
+      : PAD_LEFT + ((WIDTH - PAD_LEFT - right) * i) / (n - 1);
+  const yAt = (v: number) => PAD_TOP + (height - PAD_TOP - PAD_BOTTOM) * (1 - v / yMax);
   const labelEvery = Math.max(1, Math.ceil(n / 8));
   if (!n || !series.length) return <p className="muted small">표시할 값이 없습니다.</p>;
   const rows = data.x.map((x, i) =>
@@ -62,8 +65,8 @@ export default function Chart({
   if (kind === "line" && series.length > 1) {
     const want = series
       .map((s, k) => {
-        const li = lastOf(s);
-        return { k, y: li === undefined ? null : py(s.values[li] as number) };
+        const lastIndex = lastOf(s);
+        return { k, y: lastIndex === undefined ? null : yAt(s.values[lastIndex] as number) };
       })
       .filter((o): o is { k: number; y: number } => o.y !== null)
       .sort((a, b) => a.y - b.y);
@@ -90,36 +93,43 @@ export default function Chart({
         <Table rows={rows} max={40} />
       ) : (
         <svg
-          viewBox={`0 0 ${W} ${height}`}
+          viewBox={`0 0 ${WIDTH} ${height}`}
           width="100%"
           role="img"
           aria-label={`${kind === "line" ? "선" : "막대"} 그래프, 계열 ${series.map((s) => s.name).join(", ")}`}
           onMouseLeave={() => setHover(null)}
           onMouseMove={(e) => {
             const r = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
-            const x = ((e.clientX - r.left) / r.width) * W;
+            const x = ((e.clientX - r.left) / r.width) * WIDTH;
             if (kind === "bar") {
-              const bw = (W - L - right) / n;
-              setHover(Math.min(n - 1, Math.max(0, Math.floor((x - L) / bw))));
+              const barWidth = (WIDTH - PAD_LEFT - right) / n;
+              setHover(Math.min(n - 1, Math.max(0, Math.floor((x - PAD_LEFT) / barWidth))));
             } else {
               let best = 0;
-              for (let i = 1; i < n; i++) if (Math.abs(px(i) - x) < Math.abs(px(best) - x)) best = i;
+              for (let i = 1; i < n; i++) if (Math.abs(xAt(i) - x) < Math.abs(xAt(best) - x)) best = i;
               setHover(best);
             }
           }}
         >
-          {tk.map((v) => (
+          {yTickValues.map((v) => (
             <g key={v}>
               <line
-                x1={L}
-                x2={W - right}
-                y1={py(v)}
-                y2={py(v)}
+                x1={PAD_LEFT}
+                x2={WIDTH - right}
+                y1={yAt(v)}
+                y2={yAt(v)}
                 stroke="currentColor"
                 opacity={v === 0 ? 0.35 : 0.12}
               />
-              <text x={L - 6} y={py(v) + 4} textAnchor="end" fontSize="11" fill="currentColor" opacity={0.7}>
-                {fmt(v)}
+              <text
+                x={PAD_LEFT - 6}
+                y={yAt(v) + 4}
+                textAnchor="end"
+                fontSize="11"
+                fill="currentColor"
+                opacity={0.7}
+              >
+                {formatNumber(v)}
               </text>
             </g>
           ))}
@@ -128,8 +138,8 @@ export default function Chart({
               (i % labelEvery === 0 || i === n - 1) && (
                 <text
                   key={i}
-                  x={kind === "bar" ? L + ((W - L - right) / n) * (i + 0.5) : px(i)}
-                  y={height - B + 16}
+                  x={kind === "bar" ? PAD_LEFT + ((WIDTH - PAD_LEFT - right) / n) * (i + 0.5) : xAt(i)}
+                  y={height - PAD_BOTTOM + 16}
                   textAnchor="middle"
                   fontSize="11"
                   fill="currentColor"
@@ -141,17 +151,17 @@ export default function Chart({
           )}
           {kind === "bar"
             ? series.map((s, k) => {
-                const bw = (W - L - right) / n;
+                const barWidth = (WIDTH - PAD_LEFT - right) / n;
                 const gap = 2;
-                const w = Math.max(2, (bw - 8) / series.length - gap);
+                const w = Math.max(2, (barWidth - 8) / series.length - gap);
                 return s.values.map((v, i) =>
                   v === null || v === undefined ? null : (
                     <rect
                       key={`${k}-${i}`}
-                      x={L + bw * i + 4 + k * (w + gap)}
-                      y={py(v)}
+                      x={PAD_LEFT + barWidth * i + 4 + k * (w + gap)}
+                      y={yAt(v)}
                       width={w}
-                      height={Math.max(0, py(0) - py(v))}
+                      height={Math.max(0, yAt(0) - yAt(v))}
                       rx={2}
                       fill={SERIES_COLORS[k]}
                       opacity={hover === null || hover === i ? 1 : 0.45}
@@ -160,23 +170,23 @@ export default function Chart({
                 );
               })
             : series.map((s, k) => {
-                const pts = s.values.map((v, i) =>
-                  v === null || v === undefined ? null : `${px(i)},${py(v)}`,
+                const points = s.values.map((v, i) =>
+                  v === null || v === undefined ? null : `${xAt(i)},${yAt(v)}`,
                 );
-                const segs: string[] = [];
-                let cur: string[] = [];
-                for (const p of pts) {
-                  if (p) cur.push(p);
+                const segments: string[] = [];
+                let current: string[] = [];
+                for (const p of points) {
+                  if (p) current.push(p);
                   else {
-                    if (cur.length) segs.push(cur.join(" "));
-                    cur = [];
+                    if (current.length) segments.push(current.join(" "));
+                    current = [];
                   }
                 }
-                if (cur.length) segs.push(cur.join(" "));
+                if (current.length) segments.push(current.join(" "));
                 const lastIdx = lastOf(s);
                 return (
                   <g key={k}>
-                    {segs.map((d, j) => (
+                    {segments.map((d, j) => (
                       <polyline
                         key={j}
                         points={d}
@@ -191,8 +201,8 @@ export default function Chart({
                       v === null || v === undefined ? null : (
                         <circle
                           key={i}
-                          cx={px(i)}
-                          cy={py(v)}
+                          cx={xAt(i)}
+                          cy={yAt(v)}
                           r={hover === i ? 5 : 3.5}
                           fill={SERIES_COLORS[k]}
                           stroke="var(--sheet)"
@@ -206,12 +216,12 @@ export default function Chart({
           {kind === "line" &&
             series.length > 1 &&
             series.map((s, k) => {
-              const li = lastOf(s);
-              return li === undefined ? null : (
+              const lastIndex = lastOf(s);
+              return lastIndex === undefined ? null : (
                 <text
                   key={`l${k}`}
-                  x={px(li) + 8}
-                  y={(labelY[k] ?? py(s.values[li] as number)) + 4}
+                  x={xAt(lastIndex) + 8}
+                  y={(labelY[k] ?? yAt(s.values[lastIndex] as number)) + 4}
                   fontSize="11"
                   fill={SERIES_COLORS[k]}
                   paintOrder="stroke"
@@ -224,29 +234,32 @@ export default function Chart({
             })}
           {hover !== null &&
             (() => {
-              const x = kind === "bar" ? L + ((W - L - right) / n) * (hover + 0.5) : px(hover);
+              const x =
+                kind === "bar" ? PAD_LEFT + ((WIDTH - PAD_LEFT - right) / n) * (hover + 0.5) : xAt(hover);
               const lines = [
                 data.x[hover],
-                ...series.map((s) => `${series.length > 1 ? s.name + " " : ""}${fmt(s.values[hover], unit)}`),
+                ...series.map(
+                  (s) => `${series.length > 1 ? s.name + " " : ""}${formatNumber(s.values[hover], unit)}`,
+                ),
               ];
-              const bw = Math.max(...lines.map((l) => l.length)) * 6.6 + 16;
-              const bx = Math.min(Math.max(L, x - bw / 2), W - right - bw);
-              const by = T;
+              const barWidth = Math.max(...lines.map((l) => l.length)) * 6.6 + 16;
+              const boxX = Math.min(Math.max(PAD_LEFT, x - barWidth / 2), WIDTH - right - barWidth);
+              const boxY = PAD_TOP;
               return (
                 <g pointerEvents="none">
                   <line
                     x1={x}
                     x2={x}
-                    y1={T}
-                    y2={height - B}
+                    y1={PAD_TOP}
+                    y2={height - PAD_BOTTOM}
                     stroke="currentColor"
                     opacity={0.25}
                     strokeDasharray="3 3"
                   />
                   <rect
-                    x={bx}
-                    y={by}
-                    width={bw}
+                    x={boxX}
+                    y={boxY}
+                    width={barWidth}
                     height={14 * lines.length + 8}
                     rx={4}
                     fill="var(--sheet)"
@@ -255,8 +268,8 @@ export default function Chart({
                   {lines.map((l, i) => (
                     <text
                       key={i}
-                      x={bx + 8}
-                      y={by + 14 * (i + 1)}
+                      x={boxX + 8}
+                      y={boxY + 14 * (i + 1)}
                       fontSize="11"
                       fill="currentColor"
                       fontWeight={i === 0 ? 600 : 400}

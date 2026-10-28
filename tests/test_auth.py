@@ -14,7 +14,7 @@ from harness.tools.registry import ToolRegistry
 from tests.test_service import ScriptProvider
 
 
-def tc(name, **args):
+def tool_call(name, **args):
     return ToolCall(id=f"c_{name}", name=name, arguments=args)
 
 
@@ -26,7 +26,10 @@ def auth_client(tmp_path, seeded_db):
     k_ap = us.add("팀장", "approver")
     k_ad = us.add("관리자", "admin")
     scripts = [
-        [LLMResponse(tool_calls=[tc("create_note", order_id=3, note="인증 테스트")]), LLMResponse(text="남겼습니다.")]
+        [
+            LLMResponse(tool_calls=[tool_call("create_note", order_id=3, note="인증 테스트")]),
+            LLMResponse(text="남겼습니다."),
+        ]
     ]
     it = iter(scripts)
     app = create_app(
@@ -40,7 +43,7 @@ def auth_client(tmp_path, seeded_db):
     return TestClient(app), {"op": k_op, "ap": k_ap, "ad": k_ad}
 
 
-def H(key):
+def auth_header(key):
     return {"Authorization": f"Bearer {key}"}
 
 
@@ -50,16 +53,16 @@ def test_missing_or_wrong_key_is_401(auth_client):
         assert c.get("/health").status_code == 200  # 헬스는 공개
         assert c.get("/health").json()["auth_required"] is True
         assert c.get("/runs").status_code == 401
-        assert c.get("/runs", headers=H("hk_wrong")).status_code == 401
+        assert c.get("/runs", headers=auth_header("hk_wrong")).status_code == 401
         assert c.post("/chat", json={"message": "x"}).status_code == 401
 
 
 def test_me_and_role_flags(auth_client):
     c, keys = auth_client
     with c:
-        me = c.get("/me", headers=H(keys["op"])).json()
+        me = c.get("/me", headers=auth_header(keys["op"])).json()
         assert me["name"] == "운영자" and me["can"] == {"chat": True, "approve": False, "admin": False}
-        assert c.get("/me", headers=H(keys["ap"])).json()["can"]["approve"] is True
+        assert c.get("/me", headers=auth_header(keys["ap"])).json()["can"]["approve"] is True
 
 
 def test_operator_cannot_approve_but_approver_can_and_audit_records_it(auth_client, seeded_db):
@@ -69,10 +72,10 @@ def test_operator_cannot_approve_but_approver_can_and_audit_records_it(auth_clie
         result = {}
 
         def try_decide(aid):
-            result["op"] = c.post(f"/approvals/{aid}", json={"decision": "approve"}, headers=H(keys["op"]))
-            result["ap"] = c.post(f"/approvals/{aid}", json={"decision": "approve"}, headers=H(keys["ap"]))
+            result["op"] = c.post(f"/approvals/{aid}", json={"decision": "approve"}, headers=auth_header(keys["op"]))
+            result["ap"] = c.post(f"/approvals/{aid}", json={"decision": "approve"}, headers=auth_header(keys["ap"]))
 
-        with c.stream("POST", "/chat", json={"message": "주문 3번에 메모"}, headers=H(keys["op"])) as r:
+        with c.stream("POST", "/chat", json={"message": "주문 3번에 메모"}, headers=auth_header(keys["op"])) as r:
             ev, data = None, ""
             for line in r.iter_lines():
                 if line.startswith("event:"):
@@ -88,12 +91,16 @@ def test_operator_cannot_approve_but_approver_can_and_audit_records_it(auth_clie
         assert result["op"].status_code == 403 and "approver" in result["op"].json()["detail"]
         assert result["ap"].status_code == 200 and result["ap"].json()["decided_by"] == "팀장"
         assert dict(events)["approval_result"]["approved"] is True
-        audit = c.get("/audit", headers=H(keys["ap"])).json()
+        audit = c.get("/audit", headers=auth_header(keys["ap"])).json()
         actions = [(a["user"], a["action"]) for a in audit]
         assert ("팀장", "approval.approve") in actions and ("운영자", "chat") in actions
-        assert c.get("/audit", headers=H(keys["op"])).status_code == 403
-        assert c.get("/users", headers=H(keys["ap"])).status_code == 403
-        assert [u["name"] for u in c.get("/users", headers=H(keys["ad"])).json()] == ["운영자", "팀장", "관리자"]
+        assert c.get("/audit", headers=auth_header(keys["op"])).status_code == 403
+        assert c.get("/users", headers=auth_header(keys["ap"])).status_code == 403
+        assert [u["name"] for u in c.get("/users", headers=auth_header(keys["ad"])).json()] == [
+            "운영자",
+            "팀장",
+            "관리자",
+        ]
 
 
 def test_user_store_hashes_keys_and_persists(tmp_path):
@@ -126,12 +133,12 @@ def test_admin_can_approve_too(tmp_path, seeded_db):
         db_path=tmp_path / "svc.db", registry=ToolRegistry(build_tools(db)), system_prompt=SYSTEM_PROMPT, users=us
     )
     with TestClient(app) as c:
-        me = c.get("/me", headers=H(k_ad)).json()
+        me = c.get("/me", headers=auth_header(k_ad)).json()
         assert me["can"] == {"chat": True, "approve": True, "admin": True}
         store = app.state.harness.store
         broker = app.state.harness.broker
         sid = store.create_session("fake")["id"]
         rid = store.create_run(sid, "chat", "q")
         aid = broker.request(rid, "create_note", {"order_id": 1}, "write")
-        r = c.post(f"/approvals/{aid}", json={"decision": "approve"}, headers=H(k_ad))
+        r = c.post(f"/approvals/{aid}", json={"decision": "approve"}, headers=auth_header(k_ad))
         assert r.status_code == 200 and r.json()["decided_by"] == "관리자" and r.json()["status"] == "approved"

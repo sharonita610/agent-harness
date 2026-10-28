@@ -41,7 +41,7 @@ interface Props {
 }
 
 /** 근거로 보여줄 가치가 없는 '둘러보기' 도구. 확인 과정에는 남는다. */
-const QUIET = /^(list_|describe_table$|check_netlist$|check_task$|get_waveform$)/;
+const QUIET_TOOLS = /^(list_|describe_table$|check_netlist$|check_task$|get_waveform$)/;
 
 export default function Desk({
   base,
@@ -62,10 +62,10 @@ export default function Desk({
   const [q, setQ] = useState("");
   const [busyBases, setBusyBases] = useState<Set<string>>(new Set()); // 비서별로 따로 바쁘다. 한 비서가 결재를 기다려도 다른 비서에게 물을 수 있다
   const busy = busyBases.has(base);
-  const ta = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const nextId = useRef(1);
   useEffect(() => {
-    const el = ta.current;
+    const el = textareaRef.current;
     if (!el) return;
     if (!q) {
       el.style.height = "";
@@ -192,7 +192,7 @@ export default function Desk({
       {blockedWhy && <p className="notice">{blockedWhy}</p>}
       <div className="compose">
         <textarea
-          ref={ta}
+          ref={textareaRef}
           rows={1}
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -256,7 +256,7 @@ function SheetView({
   let lastCall: UiEvent | null = null;
   for (const ev of t.events) {
     if (ev.kind === "tool_call") lastCall = ev;
-    if (ev.kind === "tool_result" && ev.result !== undefined && ev.tool && !QUIET.test(ev.tool)) {
+    if (ev.kind === "tool_result" && ev.result !== undefined && ev.tool && !QUIET_TOOLS.test(ev.tool)) {
       cards.push({
         ev,
         title: toolLabel(ev.tool),

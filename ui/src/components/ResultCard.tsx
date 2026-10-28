@@ -2,10 +2,10 @@ import { fileUrl } from "../api";
 import Rich from "./Rich";
 
 type Row = Record<string, unknown>;
-const isPrim = (v: unknown) => v === null || ["string", "number", "boolean"].includes(typeof v);
+const isPrimitive = (v: unknown) => v === null || ["string", "number", "boolean"].includes(typeof v);
 const isFlatRow = (v: unknown): v is Row =>
-  !!v && typeof v === "object" && !Array.isArray(v) && Object.values(v as Row).every(isPrim);
-const fmt = (v: unknown): string => {
+  !!v && typeof v === "object" && !Array.isArray(v) && Object.values(v as Row).every(isPrimitive);
+const formatValue = (v: unknown): string => {
   if (v === null || v === undefined) return "";
   if (typeof v === "number") return Number.isInteger(v) ? v.toLocaleString("ko-KR") : String(+v.toFixed(4));
   if (typeof v === "boolean") return v ? "예" : "아니요";
@@ -108,8 +108,8 @@ const KEY_KO: Record<string, string> = {
   customer_id: "거래처",
   status: "상태",
 };
-const ko = (k: string) => KEY_KO[k] ?? k;
-const HIDE = new Set([
+const labelOf = (k: string) => KEY_KO[k] ?? k;
+const HIDDEN_KEYS = new Set([
   "note",
   "next",
   "sql_executed",
@@ -143,7 +143,7 @@ export function Table({ rows, max = 12 }: { rows: Row[]; max?: number }) {
           <tr>
             {cols.map((c) => (
               <th key={c} className={typeof shown[0]?.[c] === "number" ? "num" : ""}>
-                {ko(c)}
+                {labelOf(c)}
               </th>
             ))}
           </tr>
@@ -153,7 +153,7 @@ export function Table({ rows, max = 12 }: { rows: Row[]; max?: number }) {
             <tr key={i}>
               {cols.map((c) => (
                 <td key={c} className={typeof r[c] === "number" ? "num" : ""}>
-                  {fmt(r[c])}
+                  {formatValue(r[c])}
                 </td>
               ))}
             </tr>
@@ -188,17 +188,17 @@ function Sources({ hits }: { hits: Row[] }) {
   );
 }
 
-function KV({ obj, keys }: { obj: Row; keys?: string[] }) {
+function KeyValues({ obj, keys }: { obj: Row; keys?: string[] }) {
   const ks = (keys ?? Object.keys(obj)).filter(
-    (k) => !HIDE.has(k) && isPrim(obj[k]) && obj[k] !== "" && obj[k] !== null,
+    (k) => !HIDDEN_KEYS.has(k) && isPrimitive(obj[k]) && obj[k] !== "" && obj[k] !== null,
   );
   if (!ks.length) return null;
   return (
     <dl className="kv">
       {ks.map((k) => (
         <div key={k}>
-          <dt>{ko(k)}</dt>
-          <dd>{fmt(obj[k])}</dd>
+          <dt>{labelOf(k)}</dt>
+          <dd>{formatValue(obj[k])}</dd>
         </div>
       ))}
     </dl>
@@ -226,7 +226,8 @@ export default function ResultCard({ result, tool }: { result: unknown; tool?: s
     parts.push(
       <blockquote key="q" className="quote">
         <span className="from">
-          {fmt(r.agent)} 비서의 답{r.state && r.state !== "completed" ? ` · ${fmt(r.state)}` : ""}
+          {formatValue(r.agent)} 비서의 답
+          {r.state && r.state !== "completed" ? ` · ${formatValue(r.state)}` : ""}
         </span>
         <Rich text={String(r.answer || r.waiting_for || r.note || "")} />
       </blockquote>,
@@ -240,15 +241,15 @@ export default function ResultCard({ result, tool }: { result: unknown; tool?: s
       </a>,
     );
   }
-  const mr = r.measurements_readable ?? r.measurements;
-  if (mr && typeof mr === "object" && !Array.isArray(mr)) {
-    const m = mr as Row;
+  const measured = r.measurements_readable ?? r.measurements;
+  if (measured && typeof measured === "object" && !Array.isArray(measured)) {
+    const m = measured as Row;
     parts.push(
       <div key="m" className="measures">
         {Object.entries(m).map(([k, v]) => (
           <div key={k}>
             <span className="k">{k}</span>
-            <span className="v">{v === null ? "값 없음" : fmt(v)}</span>
+            <span className="v">{v === null ? "값 없음" : formatValue(v)}</span>
           </div>
         ))}
       </div>,
@@ -258,11 +259,11 @@ export default function ResultCard({ result, tool }: { result: unknown; tool?: s
     parts.push(<Table key="t" rows={r.rows as Row[]} />);
   } else {
     for (const [k, v] of Object.entries(r)) {
-      if (Array.isArray(v) && v.length && v.every(isFlatRow) && !HIDE.has(k) && k !== "warnings") {
+      if (Array.isArray(v) && v.length && v.every(isFlatRow) && !HIDDEN_KEYS.has(k) && k !== "warnings") {
         const rows = v as Row[];
         parts.push(
           <div key={k}>
-            <div className="subhead">{ko(k)}</div>
+            <div className="subhead">{labelOf(k)}</div>
             {rows.every((h) => "source" in h) ? <Sources hits={rows} /> : <Table rows={rows} />}
           </div>,
         );
@@ -274,12 +275,12 @@ export default function ResultCard({ result, tool }: { result: unknown; tool?: s
         Array.isArray(v) &&
         v.length &&
         v.every((x) => typeof x === "string") &&
-        !HIDE.has(k) &&
+        !HIDDEN_KEYS.has(k) &&
         k !== "warnings"
       ) {
         parts.push(
           <div key={k + "-l"}>
-            <div className="subhead">{ko(k)}</div>
+            <div className="subhead">{labelOf(k)}</div>
             <ul className="plain">
               {(v as string[]).slice(0, 8).map((x, i) => (
                 <li key={i}>{x}</li>
@@ -291,7 +292,7 @@ export default function ResultCard({ result, tool }: { result: unknown; tool?: s
       }
     }
   }
-  parts.push(<KV key="kv" obj={r} />);
+  parts.push(<KeyValues key="kv" obj={r} />);
   if (Array.isArray(r.warnings) && r.warnings.length)
     parts.push(
       <p key="w" className="warn small">

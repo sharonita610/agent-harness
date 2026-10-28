@@ -18,10 +18,10 @@ export function useProgress(base: string, runIds: string[]): Record<string, Prog
       await Promise.all(
         runIds.map(async (id) => {
           try {
-            const evs = (await api.runEvents(id, seqs.current[id] ?? 0)) as RunEvent[];
-            if (!evs.length) return;
-            seqs.current[id] = evs[evs.length - 1].seq;
-            const last = [...evs].reverse().find((e) => e.kind === "progress");
+            const events = (await api.runEvents(id, seqs.current[id] ?? 0)) as RunEvent[];
+            if (!events.length) return;
+            seqs.current[id] = events[events.length - 1].seq;
+            const last = [...events].reverse().find((e) => e.kind === "progress");
             if (last && alive)
               setMap((m) => ({
                 ...m,

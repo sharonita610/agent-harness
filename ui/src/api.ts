@@ -49,7 +49,7 @@ export class ApiError extends Error {
   }
 }
 
-async function j<T>(base: string, url: string, init?: RequestInit): Promise<T> {
+async function requestJson<T>(base: string, url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(base + url, {
     ...init,
     headers: {
@@ -93,32 +93,33 @@ export interface AuditEntry {
 /** base 를 고정한 API 묶음. 다른 비서 서비스의 결재함을 볼 때 쓴다. */
 export function makeApi(base: () => string) {
   return {
-    health: () => j<Health>(base(), "/health"),
-    me: () => j<Me>(base(), "/me"),
-    workspace: () => j<Workspace>(base(), "/workspace"),
-    audit: (limit = 50) => j<AuditEntry[]>(base(), `/audit?limit=${limit}`),
-    dashboard: () => j<Panel[]>(base(), "/dashboard"),
-    tools: () => j<Tool[]>(base(), "/tools"),
-    createSession: () => j<Session>(base(), "/sessions", { method: "POST", body: "{}" }),
-    session: (id: string) => j<Session>(base(), `/sessions/${id}`),
-    approvals: (status = "pending") => j<Approval[]>(base(), `/approvals?status=${status}`),
+    health: () => requestJson<Health>(base(), "/health"),
+    me: () => requestJson<Me>(base(), "/me"),
+    workspace: () => requestJson<Workspace>(base(), "/workspace"),
+    audit: (limit = 50) => requestJson<AuditEntry[]>(base(), `/audit?limit=${limit}`),
+    dashboard: () => requestJson<Panel[]>(base(), "/dashboard"),
+    tools: () => requestJson<Tool[]>(base(), "/tools"),
+    createSession: () => requestJson<Session>(base(), "/sessions", { method: "POST", body: "{}" }),
+    session: (id: string) => requestJson<Session>(base(), `/sessions/${id}`),
+    approvals: (status = "pending") => requestJson<Approval[]>(base(), `/approvals?status=${status}`),
     decide: (id: string, decision: "approve" | "deny") =>
-      j<Approval>(base(), `/approvals/${id}`, {
+      requestJson<Approval>(base(), `/approvals/${id}`, {
         method: "POST",
         body: JSON.stringify({ decision, by: "web" }),
       }),
     submitJob: (question: string, session_id?: string) =>
-      j<{ run_id: string }>(base(), "/jobs", {
+      requestJson<{ run_id: string }>(base(), "/jobs", {
         method: "POST",
         body: JSON.stringify({ question, session_id }),
       }),
-    jobs: (limit = 20) => j<Run[]>(base(), `/jobs?limit=${limit}`),
-    cancelJob: (id: string) => j<Run>(base(), `/jobs/${id}/cancel`, { method: "POST" }),
-    runs: (limit = 30) => j<Run[]>(base(), `/runs?limit=${limit}`),
-    run: (id: string) => j<Run & { events: RunEvent[]; approvals: Approval[] }>(base(), `/runs/${id}`),
+    jobs: (limit = 20) => requestJson<Run[]>(base(), `/jobs?limit=${limit}`),
+    cancelJob: (id: string) => requestJson<Run>(base(), `/jobs/${id}/cancel`, { method: "POST" }),
+    runs: (limit = 30) => requestJson<Run[]>(base(), `/runs?limit=${limit}`),
+    run: (id: string) =>
+      requestJson<Run & { events: RunEvent[]; approvals: Approval[] }>(base(), `/runs/${id}`),
     runEvents: (id: string, afterSeq = 0) =>
-      j<RunEvent[]>(base(), `/runs/${id}/events?after_seq=${afterSeq}`),
-    trace: (id: string) => j<Trace>(base(), `/runs/${id}/trace`),
+      requestJson<RunEvent[]>(base(), `/runs/${id}/events?after_seq=${afterSeq}`),
+    trace: (id: string) => requestJson<Trace>(base(), `/runs/${id}/trace`),
   };
 }
 export const api = makeApi(() => BASE);

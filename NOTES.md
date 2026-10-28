@@ -225,4 +225,5 @@ uv run harness eval --n 1            # 평가 16개
 
 ### 포매터 도입 (2026-10-29)
 - 포트폴리오 점검에서 "코드가 한 줄에 너무 촘촘하다" 가 첫 번째 지적이라 ruff(120열, E/F/I/W, 의도한 스타일 4개는 제외)와 prettier(110열)를 넣고 전체를 다시 포맷했다. Python 83개 파일, TS/CSS 전부. 테스트·빌드 동일, CI 에 `ruff format --check`·`ruff check`·`prettier --check` 추가. 남은 긴 줄은 문자열·주석뿐.
+- 이름 점검(같은 날): 규칙(snake_case·PascalCase·상수 대문자)은 맞았고, 문제는 뜻이 안 보이는 짧은 보조 함수 이름이었다. Python 20여 개(`_h`→`_short_hash`, `_w`→`_edge_weight`, `q`→`query`, `_rw`→`_connect_rw`, `has`→`has_role`, `dep`→`require_role`, `ev`→`eval_node`, `_err`→`_rpc_error`, `tc`→`tool_call` 등)와 TS 20여 개(`j`→`requestJson`, `s`→`asText`, `fmt`→`formatValue`, `ko`→`labelOf`, `KV`→`KeyValues`, `px/py`→`xAt/yAt`, `ms`→`toMillis`, `Heat`→`HeatGrid` 등)를 바꿨고 함수 안의 대문자 지역 변수(W, H, INK …)는 소문자로. 정규식 치환은 f-string 의 `{R}` 과 문자열 리터럴 `"{R}"` 을 구분하지 못해 한 곳이 깨졌고 ruff F821 이 잡았다.
 

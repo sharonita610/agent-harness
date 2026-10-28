@@ -13,26 +13,26 @@ from .tools import connect_ro
 
 def dashboard(scope: Scope | None = None, db_path: Path = DEFAULT_DB) -> list[dict[str, Any]]:
     ro = connect_ro(db_path, scope)
-    q = lambda sql, params=(): rows(ro.execute(sql, params))["rows"]
-    total = q("SELECT COUNT(*) AS n FROM orders")[0]["n"]
-    delayed = q("SELECT COUNT(*) AS n FROM orders WHERE status='지연'")[0]["n"]
-    short = q("SELECT COUNT(*) AS n FROM inventory WHERE on_hand < safety_stock")[0]["n"]
-    open_notes = q(
+    query = lambda sql, params=(): rows(ro.execute(sql, params))["rows"]
+    total = query("SELECT COUNT(*) AS n FROM orders")[0]["n"]
+    delayed = query("SELECT COUNT(*) AS n FROM orders WHERE status='지연'")[0]["n"]
+    short = query("SELECT COUNT(*) AS n FROM inventory WHERE on_hand < safety_stock")[0]["n"]
+    open_notes = query(
         "SELECT COUNT(*) AS n FROM order_notes WHERE created_at >= date(?, '-7 days')", (REFERENCE_DATE.isoformat(),)
     )[0]["n"]
-    status = q("SELECT status, COUNT(*) AS n FROM orders GROUP BY status ORDER BY n DESC")
-    monthly = q(
+    status = query("SELECT status, COUNT(*) AS n FROM orders GROUP BY status ORDER BY n DESC")
+    monthly = query(
         "SELECT substr(order_date,1,7) AS m, COUNT(*) AS n, SUM(status='지연') AS d FROM orders WHERE order_date >= date(?, '-6 months') GROUP BY m ORDER BY m",
         (REFERENCE_DATE.isoformat(),),
     )
-    reasons = q(
+    reasons = query(
         "SELECT delay_reason AS 사유, COUNT(*) AS 건수 FROM orders WHERE status='지연' GROUP BY 1 ORDER BY 2 DESC"
     )
-    shortage = q(
+    shortage = query(
         "SELECT w.name AS 창고, p.name AS 품목, i.on_hand AS 재고, i.safety_stock AS 안전재고, i.safety_stock - i.on_hand AS 부족 "
         "FROM inventory i JOIN warehouses w ON w.id=i.warehouse_id JOIN products p ON p.id=i.product_id WHERE i.on_hand < i.safety_stock ORDER BY 부족 DESC LIMIT 10"
     )
-    recent = q(
+    recent = query(
         "SELECT o.id AS 주문, c.name AS 거래처, o.order_date AS 주문일, o.delay_reason AS 사유, o.total_amount AS 금액 "
         "FROM orders o JOIN customers c ON c.id=o.customer_id WHERE o.status='지연' ORDER BY o.order_date DESC LIMIT 8"
     )

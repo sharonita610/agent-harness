@@ -21,11 +21,11 @@ def seed_history(graph_path: Path = GRAPH_PATH, runs_dir: Path = RUNS_DIR) -> di
     g = ExperimentGraph(graph_path)
     g.clear()  # 파일을 지우면 이미 열린 연결(도구)이 깨진다("readonly database") → 표만 비운다
     recorded = []
-    for R in ("470", "1k", "2.2k", "4.7k"):
-        text = RC.replace("{R}", R)
+    for r_label in ("470", "1k", "2.2k", "4.7k"):
+        text = RC.replace("{R}", r_label)
         r = simulate(text, ["fc WHEN vdb(out)=-3"], runs_dir=runs_dir)
-        g.record_simulation(parse_netlist(text), r, question=f"시드: RC 저역통과 R1={R}")
-        recorded.append((R, round(r["measurements"]["fc"], 1)))
+        g.record_simulation(parse_netlist(text), r, question=f"시드: RC 저역통과 R1={r_label}")
+        recorded.append((r_label, round(r["measurements"]["fc"], 1)))
     r = simulate(STEP, ["tau WHEN v(out)=0.632"], runs_dir=runs_dir)
     g.record_simulation(parse_netlist(STEP), r, question="시드: RC 계단 응답")
     return {"graph": str(graph_path), "seeded_runs": len(recorded) + 1, "fc_by_R1": recorded, **g.stats()}

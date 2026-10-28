@@ -91,13 +91,13 @@ def safe_eval(expr: str) -> float:
     """태스크 정답 공식(truth_expr)을 안전하게 계산한다: 사칙연산·거듭제곱·math 함수·pi 만 허용."""
     tree = ast.parse(expr, mode="eval")
 
-    def ev(node):
+    def eval_node(node):
         if isinstance(node, ast.Expression):
-            return ev(node.body)
+            return eval_node(node.body)
         if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
             return node.value
         if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow)):
-            a, b = ev(node.left), ev(node.right)
+            a, b = eval_node(node.left), eval_node(node.right)
             op = {
                 ast.Add: lambda: a + b,
                 ast.Sub: lambda: a - b,
@@ -107,7 +107,7 @@ def safe_eval(expr: str) -> float:
             }
             return op[type(node.op)]()
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
-            v = ev(node.operand)
+            v = eval_node(node.operand)
             return -v if isinstance(node.op, ast.USub) else v
         if isinstance(node, ast.Name) and node.id in _SAFE_NAMES:
             return _SAFE_NAMES[node.id]
@@ -117,10 +117,10 @@ def safe_eval(expr: str) -> float:
             and node.func.id in _SAFE_FUNCS
             and not node.keywords
         ):
-            return _SAFE_FUNCS[node.func.id](*[ev(a) for a in node.args])
+            return _SAFE_FUNCS[node.func.id](*[eval_node(a) for a in node.args])
         raise ValueError(f"허용되지 않는 식: {ast.dump(node)[:60]}")
 
-    return float(ev(tree))
+    return float(eval_node(tree))
 
 
 _PREFIX = {

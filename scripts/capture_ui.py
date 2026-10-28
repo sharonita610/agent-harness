@@ -49,7 +49,7 @@ class CDP:
                     raise RuntimeError(f"{method}: {msg['error']}")
                 return msg.get("result", {})
 
-    def eval(self, expr: str):
+    def evaluate(self, expr: str):
         r = self.send("Runtime.evaluate", expression=expr, returnByValue=True, awaitPromise=True)
         return r.get("result", {}).get("value")
 
@@ -57,7 +57,7 @@ class CDP:
         t0 = time.time()
         while time.time() - t0 < timeout:
             try:
-                if self.eval(expr):
+                if self.evaluate(expr):
                     return
             except Exception:
                 pass
@@ -68,7 +68,7 @@ class CDP:
         """tall 이면 작업지 스크롤을 풀어 페이지를 늘린 뒤 보이는 영역 너머까지 찍는다(긴 작업지 한 장 통째로)."""
         params = {"format": "jpeg", "quality": 82}
         if tall:
-            h = self.eval(
+            h = self.evaluate(
                 "(() => { const sh = document.querySelector('.shell'), d = document.querySelector('.desk'); sh.style.height = 'auto'; d.style.overflow = 'visible'; "
                 "document.documentElement.style.height = 'auto'; document.body.style.height = 'auto'; "
                 "const s = d.querySelector('.sheets'); return Math.ceil(s ? s.getBoundingClientRect().bottom : d.scrollHeight); })()"
@@ -82,7 +82,7 @@ class CDP:
             params["clip"] = {**clip, "scale": 1}  # deviceScaleFactor 2 가 이미 적용돼 있어 여기서 또 키우면 4배가 된다
         data = self.send("Page.captureScreenshot", **params)["data"]
         if tall:
-            self.eval(
+            self.evaluate(
                 "(() => { const sh = document.querySelector('.shell'), d = document.querySelector('.desk'); sh.style.height = ''; d.style.overflow = ''; "
                 "document.documentElement.style.height = ''; document.body.style.height = ''; return true; })()"
             )
@@ -177,12 +177,12 @@ def main():
                 20,
                 f"{name} 비서 버튼",
             )
-            assert c.eval(JS_PICK % json.dumps(name)), f"비서 없음: {name}"
+            assert c.evaluate(JS_PICK % json.dumps(name)), f"비서 없음: {name}"
             c.wait_for(JS_PICKED % json.dumps(name), 15, f"{name} 전환")
             time.sleep(0.6)
 
         def ask(label: str, until: str = JS_DONE, timeout: float = 150):
-            assert c.eval(JS_ASK % json.dumps(label)), f"예시 없음: {label}"
+            assert c.evaluate(JS_ASK % json.dumps(label)), f"예시 없음: {label}"
             print(f"  질문: {label}")
             c.wait_for(until, timeout, f"{label} 완료")
             time.sleep(0.8)
@@ -210,7 +210,7 @@ def main():
             c.shot(out / "ui-approval-slip.jpg", tall=True)
 
         def view(name: str, ready: str, timeout: float = 20):
-            assert c.eval(JS_VIEW % json.dumps(name)), f"보기 없음: {name}"
+            assert c.evaluate(JS_VIEW % json.dumps(name)), f"보기 없음: {name}"
             c.wait_for(ready, timeout, f"{name} 탭")
             time.sleep(0.8)
 
@@ -243,13 +243,13 @@ def main():
                 "rc_lowpass 샘플에서 R1 을 100Ω부터 10kΩ까지 로그 간격 9점으로 스윕해서 차단 주파수 변화를 표로 보여줘",
                 "rc_lowpass 샘플에서 C1 을 10nF부터 1µF까지 로그 간격 7점으로 스윕해서 차단 주파수 변화를 표로 보여줘",
             ):
-                c.eval(
+                c.evaluate(
                     "(t => { const ta = document.querySelector('.compose textarea'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; "
                     "set.call(ta, t); ta.dispatchEvent(new Event('input', { bubbles: true })); return true; })(%s)"
                     % json.dumps(qtext)
                 )
                 time.sleep(0.3)
-                c.eval("document.querySelector('.compose button.primary').click(); true")
+                c.evaluate("document.querySelector('.compose button.primary').click(); true")
                 time.sleep(1.0)
             c.wait_for(
                 "!!document.querySelector('.qbar.running .qfill') && !!document.querySelector('.qbar.queued')",
@@ -272,13 +272,13 @@ def main():
             c.shot(out / "ui-desk.jpg")
         if "6" in steps:
             print("6. 결재함에서 승인 → 도장")
-            c.eval("document.querySelector('.rail .slip .actions button.primary').click(); true")
+            c.evaluate("document.querySelector('.rail .slip .actions button.primary').click(); true")
             c.wait_for("!!document.querySelector('.rail .slip .stamp')", 10, "도장")
             time.sleep(0.5)
             c.shot(out / "ui-approval-stamp.jpg", RAIL)
         if "7" in steps:
             print("7. 실행 상세 드로어")
-            c.eval("document.querySelector('.sheet .top button').click(); true")
+            c.evaluate("document.querySelector('.sheet .top button').click(); true")
             c.wait_for("!!document.querySelector('.drawer .trace .r')", 20, "드로어")
             time.sleep(0.5)
             c.shot(out / "ui-trace.jpg", DRAWER)

@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 TRACES_DIR = ROOT / "traces"
 
 
-def _sid() -> str:
+def _new_span_id() -> str:
     return uuid.uuid4().hex[:16]
 
 
@@ -57,7 +57,7 @@ class TraceCollector:
     def __init__(self, run_id: str, question: str, meta: dict[str, Any] | None = None, start: float | None = None):
         self.run_id = run_id
         self.root = Span(
-            _sid(),
+            _new_span_id(),
             None,
             "agent.run",
             "run",
@@ -83,7 +83,7 @@ class TraceCollector:
             start = now - lat if lat else (self._step_start or now)
             self.spans.append(
                 Span(
-                    _sid(),
+                    _new_span_id(),
                     self.root.span_id,
                     f"llm.step{step}",
                     "llm",
@@ -102,7 +102,7 @@ class TraceCollector:
         elif kind == "nudge":
             self.spans.append(
                 Span(
-                    _sid(),
+                    _new_span_id(),
                     self.root.span_id,
                     "loop.nudge",
                     "nudge",
@@ -113,7 +113,7 @@ class TraceCollector:
             )
         elif kind == "tool_call":
             sp = Span(
-                _sid(),
+                _new_span_id(),
                 self.root.span_id,
                 f"tool.{d.get('name')}",
                 "tool",
@@ -137,7 +137,7 @@ class TraceCollector:
         elif kind == "approval_request":
             # 사람 결재 대기는 도구 실행이 아니다: run 바로 아래에 별도 스팬으로 두고, 도구 스팬은 결재 뒤에 시작한 것으로 본다.
             self._open_approval = Span(
-                _sid(),
+                _new_span_id(),
                 self.root.span_id,
                 f"human.approval.{d.get('name')}",
                 "approval",

@@ -75,11 +75,11 @@ class EmbeddingCache:
                 self.data = {}
 
     @staticmethod
-    def key(model: str, text: str) -> str:
+    def cache_key(model: str, text: str) -> str:
         return hashlib.sha1((model + "\n" + text).encode("utf-8")).hexdigest()
 
     def get_many(self, model: str, texts: Sequence[str], embed: Embedder) -> list[list[float]]:
-        keys = [self.key(model, t) for t in texts]
+        keys = [self.cache_key(model, t) for t in texts]
         missing = [i for i, k in enumerate(keys) if k not in self.data]
         if missing:
             vecs = embed([texts[i] for i in missing])

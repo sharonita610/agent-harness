@@ -44,12 +44,12 @@ class FakeProvider:
         return self.script.pop(0) if self.script else LLMResponse(text="끝")
 
 
-def tc(name, **args):
+def tool_call(name, **args):
     return ToolCall(id=f"c{len(args)}_{name}", name=name, arguments=args)
 
 
 def test_tool_then_final():
-    p = FakeProvider([LLMResponse(tool_calls=[tc("add", a=2, b=3)]), LLMResponse(text="답은 5")])
+    p = FakeProvider([LLMResponse(tool_calls=[tool_call("add", a=2, b=3)]), LLMResponse(text="답은 5")])
     res = Agent(p, make_registry(), "sys").run("2+3?")
     assert res.answer == "답은 5" and res.steps == 2 and res.stopped_reason == "final"
     assert res.tool_calls[0]["status"] == "ok" and '"sum": 5' in res.tool_calls[0]["result_preview"]
@@ -60,8 +60,8 @@ def test_tool_then_final():
 def test_validation_error_is_fed_back_and_counted():
     p = FakeProvider(
         [
-            LLMResponse(tool_calls=[tc("add", a="x", b=1)]),
-            LLMResponse(tool_calls=[tc("add", a=1, b=1)]),
+            LLMResponse(tool_calls=[tool_call("add", a="x", b=1)]),
+            LLMResponse(tool_calls=[tool_call("add", a=1, b=1)]),
             LLMResponse(text="2"),
         ]
     )
@@ -72,20 +72,20 @@ def test_validation_error_is_fed_back_and_counted():
 
 
 def test_write_requires_approval_and_deny_blocks_execution():
-    p = FakeProvider([LLMResponse(tool_calls=[tc("write_note", text="hi")]), LLMResponse(text="승인 필요")])
+    p = FakeProvider([LLMResponse(tool_calls=[tool_call("write_note", text="hi")]), LLMResponse(text="승인 필요")])
     res = Agent(p, make_registry(), "sys", approval_handler=auto_deny).run("메모 남겨")
     assert res.approvals == [{"step": 1, "name": "write_note", "arguments": {"text": "hi"}, "approved": False}]
     assert calls_made == [] and res.tool_calls[0]["status"] == "not_approved"
 
 
 def test_write_runs_when_approved():
-    p = FakeProvider([LLMResponse(tool_calls=[tc("write_note", text="hi")]), LLMResponse(text="완료")])
+    p = FakeProvider([LLMResponse(tool_calls=[tool_call("write_note", text="hi")]), LLMResponse(text="완료")])
     res = Agent(p, make_registry(), "sys", approval_handler=auto_approve).run("메모 남겨")
     assert calls_made == ["hi"] and res.approvals[0]["approved"] is True
 
 
 def test_destructive_is_denied_even_with_auto_approve():
-    p = FakeProvider([LLMResponse(tool_calls=[tc("nuke", text="x")]), LLMResponse(text="불가")])
+    p = FakeProvider([LLMResponse(tool_calls=[tool_call("nuke", text="x")]), LLMResponse(text="불가")])
     res = Agent(p, make_registry(), "sys", approval_handler=auto_approve).run("지워")
     assert res.tool_calls[0]["status"] == "denied" and "NUKE" not in calls_made
 
@@ -99,13 +99,15 @@ def test_salvages_tool_call_from_text():
 
 
 def test_too_many_tool_errors_stops():
-    p = FakeProvider([LLMResponse(tool_calls=[tc("nope")]) for _ in range(10)])
+    p = FakeProvider([LLMResponse(tool_calls=[tool_call("nope")]) for _ in range(10)])
     res = Agent(p, make_registry(), "sys", max_tool_errors=2).run("q")
     assert res.stopped_reason == "too_many_tool_errors" and res.steps == 3
 
 
 def test_max_steps_triggers_wrap_up_without_tools():
-    p = FakeProvider([LLMResponse(tool_calls=[tc("add", a=1, b=1)]) for _ in range(3)] + [LLMResponse(text="정리")])
+    p = FakeProvider(
+        [LLMResponse(tool_calls=[tool_call("add", a=1, b=1)]) for _ in range(3)] + [LLMResponse(text="정리")]
+    )
     res = Agent(p, make_registry(), "sys", max_steps=3).run("q")
     assert res.stopped_reason == "max_steps" and res.answer == "정리"
     assert p.seen[-1][-1]["role"] == "user" and "도구는 더 쓰지" in p.seen[-1][-1]["content"]
@@ -115,7 +117,7 @@ def test_nudges_when_model_writes_sql_as_text_then_calls_tool():
     p = FakeProvider(
         [
             LLMResponse(text="먼저 이렇게 조회합니다:\n```sql\nSELECT COUNT(*) FROM orders\n```"),
-            LLMResponse(tool_calls=[tc("add", a=1, b=2)]),
+            LLMResponse(tool_calls=[tool_call("add", a=1, b=2)]),
             LLMResponse(text="3"),
         ]
     )
@@ -135,13 +137,13 @@ def test_nudge_only_once():
 
 def test_garbage_duplicate_call_is_dropped_when_valid_call_exists():
     bad = ToolCall(id="x", name="add", arguments={}, parse_error="인자 JSON 파싱 실패: {")
-    p = FakeProvider([LLMResponse(tool_calls=[tc("add", a=1, b=1), bad]), LLMResponse(text="2")])
+    p = FakeProvider([LLMResponse(tool_calls=[tool_call("add", a=1, b=1), bad]), LLMResponse(text="2")])
     res = Agent(p, make_registry(), "sys").run("q")
     assert [t["name"] for t in res.tool_calls] == ["add"] and res.answer == "2"
 
 
 def test_duplicate_calls_execute_once_and_are_capped():
-    dup = [tc("add", a=1, b=1) for _ in range(25)]
+    dup = [tool_call("add", a=1, b=1) for _ in range(25)]
     p = FakeProvider([LLMResponse(tool_calls=dup, finish_reason="length"), LLMResponse(text="2")])
     res = Agent(p, make_registry(), "sys").run("q")
     assert len(res.tool_calls) == 1 and res.answer == "2"

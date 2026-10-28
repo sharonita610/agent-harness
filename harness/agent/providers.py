@@ -206,12 +206,12 @@ class OpenAICompatProvider:
             )
         return LLMResponse(text=msg.content, tool_calls=calls, usage=usage, finish_reason=choice.finish_reason)
 
-    def _create(self, messages, tools, NOT_GIVEN, stream: bool = False):
+    def _create(self, messages, tools, not_given, stream: bool = False):
         kw: dict[str, Any] = dict(
             model=self.model,
             messages=messages,
-            tools=tools if tools else NOT_GIVEN,
-            tool_choice="auto" if tools else NOT_GIVEN,
+            tools=tools if tools else not_given,
+            tool_choice="auto" if tools else not_given,
             extra_body=self.extra_body or None,
         )
         if self.reasoning_api:

@@ -40,14 +40,14 @@ def _wrap(tool: Tool):
         annotations[name] = ann
         params.append(inspect.Parameter(name, inspect.Parameter.KEYWORD_ONLY, default=default, annotation=ann))
 
-    def fn(**kwargs: Any) -> Any:
+    def handler(**kwargs: Any) -> Any:
         return tool.run(kwargs)
 
-    fn.__name__ = tool.name
-    fn.__doc__ = tool.description
-    fn.__signature__ = inspect.Signature(params, return_annotation=Any)  # type: ignore[attr-defined]
-    fn.__annotations__ = {**annotations, "return": Any}
-    return fn
+    handler.__name__ = tool.name
+    handler.__doc__ = tool.description
+    handler.__signature__ = inspect.Signature(params, return_annotation=Any)  # type: ignore[attr-defined]
+    handler.__annotations__ = {**annotations, "return": Any}
+    return handler
 
 
 def build_server(

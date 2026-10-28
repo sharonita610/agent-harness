@@ -47,7 +47,7 @@ class Store:
             self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.executescript(SCHEMA)
 
-    def _q(self, sql: str, params: tuple = ()) -> list[dict[str, Any]]:
+    def _query(self, sql: str, params: tuple = ()) -> list[dict[str, Any]]:
         with self._lock:
             cur = self._conn.execute(sql, params)
             rows = [dict(r) for r in cur.fetchall()]
@@ -57,41 +57,45 @@ class Store:
     # ---- sessions
     def create_session(self, provider: str, title: str | None = None) -> dict[str, Any]:
         sid = new_id("sess")
-        self._q("INSERT INTO sessions VALUES (?,?,?,?)", (sid, now(), provider, title))
+        self._query("INSERT INTO sessions VALUES (?,?,?,?)", (sid, now(), provider, title))
         return self.get_session(sid)  # type: ignore[return-value]
 
     def get_session(self, sid: str) -> dict[str, Any] | None:
-        rows = self._q("SELECT * FROM sessions WHERE id=?", (sid,))
+        rows = self._query("SELECT * FROM sessions WHERE id=?", (sid,))
         if not rows:
             return None
         s = rows[0]
-        s["messages"] = self._q("SELECT role, content, created_at FROM messages WHERE session_id=? ORDER BY id", (sid,))
+        s["messages"] = self._query(
+            "SELECT role, content, created_at FROM messages WHERE session_id=? ORDER BY id", (sid,)
+        )
         return s
 
     def add_message(self, sid: str, role: str, content: str) -> None:
-        self._q(
+        self._query(
             "INSERT INTO messages(session_id, role, content, created_at) VALUES (?,?,?,?)", (sid, role, content, now())
         )
 
     def history(self, sid: str, limit: int = 10) -> list[dict[str, str]]:
-        rows = self._q("SELECT role, content FROM messages WHERE session_id=? ORDER BY id DESC LIMIT ?", (sid, limit))
+        rows = self._query(
+            "SELECT role, content FROM messages WHERE session_id=? ORDER BY id DESC LIMIT ?", (sid, limit)
+        )
         return [{"role": r["role"], "content": r["content"]} for r in reversed(rows)]
 
     # ---- runs
     def create_run(self, sid: str, kind: str, question: str) -> str:
         rid = new_id("run")
-        self._q(
+        self._query(
             "INSERT INTO runs(id, session_id, kind, question, status, created_at) VALUES (?,?,?,?,?,?)",
             (rid, sid, kind, question, "queued", now()),
         )
         return rid
 
     def start_run(self, rid: str) -> None:
-        self._q("UPDATE runs SET status='running', started_at=? WHERE id=?", (now(), rid))
+        self._query("UPDATE runs SET status='running', started_at=? WHERE id=?", (now(), rid))
 
     def finish_run(self, rid: str, status: str, result=None, error: str | None = None) -> None:
         if result is not None:
-            self._q(
+            self._query(
                 "UPDATE runs SET status=?, answer=?, stopped_reason=?, steps=?, latency_s=?, prompt_tokens=?, completion_tokens=?, error=?, finished_at=? WHERE id=?",
                 (
                     status,
@@ -107,37 +111,37 @@ class Store:
                 ),
             )
         else:
-            self._q("UPDATE runs SET status=?, error=?, finished_at=? WHERE id=?", (status, error, now(), rid))
+            self._query("UPDATE runs SET status=?, error=?, finished_at=? WHERE id=?", (status, error, now(), rid))
 
     def fail_stale(self, reason: str = "서버 재시작으로 중단됨") -> int:
         """프로세스가 죽을 때 running/queued 로 남은 실행과 pending 결재를 정리한다(시작 시 호출)."""
-        n = len(self._q("SELECT id FROM runs WHERE status IN ('running','queued')"))
-        self._q(
+        n = len(self._query("SELECT id FROM runs WHERE status IN ('running','queued')"))
+        self._query(
             "UPDATE runs SET status='failed', error=?, finished_at=? WHERE status IN ('running','queued')",
             (reason, now()),
         )
-        self._q(
+        self._query(
             "UPDATE approvals SET status='expired', decided_at=?, decided_by='restart' WHERE status='pending'", (now(),)
         )
         return n
 
     def get_run(self, rid: str) -> dict[str, Any] | None:
-        rows = self._q("SELECT * FROM runs WHERE id=?", (rid,))
+        rows = self._query("SELECT * FROM runs WHERE id=?", (rid,))
         return rows[0] if rows else None
 
     def list_runs(self, limit: int = 50, kind: str | None = None) -> list[dict[str, Any]]:
         if kind:
-            return self._q("SELECT * FROM runs WHERE kind=? ORDER BY created_at DESC LIMIT ?", (kind, limit))
-        return self._q("SELECT * FROM runs ORDER BY created_at DESC LIMIT ?", (limit,))
+            return self._query("SELECT * FROM runs WHERE kind=? ORDER BY created_at DESC LIMIT ?", (kind, limit))
+        return self._query("SELECT * FROM runs ORDER BY created_at DESC LIMIT ?", (limit,))
 
     def add_event(self, rid: str, seq: int, kind: str, step: int | None, data: dict[str, Any]) -> None:
-        self._q(
+        self._query(
             "INSERT INTO run_events(run_id, seq, kind, step, data, ts) VALUES (?,?,?,?,?,?)",
             (rid, seq, kind, step, json.dumps(data, ensure_ascii=False, default=str), now()),
         )
 
     def events(self, rid: str, after_seq: int = 0) -> list[dict[str, Any]]:
-        rows = self._q(
+        rows = self._query(
             "SELECT seq, kind, step, data, ts FROM run_events WHERE run_id=? AND seq>? ORDER BY seq", (rid, after_seq)
         )
         for r in rows:
@@ -154,13 +158,15 @@ class Store:
         detail: dict[str, Any] | None = None,
         ip: str | None = None,
     ) -> None:
-        self._q(
+        self._query(
             "INSERT INTO audit(ts, user, role, action, target, detail, ip) VALUES (?,?,?,?,?,?,?)",
             (now(), user, role, action, target, json.dumps(detail or {}, ensure_ascii=False, default=str), ip),
         )
 
     def list_audit(self, limit: int = 100, user: str | None = None) -> list[dict[str, Any]]:
-        rows = self._q("SELECT * FROM audit WHERE (? IS NULL OR user=?) ORDER BY id DESC LIMIT ?", (user, user, limit))
+        rows = self._query(
+            "SELECT * FROM audit WHERE (? IS NULL OR user=?) ORDER BY id DESC LIMIT ?", (user, user, limit)
+        )
         for r in rows:
             r["detail"] = json.loads(r["detail"])
         return rows
@@ -168,17 +174,17 @@ class Store:
     # ---- approvals
     def create_approval(self, rid: str, tool: str, args: dict[str, Any], tier: str) -> str:
         aid = new_id("apr")
-        self._q(
+        self._query(
             "INSERT INTO approvals(id, run_id, tool, args, tier, status, created_at) VALUES (?,?,?,?,?,?,?)",
             (aid, rid, tool, json.dumps(args, ensure_ascii=False, default=str), tier, "pending", now()),
         )
         return aid
 
     def decide_approval(self, aid: str, status: str, by: str) -> None:
-        self._q("UPDATE approvals SET status=?, decided_at=?, decided_by=? WHERE id=?", (status, now(), by, aid))
+        self._query("UPDATE approvals SET status=?, decided_at=?, decided_by=? WHERE id=?", (status, now(), by, aid))
 
     def get_approval(self, aid: str) -> dict[str, Any] | None:
-        rows = self._q("SELECT * FROM approvals WHERE id=?", (aid,))
+        rows = self._query("SELECT * FROM approvals WHERE id=?", (aid,))
         if not rows:
             return None
         a = rows[0]
@@ -186,7 +192,7 @@ class Store:
         return a
 
     def list_approvals(self, status: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
-        rows = self._q(
+        rows = self._query(
             "SELECT * FROM approvals WHERE (? IS NULL OR status=?) ORDER BY created_at DESC LIMIT ?",
             (status, status, limit),
         )

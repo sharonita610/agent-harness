@@ -4,7 +4,7 @@ import type { HeatData, Panel, SeriesData, Stat } from "../types";
 import Chart from "./Chart";
 import { Table } from "./ResultCard";
 
-const fmtv = (v: number | string | null | undefined, unit = "") =>
+const formatValue = (v: number | string | null | undefined, unit = "") =>
   v === null || v === undefined
     ? "값 없음"
     : typeof v === "number"
@@ -18,7 +18,7 @@ export function Stats({ data }: { data: Stat[] }) {
         <div key={s.label} className={`stat ${s.tone ?? ""}`}>
           <span className="l">{s.label}</span>
           <span className="v">
-            {fmtv(s.value)}
+            {formatValue(s.value)}
             {s.unit && typeof s.value === "number" ? <small> {s.unit}</small> : null}
           </span>
         </div>
@@ -28,7 +28,7 @@ export function Stats({ data }: { data: Stat[] }) {
 }
 
 /** 라인 × 공정 같은 격자. 값이 클수록 청록이 진해진다(한 색조, 밝기만). 숫자는 항상 글로도 적는다. */
-export function Heat({ data }: { data: HeatData }) {
+export function HeatGrid({ data }: { data: HeatData }) {
   const all = data.values.flat().filter((v): v is number => typeof v === "number");
   const max = Math.max(...all, 0),
     min = Math.min(...all, max);
@@ -59,9 +59,9 @@ export function Heat({ data }: { data: HeatData }) {
                       background: `rgba(31,78,121,${a.toFixed(3)})`,
                       color: a > 0.5 ? "#fff" : undefined,
                     }}
-                    title={`${r} ${c}: ${fmtv(v, data.unit)}`}
+                    title={`${r} ${c}: ${formatValue(v, data.unit)}`}
                   >
-                    {v === null || v === undefined ? "" : fmtv(v)}
+                    {v === null || v === undefined ? "" : formatValue(v)}
                   </td>
                 );
               })}
@@ -85,7 +85,7 @@ export function PanelBody({ p }: { p: Panel }) {
     case "bar":
       return <Chart kind={p.kind} data={p.data as SeriesData} />;
     case "heat":
-      return <Heat data={p.data as HeatData} />;
+      return <HeatGrid data={p.data as HeatData} />;
     case "image": {
       const d = p.data as { url: string; alt?: string };
       return (

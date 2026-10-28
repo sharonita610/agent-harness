@@ -4,14 +4,14 @@ from harness.agent.loop import Agent
 from harness.agent.types import LLMResponse
 from harness.observability.tracer import TraceCollector, spans_from_events, write_jsonl
 from harness.tools.permissions import auto_deny
-from tests.test_loop import FakeProvider, make_registry, tc
+from tests.test_loop import FakeProvider, make_registry, tool_call
 
 
 def test_collector_builds_spans_from_live_run(tmp_path):
     p = FakeProvider(
         [
-            LLMResponse(tool_calls=[tc("add", a=1, b=2)]),
-            LLMResponse(tool_calls=[tc("nope"), tc("write_note", text="x")]),
+            LLMResponse(tool_calls=[tool_call("add", a=1, b=2)]),
+            LLMResponse(tool_calls=[tool_call("nope"), tool_call("write_note", text="x")]),
             LLMResponse(text="끝"),
         ]
     )

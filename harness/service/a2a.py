@@ -28,7 +28,7 @@ PROTOCOL_VERSION = "0.3.0"
 TERMINAL = {"completed", "failed", "canceled", "rejected"}
 
 
-def _now() -> str:
+def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
@@ -43,7 +43,7 @@ def _text_message(role: str, text: str, task_id: str | None = None, context_id: 
     }
 
 
-def _err(rid: Any, code: int, message: str, data: Any = None) -> dict[str, Any]:
+def _rpc_error(rid: Any, code: int, message: str, data: Any = None) -> dict[str, Any]:
     e: dict[str, Any] = {"code": code, "message": message}
     if data is not None:
         e["data"] = data
@@ -65,7 +65,7 @@ class A2AFacade:
         self._cancel[run_id] = flag
         sink = make_sink(store, run_id)
 
-        def go():
+        def run_in_thread():
             try:
                 execute_run(self.state, run_id, session_id, text, None, sink, flag.is_set, user)
             except Exception:
@@ -73,7 +73,7 @@ class A2AFacade:
             finally:
                 self._cancel.pop(run_id, None)
 
-        threading.Thread(target=go, name=f"a2a-{run_id}", daemon=True).start()
+        threading.Thread(target=run_in_thread, name=f"a2a-{run_id}", daemon=True).start()
         return run_id
 
     # ---------------------------------------------------------------- agent card
@@ -129,7 +129,7 @@ class A2AFacade:
             "failed": "failed",
             "cancelled": "canceled",
         }.get(run["status"], "unknown")
-        status: dict[str, Any] = {"state": state, "timestamp": _now()}
+        status: dict[str, Any] = {"state": state, "timestamp": _now_iso()}
         if state == "working" and pending:
             a = pending[0]
             status["state"] = "input-required"
@@ -243,7 +243,7 @@ class A2AFacade:
                 last_seq = e["seq"]
                 if e["kind"] == "tool_call":
                     msg = _text_message("agent", f"도구 호출: {e['data'].get('name')}", rid, cid)
-                    yield f"data: {json.dumps({'jsonrpc': '2.0', 'id': rpc_id, 'result': {'kind': 'status-update', 'taskId': rid, 'contextId': cid, 'status': {'state': 'working', 'message': msg, 'timestamp': _now()}, 'final': False}}, ensure_ascii=False)}\n\n"
+                    yield f"data: {json.dumps({'jsonrpc': '2.0', 'id': rpc_id, 'result': {'kind': 'status-update', 'taskId': rid, 'contextId': cid, 'status': {'state': 'working', 'message': msg, 'timestamp': _now_iso()}, 'final': False}}, ensure_ascii=False)}\n\n"
                     idle = 0.0
             run = store.get_run(rid)
             t = self._task(run, request_base)
@@ -279,17 +279,17 @@ def mount_a2a(app: FastAPI, state, pack, current_user, require) -> None:
         try:
             body = await request.json()
         except Exception:
-            return JSONResponse(_err(None, -32700, "Parse error"), status_code=200)
+            return JSONResponse(_rpc_error(None, -32700, "Parse error"), status_code=200)
         rid = body.get("id")
         method = body.get("method")
         params = body.get("params") or {}
         if body.get("jsonrpc") != "2.0" or not method:
-            return JSONResponse(_err(rid, -32600, "Invalid Request"))
+            return JSONResponse(_rpc_error(rid, -32600, "Invalid Request"))
         base = _base(request)
         try:
             if method in ("message/send", "message/stream"):
-                if not user.has("operator"):
-                    return JSONResponse(_err(rid, -32001, "operator 역할이 필요합니다"), status_code=403)
+                if not user.has_role("operator"):
+                    return JSONResponse(_rpc_error(rid, -32001, "operator 역할이 필요합니다"), status_code=403)
                 if method == "message/stream":
                     return StreamingResponse(
                         facade.stream(rid, params, user, base),
@@ -304,17 +304,17 @@ def mount_a2a(app: FastAPI, state, pack, current_user, require) -> None:
                 return JSONResponse(
                     {"jsonrpc": "2.0", "id": rid, "result": task}
                     if task
-                    else _err(rid, -32001, "Task not found", {"id": params.get("id")})
+                    else _rpc_error(rid, -32001, "Task not found", {"id": params.get("id")})
                 )
             if method == "tasks/cancel":
                 task = facade.cancel(params, base)
                 return JSONResponse(
-                    {"jsonrpc": "2.0", "id": rid, "result": task} if task else _err(rid, -32001, "Task not found")
+                    {"jsonrpc": "2.0", "id": rid, "result": task} if task else _rpc_error(rid, -32001, "Task not found")
                 )
             if method in ("tasks/pushNotificationConfig/set", "tasks/pushNotificationConfig/get", "tasks/resubscribe"):
-                return JSONResponse(_err(rid, -32004, "This operation is not supported"))
-            return JSONResponse(_err(rid, -32601, f"Method not found: {method}"))
+                return JSONResponse(_rpc_error(rid, -32004, "This operation is not supported"))
+            return JSONResponse(_rpc_error(rid, -32601, f"Method not found: {method}"))
         except ValueError as e:
-            return JSONResponse(_err(rid, -32602, str(e)))
+            return JSONResponse(_rpc_error(rid, -32602, str(e)))
         except PermissionError as e:
-            return JSONResponse(_err(rid, -32002, str(e)))
+            return JSONResponse(_rpc_error(rid, -32002, str(e)))

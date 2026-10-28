@@ -54,7 +54,7 @@ PARAM_BASE = {
 }
 
 
-def _ts(d: datetime) -> str:
+def _timestamp(d: datetime) -> str:
     return d.strftime("%Y-%m-%d %H:%M:%S")
 
 
@@ -121,7 +121,8 @@ def build(db_path: Path = DEFAULT_DB) -> dict:
                     special_lot = lot_id
                     batch = "M-7781"
                 conn.execute(
-                    "INSERT INTO lots VALUES (?,?,?,?,?)", (lot_id, li, _ts(started), rng.randint(1800, 2400), batch)
+                    "INSERT INTO lots VALUES (?,?,?,?,?)",
+                    (lot_id, li, _timestamp(started), rng.randint(1800, 2400), batch),
                 )
                 lots.setdefault((li, day), []).append(lot_id)
 
@@ -167,12 +168,12 @@ def build(db_path: Path = DEFAULT_DB) -> dict:
                         hot_defect = "정렬 불량"
                     conn.execute(
                         "INSERT INTO inspections(hour_start, line_id, station_id, inspected, ng) VALUES (?,?,?,?,?)",
-                        (_ts(t), li, sid, inspected, ng),
+                        (_timestamp(t), li, sid, inspected, ng),
                     )
                     for p, base in params.items():
                         conn.execute(
                             "INSERT INTO param_logs(ts, equipment_id, param, value) VALUES (?,?,?,?)",
-                            (_ts(t), eid, p, round(base * rng.uniform(0.985, 1.015), 2)),
+                            (_timestamp(t), eid, p, round(base * rng.uniform(0.985, 1.015), 2)),
                         )
                     weights = DEFECT_W[proc]
                     for _ in range(ng):
@@ -192,13 +193,13 @@ def build(db_path: Path = DEFAULT_DB) -> dict:
                                 "confirmed",
                                 dt,
                                 rng.choice(["김엔지니어", "이엔지니어", "박엔지니어"]),
-                                _ts(ev_t + timedelta(hours=rng.randint(6, 48))),
+                                _timestamp(ev_t + timedelta(hours=rng.randint(6, 48))),
                             )
                         img = f"/data/ng/{ev_t.strftime('%Y-%m-%d')}/L{li}_S{si}_{ev_t.strftime('%Y%m%d_%H%M%S')}_{ng_id:06d}_ng.jpg"
                         conn.execute(
                             "INSERT INTO ng_events(ts, line_id, station_id, equipment_id, lot_id, image_path, defect_type, suggested_label, suggested_confidence, label_status, confirmed_label, labeled_by, labeled_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                             (
-                                _ts(ev_t),
+                                _timestamp(ev_t),
                                 li,
                                 sid,
                                 eid,

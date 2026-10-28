@@ -127,7 +127,7 @@ def build_tools(
     scoped = scope is not None
     lock = threading.Lock()
 
-    def q(sql: str, params: tuple = (), limit: int | None = None) -> dict[str, Any]:
+    def query(sql: str, params: tuple = (), limit: int | None = None) -> dict[str, Any]:
         with lock:
             timer = threading.Timer(sql_timeout_s, ro.interrupt)
             timer.start()
@@ -149,37 +149,37 @@ def build_tools(
             {"name": r[1], "type": r[2], "notnull": bool(r[3]), "pk": bool(r[5])}
             for r in ro.execute(f"PRAGMA table_info({a.table})")
         ]
-        sample = q(f"SELECT * FROM {a.table} LIMIT 3")
+        sample = query(f"SELECT * FROM {a.table} LIMIT 3")
         return {"table": a.table, "columns": cols, "sample_rows": sample["rows"]}
 
     def run_sql(a: RunSqlArgs) -> Any:
         sql = guard_select(a.sql, default_limit=a.limit, max_limit=500, scoped=scoped)
         try:
-            return {**q(sql, limit=a.limit), "sql_executed": sql}
+            return {**query(sql, limit=a.limit), "sql_executed": sql}
         except sqlite3.OperationalError as e:
             if "interrupted" in str(e):
                 raise ValueError(f"쿼리가 {sql_timeout_s}초를 넘어 중단됨. 조건을 좁히세요.") from e
             raise ValueError(f"SQL 오류: {e}. describe_table 로 컬럼명을 확인하세요.") from e
 
     def get_order(a: OrderIdArgs) -> Any:
-        order = q(
+        order = query(
             "SELECT o.*, c.name AS customer_name, c.grade AS customer_grade FROM orders o JOIN customers c ON c.id=o.customer_id WHERE o.id=?",
             (a.order_id,),
         )["rows"]
         if not order:
             raise ValueError(f"주문 {a.order_id} 없음")
-        items = q(
+        items = query(
             "SELECT oi.product_id, p.name, p.category, oi.qty, oi.unit_price, oi.qty*oi.unit_price AS amount FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=?",
             (a.order_id,),
         )["rows"]
-        ship = q(
+        ship = query(
             "SELECT s.*, w.name AS warehouse FROM shipments s JOIN warehouses w ON w.id=s.warehouse_id WHERE s.order_id=?",
             (a.order_id,),
         )["rows"]
-        notes = q(
+        notes = query(
             "SELECT author, note, created_at FROM order_notes WHERE order_id=? ORDER BY created_at", (a.order_id,)
         )["rows"]
-        hist = q(
+        hist = query(
             "SELECT from_status, to_status, reason, changed_by, changed_at FROM order_status_history WHERE order_id=? ORDER BY id",
             (a.order_id,),
         )["rows"]
@@ -203,9 +203,9 @@ def build_tools(
         if a.customer_id is None and not a.name:
             raise ValueError("customer_id 또는 name 중 하나는 필요합니다.")
         if a.customer_id is not None:
-            rows = q("SELECT * FROM customers WHERE id=?", (a.customer_id,))["rows"]
+            rows = query("SELECT * FROM customers WHERE id=?", (a.customer_id,))["rows"]
         else:
-            rows = q("SELECT * FROM customers WHERE name LIKE ? LIMIT 5", (f"%{a.name}%",))["rows"]
+            rows = query("SELECT * FROM customers WHERE name LIKE ? LIMIT 5", (f"%{a.name}%",))["rows"]
         if not rows:
             raise ValueError("해당 거래처 없음")
         if len(rows) > 1:
@@ -214,7 +214,7 @@ def build_tools(
                 "hint": "customer_id 로 다시 조회",
             }
         c = rows[0]
-        summary = q(
+        summary = query(
             "SELECT COUNT(*) AS orders, COALESCE(SUM(CASE WHEN status!='취소' THEN total_amount END),0) AS amount_12m, SUM(status='지연') AS delayed FROM orders WHERE customer_id=? AND order_date >= date(?, '-12 months')",
             (c["id"], REFERENCE_DATE.isoformat()),
         )["rows"][0]
@@ -233,13 +233,13 @@ def build_tools(
         return index.list_docs()
 
     # ---- write (승인 필요)
-    def _rw() -> sqlite3.Connection:
+    def _connect_rw() -> sqlite3.Connection:
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         return conn
 
     def _assert_in_scope(order_id: int) -> None:
-        if scoped and not q("SELECT 1 FROM orders WHERE id=?", (order_id,))["rows"]:
+        if scoped and not query("SELECT 1 FROM orders WHERE id=?", (order_id,))["rows"]:
             raise ValueError(f"주문 {order_id} 은(는) 이 사용자의 조회 범위({scope.describe()}) 밖이거나 없습니다.")
 
     def update_order_status(a: UpdateStatusArgs) -> Any:
@@ -248,7 +248,7 @@ def build_tools(
                 "취소 사유는 '고객 요청', '결제 실패', '장기 지연' 중 하나여야 합니다(주문 취소 규정 OPS-010)."
             )
         _assert_in_scope(a.order_id)
-        conn = _rw()
+        conn = _connect_rw()
         try:
             row = conn.execute("SELECT status FROM orders WHERE id=?", (a.order_id,)).fetchone()
             if not row:
@@ -278,7 +278,7 @@ def build_tools(
 
     def create_note(a: CreateNoteArgs) -> Any:
         _assert_in_scope(a.order_id)
-        conn = _rw()
+        conn = _connect_rw()
         try:
             if not conn.execute("SELECT 1 FROM orders WHERE id=?", (a.order_id,)).fetchone():
                 raise ValueError(f"주문 {a.order_id} 없음")
@@ -295,7 +295,7 @@ def build_tools(
     # ---- destructive (기본 차단)
     def delete_order(a: OrderIdArgs) -> Any:
         _assert_in_scope(a.order_id)
-        conn = _rw()
+        conn = _connect_rw()
         try:
             conn.execute("DELETE FROM order_items WHERE order_id=?", (a.order_id,))
             conn.execute("DELETE FROM orders WHERE id=?", (a.order_id,))

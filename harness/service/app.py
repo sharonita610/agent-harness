@@ -222,7 +222,11 @@ def create_app(
             "pack": pk.name,
             "scope": sc.to_dict() if sc else None,
             "scope_text": sc.describe() if sc else None,
-            "can": {"chat": user.has("operator"), "approve": user.has("approver"), "admin": user.has("admin")},
+            "can": {
+                "chat": user.has_role("operator"),
+                "approve": user.has_role("approver"),
+                "admin": user.has_role("admin"),
+            },
         }
 
     @app.get("/dashboard")
@@ -375,14 +379,14 @@ def create_app(
         )
         return {"summary": c.summary(), "spans": c.to_dicts()}
 
-    RESULTS_DIR = Path(__file__).resolve().parents[1] / "evals" / "results"
+    results_dir = Path(__file__).resolve().parents[1] / "evals" / "results"
 
     @app.get("/grading/{name}", response_class=HTMLResponse)
     def grading_page_route(name: str):
         """사람 채점표(결과 폴더의 grading/<name>.html). 평가 도구라 인증 없이 연다(업무 데이터 없음)."""
         if "/" in name or ".." in name:
             raise HTTPException(400, "잘못된 이름")
-        f = RESULTS_DIR / "grading" / f"{name.removesuffix('.html')}.html"
+        f = results_dir / "grading" / f"{name.removesuffix('.html')}.html"
         if not f.exists():
             raise HTTPException(404, f"채점표 없음: uv run harness grade-sheet 로 만드세요 ({f.name})")
         return f.read_text(encoding="utf-8")
@@ -394,7 +398,7 @@ def create_app(
         body = await request.json()
         grades = body.get("grades") or {}
         graded = sum(1 for v in grades.values() if isinstance(v, dict) and v.get("pass") in (True, False))
-        out = RESULTS_DIR / f"human-{name}.json"
+        out = results_dir / f"human-{name}.json"
         out.parent.mkdir(parents=True, exist_ok=True)
         import json as _json
 
@@ -404,7 +408,7 @@ def create_app(
             ),
             encoding="utf-8",
         )
-        return {"path": str(out.relative_to(RESULTS_DIR.parents[2])), "graded": graded}
+        return {"path": str(out.relative_to(results_dir.parents[2])), "graded": graded}
 
     @app.get("/runs/{run_id}/events")
     def run_events(run_id: str, after_seq: int = 0, user: User = Depends(current_user)):

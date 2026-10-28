@@ -14,11 +14,11 @@ from .tools import _shift
 WINDOW_DAYS = 14
 
 
-def _spikes(q, f: str, t: str, multiplier: float = 3.0, limit: int = 6) -> list[dict[str, Any]]:
+def _spikes(query, f: str, t: str, multiplier: float = 3.0, limit: int = 6) -> list[dict[str, Any]]:
     """detect_spikes 와 같은 규칙: 스테이션별 시간당 NG 율이 중앙값의 multiplier 배 이상인 연속 구간."""
     out = []
-    for st in q("SELECT s.id, s.line_id, s.name FROM stations s ORDER BY s.id"):
-        hours = q(
+    for st in query("SELECT s.id, s.line_id, s.name FROM stations s ORDER BY s.id"):
+        hours = query(
             "SELECT hour_start, inspected, ng, 1.0*ng/inspected AS rate FROM inspections WHERE station_id=? ORDER BY hour_start",
             (st["id"],),
         )
@@ -74,48 +74,48 @@ def _spikes(q, f: str, t: str, multiplier: float = 3.0, limit: int = 6) -> list[
 
 def dashboard(scope: Any = None, db_path: Path = DEFAULT_DB) -> list[dict[str, Any]]:
     ro = connect_readonly(db_path)
-    q = lambda sql, params=(): rows(ro.execute(sql, params))["rows"]
+    query = lambda sql, params=(): rows(ro.execute(sql, params))["rows"]
     t = datetime.combine(REFERENCE_DATE, datetime.min.time()) + timedelta(days=1)
     f = t - timedelta(days=WINDOW_DAYS)
     fs, ts = f.strftime("%Y-%m-%d %H:%M:%S"), t.strftime("%Y-%m-%d %H:%M:%S")
-    tot = q("SELECT SUM(inspected) AS i, SUM(ng) AS n FROM inspections WHERE hour_start>=? AND hour_start<?", (fs, ts))[
-        0
-    ]
-    open_tickets = q("SELECT COUNT(*) AS n FROM actions WHERE status='open'")[0]["n"]
-    unlabeled = q("SELECT COUNT(*) AS n FROM ng_events WHERE label_status!='confirmed' AND ts>=? AND ts<?", (fs, ts))[
-        0
-    ]["n"]
-    rules = q("SELECT COUNT(*) AS n FROM alert_rules WHERE enabled=1")[0]["n"]
-    lines = q("SELECT id, name FROM lines ORDER BY id")
+    tot = query(
+        "SELECT SUM(inspected) AS i, SUM(ng) AS n FROM inspections WHERE hour_start>=? AND hour_start<?", (fs, ts)
+    )[0]
+    open_tickets = query("SELECT COUNT(*) AS n FROM actions WHERE status='open'")[0]["n"]
+    unlabeled = query(
+        "SELECT COUNT(*) AS n FROM ng_events WHERE label_status!='confirmed' AND ts>=? AND ts<?", (fs, ts)
+    )[0]["n"]
+    rules = query("SELECT COUNT(*) AS n FROM alert_rules WHERE enabled=1")[0]["n"]
+    lines = query("SELECT id, name FROM lines ORDER BY id")
     procs = (
         [
             r["process"]
-            for r in q("SELECT DISTINCT process FROM stations ORDER BY line_id, seq")
+            for r in query("SELECT DISTINCT process FROM stations ORDER BY line_id, seq")
             if r["line_id"] == lines[0]["id"]
         ]
         if False
-        else [r["name"] for r in q("SELECT name FROM stations WHERE line_id=? ORDER BY seq", (lines[0]["id"],))]
+        else [r["name"] for r in query("SELECT name FROM stations WHERE line_id=? ORDER BY seq", (lines[0]["id"],))]
     )
     cell = {
         (r["line_id"], r["name"]): (100.0 * r["n"] / r["i"] if r["i"] else None)
-        for r in q(
+        for r in query(
             "SELECT s.line_id, s.name, SUM(i.inspected) AS i, SUM(i.ng) AS n FROM inspections i JOIN stations s ON s.id=i.station_id "
             "WHERE i.hour_start>=? AND i.hour_start<? GROUP BY s.line_id, s.name",
             (fs, ts),
         )
     }
     heat = [[round(cell.get((ln["id"], pr), 0) or 0, 2) for pr in procs] for ln in lines]
-    daily = q(
+    daily = query(
         "SELECT substr(hour_start,1,10) AS d, line_id, SUM(inspected) AS i, SUM(ng) AS n FROM inspections WHERE hour_start>=? AND hour_start<? GROUP BY d, line_id ORDER BY d",
         (fs, ts),
     )
     days = sorted({r["d"] for r in daily})
     by = {(r["d"], r["line_id"]): round(100.0 * r["n"] / r["i"], 2) if r["i"] else None for r in daily}
-    defects = q(
+    defects = query(
         "SELECT COALESCE(confirmed_label, suggested_label, '미분류') AS d, COUNT(*) AS n FROM ng_events WHERE ts>=? AND ts<? GROUP BY 1 ORDER BY 2 DESC",
         (fs, ts),
     )
-    tickets = q(
+    tickets = query(
         "SELECT a.id AS 번호, substr(a.created_at,1,16) AS 생성, (s.line_id || '라인 ' || s.name) AS 스테이션, COALESCE(NULLIF(a.title,''), a.description) AS 내용, a.owner AS 담당, a.status AS 상태 "
         "FROM actions a JOIN stations s ON s.id=a.station_id ORDER BY a.status='open' DESC, a.created_at DESC LIMIT 8"
     )
@@ -164,7 +164,7 @@ def dashboard(scope: Any = None, db_path: Path = DEFAULT_DB) -> list[dict[str, A
             "kind": "table",
             "data": {
                 "columns": ["스테이션", "시작", "끝", "시간", "교대", "NG율(%)", "배수"],
-                "rows": _spikes(q, fs, ts),
+                "rows": _spikes(query, fs, ts),
             },
             "note": "기준치 = 스테이션의 최근 2주 시간당 NG율 중앙값(QA-005).",
         },

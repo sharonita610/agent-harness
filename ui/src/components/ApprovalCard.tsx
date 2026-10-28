@@ -27,7 +27,7 @@ const ARG_KO: Record<string, string> = {
   window_hours: "구간(시간)",
   enabled: "켬",
 };
-const fmt = (v: unknown) =>
+const formatValue = (v: unknown) =>
   typeof v === "string" ? v : typeof v === "boolean" ? (v ? "예" : "아니요") : JSON.stringify(v);
 
 /** 결재 전표. 승인하면 빨간 도장, 반려하면 회색 도장이 찍힌다. from 은 어느 비서의 요청인지. */
@@ -49,7 +49,7 @@ export default function ApprovalSlip({
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<"approve" | "deny" | null>(decided ?? null);
   const [err, setErr] = useState<string | null>(null);
-  const act = async (d: "approve" | "deny") => {
+  const decide = async (d: "approve" | "deny") => {
     setBusy(true);
     setErr(null);
     try {
@@ -85,7 +85,9 @@ export default function ApprovalSlip({
             .map(([k, v]) => (
               <tr key={k}>
                 <td>{ARG_KO[k] ?? k}</td>
-                <td style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{fmt(v).slice(0, 400)}</td>
+                <td style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                  {formatValue(v).slice(0, 400)}
+                </td>
               </tr>
             ))}
         </tbody>
@@ -97,10 +99,10 @@ export default function ApprovalSlip({
       )}
       {!done && canApprove && (
         <div className="actions">
-          <button className="primary" disabled={busy} onClick={() => act("approve")}>
+          <button className="primary" disabled={busy} onClick={() => decide("approve")}>
             승인하고 실행
           </button>
-          <button disabled={busy} onClick={() => act("deny")}>
+          <button disabled={busy} onClick={() => decide("deny")}>
             반려
           </button>
         </div>

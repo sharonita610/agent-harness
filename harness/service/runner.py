@@ -121,8 +121,8 @@ async def stream_chat(
     fut = loop.run_in_executor(
         None, execute_run, state, run_id, session_id, question, provider_spec, sink, cancel.is_set, user
     )
-    _END = object()
-    fut.add_done_callback(lambda f: q.put_nowait(_END))  # 스레드 종료를 큐로 알려 15초 ping 대기를 피한다
+    end_marker = object()
+    fut.add_done_callback(lambda f: q.put_nowait(end_marker))  # 스레드 종료를 큐로 알려 15초 ping 대기를 피한다
     yield sse("run", {"run_id": run_id, "session_id": session_id})
     try:
         while True:
@@ -131,7 +131,7 @@ async def stream_chat(
             except asyncio.TimeoutError:
                 yield ping()
                 continue
-            if ev is _END:
+            if ev is end_marker:
                 break
             yield sse(ev["kind"], {"seq": ev.get("seq"), "step": ev.get("step"), **ev.get("data", {})})
         res = fut.result()

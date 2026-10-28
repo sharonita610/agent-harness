@@ -27,7 +27,7 @@ class ScriptProvider:
         return self.script.pop(0) if self.script else LLMResponse(text="끝")
 
 
-def tc(name, **args):
+def tool_call(name, **args):
     return ToolCall(id=f"c_{name}_{len(args)}", name=name, arguments=args)
 
 
@@ -73,7 +73,9 @@ def test_health_and_tools(make_client):
 
 def test_chat_streams_events_and_persists_run(make_client):
     script = [
-        LLMResponse(tool_calls=[tc("run_sql", sql="SELECT COUNT(*) AS n FROM orders WHERE status='지연'", limit=1)]),
+        LLMResponse(
+            tool_calls=[tool_call("run_sql", sql="SELECT COUNT(*) AS n FROM orders WHERE status='지연'", limit=1)]
+        ),
         LLMResponse(text="지연 주문은 255건입니다."),
     ]
     with make_client([script]) as c:
@@ -96,7 +98,7 @@ def test_chat_streams_events_and_persists_run(make_client):
 
 def test_approval_flow_over_http(make_client, seeded_db):
     script = [
-        LLMResponse(tool_calls=[tc("create_note", order_id=1, note="서비스 테스트 메모")]),
+        LLMResponse(tool_calls=[tool_call("create_note", order_id=1, note="서비스 테스트 메모")]),
         LLMResponse(text="메모를 남겼습니다."),
     ]
     with make_client([script]) as c:
@@ -136,7 +138,7 @@ def test_approval_flow_over_http(make_client, seeded_db):
 
 def test_approval_expires_without_decision(make_client):
     script = [
-        LLMResponse(tool_calls=[tc("update_order_status", order_id=2, new_status="출고", reason="테스트")]),
+        LLMResponse(tool_calls=[tool_call("update_order_status", order_id=2, new_status="출고", reason="테스트")]),
         LLMResponse(text="승인이 없어 변경하지 않았습니다."),
     ]
     with make_client([script], approval_timeout_s=0.5) as c:
@@ -149,7 +151,7 @@ def test_approval_expires_without_decision(make_client):
 
 def test_jobs_submit_poll_and_cancel(make_client):
     quick = [LLMResponse(text="잡 결과입니다.")]
-    slow = [LLMResponse(tool_calls=[tc("list_tables")]) for _ in range(8)] + [LLMResponse(text="끝")]
+    slow = [LLMResponse(tool_calls=[tool_call("list_tables")]) for _ in range(8)] + [LLMResponse(text="끝")]
     with make_client([quick, slow], delay=0.0) as c:
         r = c.post("/jobs", json={"question": "빠른 잡"})
         assert r.status_code == 202
@@ -175,7 +177,7 @@ def test_jobs_submit_poll_and_cancel(make_client):
 
 
 def test_run_trace_endpoint(make_client):
-    script = [LLMResponse(tool_calls=[tc("list_tables")]), LLMResponse(text="끝")]
+    script = [LLMResponse(tool_calls=[tool_call("list_tables")]), LLMResponse(text="끝")]
     with make_client([script]) as c:
         with c.stream("POST", "/chat", json={"message": "테이블?"}) as r:
             run_id = dict(parse_sse(r.iter_lines()))["run"]["run_id"]

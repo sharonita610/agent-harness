@@ -33,7 +33,7 @@ REGIONS = ["서울", "경기", "인천", "부산", "대구", "대전", "광주"]
 PAYMENT_TERMS = {"A": "월말 결제 (60일)", "B": "월말 결제 (30일)", "C": "선결제"}
 
 
-def _d(day: date) -> str:
+def _iso_date(day: date) -> str:
     return day.isoformat()
 
 
@@ -63,7 +63,7 @@ def build(db_path: Path = DEFAULT_DB) -> dict:
                 fake.name(),
                 fake.phone_number(),
                 PAYMENT_TERMS[grade],
-                _d(created),
+                _iso_date(created),
             )
         )
     cur.executemany("INSERT INTO customers VALUES (?,?,?,?,?,?,?,?)", customers)
@@ -90,7 +90,7 @@ def build(db_path: Path = DEFAULT_DB) -> dict:
             on_hand = max(0, int(rng.gauss(safety * 1.6, safety * 0.9)))
             if rng.random() < 0.12:
                 on_hand = rng.randint(0, safety - 1)  # 안전재고 미달
-            inv.append((iid, wid, p[0], on_hand, safety, _d(REFERENCE_DATE - timedelta(days=rng.randint(0, 6)))))
+            inv.append((iid, wid, p[0], on_hand, safety, _iso_date(REFERENCE_DATE - timedelta(days=rng.randint(0, 6)))))
             iid += 1
     cur.executemany("INSERT INTO inventory VALUES (?,?,?,?,?,?)", inv)
 
@@ -119,8 +119,8 @@ def build(db_path: Path = DEFAULT_DB) -> dict:
             total += qty * p[4]
             item_id += 1
         total = int(round(total * (1 - discount)))
-        orders.append((oid, cust[0], _d(odate), status, total, delay_reason, discount))
-        hist.append((hist_id, oid, None, "접수", None, "system", _d(odate)))
+        orders.append((oid, cust[0], _iso_date(odate), status, total, delay_reason, discount))
+        hist.append((hist_id, oid, None, "접수", None, "system", _iso_date(odate)))
         hist_id += 1
         if status in ("출고", "배송중", "완료", "지연"):
             wid = 1 if cust[3] in ("서울", "경기", "인천", "대전") else 2
@@ -137,17 +137,19 @@ def build(db_path: Path = DEFAULT_DB) -> dict:
                     oid,
                     wid,
                     rng.choice(CARRIERS),
-                    _d(planned),
-                    _d(shipped) if shipped else None,
-                    _d(delivered) if delivered else None,
+                    _iso_date(planned),
+                    _iso_date(shipped) if shipped else None,
+                    _iso_date(delivered) if delivered else None,
                 )
             )
             ship_id += 1
             if status != "지연" or shipped:
-                hist.append((hist_id, oid, "접수", "출고", None, "system", _d(shipped or planned)))
+                hist.append((hist_id, oid, "접수", "출고", None, "system", _iso_date(shipped or planned)))
                 hist_id += 1
             if status == "지연":
-                hist.append((hist_id, oid, "접수", "지연", delay_reason, "system", _d(planned + timedelta(days=1))))
+                hist.append(
+                    (hist_id, oid, "접수", "지연", delay_reason, "system", _iso_date(planned + timedelta(days=1)))
+                )
                 hist_id += 1
         if status == "취소":
             hist.append(
@@ -158,7 +160,7 @@ def build(db_path: Path = DEFAULT_DB) -> dict:
                     "취소",
                     rng.choice(["고객 요청", "결제 실패"]),
                     "cs_team",
-                    _d(odate + timedelta(days=rng.randint(0, 3))),
+                    _iso_date(odate + timedelta(days=rng.randint(0, 3))),
                 )
             )
             hist_id += 1
@@ -176,7 +178,7 @@ def build(db_path: Path = DEFAULT_DB) -> dict:
                 oid,
                 rng.choice(["cs_kim", "sales_park", "wh_lee"]),
                 rng.choice(["고객 재확인 요청", "분할 출고 안내 완료", "대체품 제안 수락", "연락 불가, 재시도 예정"]),
-                _d(REFERENCE_DATE - timedelta(days=rng.randint(0, 60))),
+                _iso_date(REFERENCE_DATE - timedelta(days=rng.randint(0, 60))),
             )
         )
     cur.executemany("INSERT INTO order_notes VALUES (?,?,?,?,?)", notes)
@@ -198,7 +200,7 @@ def build(db_path: Path = DEFAULT_DB) -> dict:
     }
     digest = hashlib.sha256("\n".join(line for line in conn.iterdump()).encode()).hexdigest()[:16]
     conn.close()
-    return {"db": str(db_path), "counts": counts, "sha256_16": digest, "reference_date": _d(REFERENCE_DATE)}
+    return {"db": str(db_path), "counts": counts, "sha256_16": digest, "reference_date": _iso_date(REFERENCE_DATE)}
 
 
 if __name__ == "__main__":

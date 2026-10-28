@@ -28,7 +28,7 @@ class User:
     anonymous: bool = False
     scope: dict | None = None  # 데이터 범위 (packs.enterprise.scope.Scope.parse 형식). None = 전체
 
-    def has(self, role: str) -> bool:
+    def has_role(self, role: str) -> bool:
         return RANK[self.role] >= RANK[role]
 
 
@@ -108,11 +108,11 @@ def make_dependencies(user_store: UserStore) -> tuple[Callable, Callable[[str], 
         raise HTTPException(401, "API 키가 필요합니다. Authorization: Bearer <키> 로 보내세요.")
 
     def require(role: str) -> Callable:
-        def dep(user: User = Depends(current_user)) -> User:
-            if not user.has(role):
+        def require_role(user: User = Depends(current_user)) -> User:
+            if not user.has_role(role):
                 raise HTTPException(403, f"'{role}' 역할이 필요합니다. 현재 역할: {user.role}")
             return user
 
-        return dep
+        return require_role
 
     return current_user, require

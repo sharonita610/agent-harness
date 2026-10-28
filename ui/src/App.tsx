@@ -62,7 +62,7 @@ export default function App() {
     id ? u.searchParams.set("run", id) : u.searchParams.delete("run");
     history.replaceState(null, "", u);
   }, []);
-  const pick = useCallback(
+  const pickAgent = useCallback(
     (b: string) => {
       setBase(b);
       setBaseState(b);
@@ -270,7 +270,7 @@ export default function App() {
       <Sidebar
         agents={entries}
         current={base}
-        onPick={pick}
+        onPick={pickAgent}
         view={view}
         onView={setView}
         pendingTotal={tray.length}
