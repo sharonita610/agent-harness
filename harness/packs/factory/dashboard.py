@@ -150,6 +150,7 @@ def dashboard(scope: Any = None, db_path: Path = DEFAULT_DB) -> list[dict[str, A
             "id": "daily",
             "title": "일별 NG율 (%) 라인별",
             "kind": "line",
+            "span": 2,
             "data": {
                 "x": [d[5:] for d in days],
                 "series": [

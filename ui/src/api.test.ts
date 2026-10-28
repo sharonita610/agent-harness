@@ -6,7 +6,7 @@ import { layoutSpans } from "./components/TraceView";
 import { briefArgs, setToolLabels, toUiEvent } from "./components/EventList";
 import ResultCard from "./components/ResultCard";
 import Rich from "./components/Rich";
-import Chart from "./components/Chart";
+import Chart, { yTicks } from "./components/Chart";
 import { HeatGrid, Stats } from "./components/DataView";
 import QueueBoard from "./components/QueueBoard";
 import type { Span } from "./types";
@@ -272,5 +272,17 @@ describe("QueueBoard", () => {
     expect(h).toContain("3/7 · R1=1 kΩ");
     expect(h).toContain("완료 · 20초");
     expect(h).not.toContain("left:100%"); // 시각을 미래로 읽어 오른쪽 끝에 몰리지 않는다
+  });
+});
+
+describe("yTicks", () => {
+  it("keeps zero for bars and for wide ranges, but zooms a narrow line range", () => {
+    expect(yTicks("bar", [0.9, 1.2])[0]).toBe(0);
+    expect(yTicks("line", [0.2, 1.2])[0]).toBe(0);
+    const t = yTicks("line", [0.95, 1.05, 1.21, 1.1]);
+    expect(t[0]).toBeGreaterThan(0.7);
+    expect(t[0]).toBeLessThanOrEqual(0.95);
+    expect(t[t.length - 1]).toBeGreaterThanOrEqual(1.21);
+    expect(t.length).toBeGreaterThanOrEqual(3);
   });
 });
