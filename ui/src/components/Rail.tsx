@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { apiAt } from "../api";
 import type { Approval, Run } from "../types";
 import ApprovalSlip from "./ApprovalCard";
+import { useProgress } from "../hooks";
 
 export interface TrayItem { base: string; agent: string; a: Approval }
 const STATUS_KO: Record<string, string> = { queued: "대기", running: "실행 중", done: "완료", failed: "실패", cancelled: "취소됨" };
@@ -28,6 +29,7 @@ export default function Rail({ base, tray, onDecided, canApprove, sessionId, ens
     onDecided();
   };
   const shown: (TrayItem & { d?: "approve" | "deny" })[] = [...tray.filter((t) => !kept[t.a.id]), ...Object.values(kept)];
+  const progress = useProgress(base, jobs.filter((j) => j.status === "running").map((j) => j.id));
   return (
     <aside className="rail">
       <section>
@@ -46,7 +48,7 @@ export default function Rail({ base, tray, onDecided, canApprove, sessionId, ens
           {jobs.map((j) => (
             <button key={j.id} className={`item ${selected === j.id ? "selected" : ""}`} onClick={() => onSelect(j.id)}>
               <span className="q"><span>{j.question}</span></span>
-              <span className="side"><b className={`st-${j.status}`}>{STATUS_KO[j.status] ?? j.status}</b><button className="ghost small" onClick={(e) => { e.stopPropagation(); cancel(j.id); }}>취소</button></span>
+              <span className="side"><b className={`st-${j.status}`}>{STATUS_KO[j.status] ?? j.status}{progress[j.id] ? ` ${progress[j.id].done}/${progress[j.id].total}` : ""}</b><button className="ghost small" onClick={(e) => { e.stopPropagation(); cancel(j.id); }}>취소</button></span>
             </button>
           ))}
         </div>

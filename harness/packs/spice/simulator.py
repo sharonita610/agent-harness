@@ -16,7 +16,8 @@ import uuid
 from pathlib import Path
 from typing import Any, Iterable
 
-from .netlist import Netlist, NetlistError, parse_netlist, parse_si, referenced_vectors, set_component_value
+from ...tools.progress import report
+from .netlist import Netlist, NetlistError, parse_netlist, parse_si, referenced_vectors, set_component_value, format_si
 
 ROOT = Path(__file__).resolve().parents[3]
 RUNS_DIR = Path(os.getenv("HARNESS_SPICE_RUNS", str(ROOT / "data" / "spice_runs")))
@@ -314,6 +315,10 @@ def run_meta(run_dir: Path) -> dict[str, Any]:
 
 
 # ----------------------------------------------------------------------------- 스윕
+def _unit_of(component: str) -> str:
+    return {"R": "Ω", "C": "F", "L": "H", "V": "V", "I": "A"}.get(component[:1].upper(), "")
+
+
 def sweep(netlist_text: str, component: str, values: list[float], measurement: str, runs_dir: Path = RUNS_DIR,
           timeout_s_total: float = 120.0, run_id: str | None = None) -> dict[str, Any]:
     """소자 값을 바꾸며 같은 측정을 반복. 결과는 표 + CSV(data.txt) 로 남겨 plot_waveform 이 그릴 수 있게 한다."""
@@ -342,6 +347,7 @@ def sweep(netlist_text: str, component: str, values: list[float], measurement: s
             rows.append({"value": v, name: r["measurements"].get(name)})
         except (NetlistError, SimulationError) as e:
             rows.append({"value": v, name: None, "error": str(e)[:160]})
+        report(i + 1, len(values), f"{component}={format_si(v, _unit_of(component))}")  # 화면의 진행 막대용
     elapsed = time.monotonic() - t0
     with (base / "data.txt").open("w", encoding="utf-8") as f:
         f.write(f" {component} {name}\n")

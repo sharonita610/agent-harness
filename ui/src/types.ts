@@ -29,3 +29,4 @@ export interface Stat { label: string; value: number | string; unit?: string; to
 export interface SeriesData { x: string[]; series: { name: string; values: (number | null)[] }[]; unit?: string }
 export interface HeatData { rows: string[]; cols: string[]; values: (number | null)[][]; unit?: string }
 export type View = "desk" | "inbox" | "jobs" | "history" | "data";
+export interface Progress { name: string; done: number; total: number; label: string; at: string }

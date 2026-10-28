@@ -8,6 +8,7 @@ from typing import Any, Callable
 
 from pydantic import ValidationError
 
+from ..tools.progress import progress_scope
 from ..tools.permissions import ApprovalHandler, Decision, Policy, auto_deny
 from ..tools.registry import ToolRegistry, format_validation_error
 from .context import compact, truncate_result
@@ -190,8 +191,18 @@ class Agent:
                 entry["status"] = "not_approved"
                 return ("승인되지 않음: 사용자가 이 변경을 승인하지 않았습니다. 변경을 실행하지 말고, "
                         "승인이 필요하다는 사실과 대안을 안내하세요."), True
+        last = {"t": 0.0}
+
+        def _progress(done: int, total: int, label: str) -> None:
+            # 긴 도구(스윕 등)의 진행률. 0.4초에 한 번 이상은 저장하지 않되 마지막 점은 꼭 남긴다
+            now = time.monotonic()
+            if done >= total or now - last["t"] >= 0.4:
+                last["t"] = now
+                emit("progress", step, name=call.name, done=done, total=total, label=label)
+
         try:
-            result = tool.handler(args)
+            with progress_scope(_progress):
+                result = tool.handler(args)
         except Exception as e:  # 도구 실행 자체의 오류
             entry["status"] = "exec_error"
             msg = f"도구 실행 오류({type(e).__name__}): {e}"

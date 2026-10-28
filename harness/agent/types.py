@@ -30,7 +30,7 @@ class LLMResponse(BaseModel):
 
 
 EventKind = Literal[
-    "step", "llm", "delta", "nudge", "tool_call", "tool_result", "tool_error",
+    "step", "llm", "delta", "nudge", "tool_call", "tool_result", "tool_error", "progress",
     "approval_request", "approval_result", "denied", "final", "stopped",
 ]
 

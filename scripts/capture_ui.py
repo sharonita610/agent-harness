@@ -119,7 +119,7 @@ def main():
     ap.add_argument("--home", default="http://127.0.0.1:8790", help="총괄 비서 주소(이 화면에서 다른 비서로 전환한다)")
     ap.add_argument("--out", default="docs/img")
     ap.add_argument("--port", type=int, default=9377, help="CDP 포트. 이미 쓰는 중이면(다른 Chrome) 멈춘다")
-    ap.add_argument("--steps", default="1234dih567", help="찍을 단계(기본 전부: 1~4 작업지, d 데이터 탭, i 결재함 탭, h 기록 탭, 5~7 결재·도장·드로어). 5~7 과 i 는 1·4 가 먼저 돌아야 한다")
+    ap.add_argument("--steps", default="1234dihq567", help="찍을 단계(기본 전부: 1~4 작업지, d 데이터 탭, i 결재함 탭, h 기록 탭, q 큐 보드, 5~7 결재·도장·드로어). 5~7 과 i 는 1·4 가 먼저 돌아야 한다")
     a = ap.parse_args()
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     profile = Path(tempfile.mkdtemp(prefix="harness-capture-"))
@@ -176,6 +176,20 @@ def main():
             print("h. 기록 탭")
             pick("공정"); view("기록", "document.querySelectorAll('tr.rowbtn').length >= 3")
             c.shot(out / "ui-history.jpg", FULL)
+            view("작업지", "!!document.querySelector('.compose')")
+        if "q" in steps:
+            print("q. 큐 보드: 회로 비서에게 스윕 두 개를 맡기고 진행 막대가 찰 때 찍는다")
+            pick("회로"); view("맡긴 작업", "!!document.querySelector('.compose textarea')")
+            for qtext in ("rc_lowpass 샘플에서 R1 을 100Ω부터 10kΩ까지 로그 간격 9점으로 스윕해서 차단 주파수 변화를 표로 보여줘",
+                          "rc_lowpass 샘플에서 C1 을 10nF부터 1µF까지 로그 간격 7점으로 스윕해서 차단 주파수 변화를 표로 보여줘"):
+                c.eval("(t => { const ta = document.querySelector('.compose textarea'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; "
+                       "set.call(ta, t); ta.dispatchEvent(new Event('input', { bubbles: true })); return true; })(%s)" % json.dumps(qtext))
+                time.sleep(0.3)
+                c.eval("document.querySelector('.compose button.primary').click(); true")
+                time.sleep(1.0)
+            c.wait_for("!!document.querySelector('.qbar.running .qfill') && !!document.querySelector('.qbar.queued')", 150, "진행 막대")
+            time.sleep(0.6); c.shot(out / "ui-queue.jpg", FULL)
+            c.wait_for("!document.querySelector('.qbar.running') && !document.querySelector('.qbar.queued')", 300, "스윕 둘 다 끝남")
             view("작업지", "!!document.querySelector('.compose')")
         if "5" in steps:
             print("5. 총괄 비서 화면에서 결재함에 공정 전표가 보이는 전체 화면")

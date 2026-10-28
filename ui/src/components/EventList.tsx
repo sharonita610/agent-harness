@@ -45,7 +45,7 @@ export function toUiEvent(id: number, event: string, d: Record<string, unknown>)
     case "denied": return { id, kind: event, label: "차단", detail: `${toolLabel(String(d.name))}은(는) 이 비서가 실행할 수 없는 작업입니다`, tone: "err" };
     case "stopped": return { id, kind: event, label: "중단", detail: `${s(d.reason)} ${s(d.error ?? "")}`.trim(), tone: "err" };
     case "error": return { id, kind: event, label: "오류", detail: s(d.error), tone: "err" };
-    case "run": case "step": case "llm": case "delta": case "approval_request": case "final": case "done": return null;
+    case "run": case "step": case "llm": case "delta": case "approval_request": case "final": case "done": case "progress": return null;
     default: return { id, kind: event, label: event, detail: s(d), tone: "" };
   }
 }

@@ -45,6 +45,7 @@ export function makeApi(base: () => string) {
     cancelJob: (id: string) => j<Run>(base(), `/jobs/${id}/cancel`, { method: "POST" }),
     runs: (limit = 30) => j<Run[]>(base(), `/runs?limit=${limit}`),
     run: (id: string) => j<Run & { events: RunEvent[]; approvals: Approval[] }>(base(), `/runs/${id}`),
+    runEvents: (id: string, afterSeq = 0) => j<RunEvent[]>(base(), `/runs/${id}/events?after_seq=${afterSeq}`),
     trace: (id: string) => j<Trace>(base(), `/runs/${id}/trace`),
   };
 }

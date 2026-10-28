@@ -8,6 +8,7 @@ import ResultCard from "./components/ResultCard";
 import Rich from "./components/Rich";
 import Chart from "./components/Chart";
 import { Heat, Stats } from "./components/DataView";
+import QueueBoard from "./components/QueueBoard";
 import type { Span } from "./types";
 
 describe("parseSSEChunk", () => {
@@ -108,5 +109,25 @@ describe("data tab", () => {
     expect(heat).toContain("rgba(31,78,121,0.800)");             // 최댓값 칸이 가장 진하다
     expect(heat).toContain("rgba(31,78,121,0.080)");             // 최솟값 칸이 가장 옅다
     expect(heat).toContain("color:#fff");
+  });
+});
+
+describe("QueueBoard", () => {
+  it("draws queued as dashed, running with a progress fill, done by duration, and ranks the queue", () => {
+    const base = "2026-10-29T03:00:00";
+    const jobs = [
+      { id: "r1", session_id: "s", kind: "job", question: "스윕 A", status: "running", answer: null, stopped_reason: null, steps: null, latency_s: null, prompt_tokens: null, completion_tokens: null, error: null, created_at: base, started_at: "2026-10-29T03:00:10", finished_at: null },
+      { id: "q1", session_id: "s", kind: "job", question: "스윕 B", status: "queued", answer: null, stopped_reason: null, steps: null, latency_s: null, prompt_tokens: null, completion_tokens: null, error: null, created_at: "2026-10-29T03:00:20", started_at: null, finished_at: null },
+      { id: "d1", session_id: "s", kind: "job", question: "집계", status: "done", answer: "x", stopped_reason: null, steps: 2, latency_s: 20, prompt_tokens: 1, completion_tokens: 1, error: null, created_at: "2026-10-29T02:58:00", started_at: "2026-10-29T02:58:00", finished_at: "2026-10-29T02:58:20" },
+    ] as const;
+    const now = new Date("2026-10-29T03:01:00").getTime();   // 저장소 시각처럼 로컬 시간
+    const h = renderToStaticMarkup(createElement(QueueBoard, { jobs: jobs as unknown as import("./types").Run[], progress: { r1: { name: "run_sweep", done: 3, total: 7, label: "R1=1 kΩ", at: "" } }, now, onOpen: () => {} }));
+    expect(h).toContain("qbar queued");
+    expect(h).toContain("1번째 대기");
+    expect(h).toContain("qfill");
+    expect(h).toMatch(/width:42\.8\d+%/);          // 3/7
+    expect(h).toContain("3/7 · R1=1 kΩ");
+    expect(h).toContain("완료 · 20초");
+    expect(h).not.toContain("left:100%");                 // 시각을 미래로 읽어 오른쪽 끝에 몰리지 않는다
   });
 });

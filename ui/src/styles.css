@@ -245,3 +245,20 @@ table.data.heat td{text-align:center;border:2px solid var(--sheet);border-radius
 .chart .legend{margin:0 0 4px}.chart .legend i{border-radius:2px}
 .chart-foot{display:flex;justify-content:space-between;align-items:center;margin-top:2px}
 .card .ct button{margin-left:auto;flex-shrink:0}
+
+/* 큐 보드 */
+.qboard{display:flex;flex-direction:column;gap:4px;margin:6px 0 8px}
+.qrow{display:grid;grid-template-columns:minmax(160px,2fr) minmax(0,5fr) minmax(120px,auto);gap:12px;align-items:center;padding:6px 8px;border:0;border-radius:4px;background:none;text-align:left;font:inherit;color:inherit;white-space:nowrap;cursor:pointer}
+.qrow:hover{background:var(--act-tint)}
+.qrow .qq{overflow:hidden;text-overflow:ellipsis;font-size:13.5px}
+.qrow .qtrack{position:relative;height:14px;border-left:1px solid var(--rule-strong);border-right:1px solid var(--rule);background:repeating-linear-gradient(90deg,transparent 0 calc(10% - 1px),var(--rule) calc(10% - 1px) 10%)}
+.qrow .qbar{position:absolute;top:0;height:14px;border-radius:0 3px 3px 0;min-width:3px;overflow:hidden;background:var(--s-run)}
+.qrow .qbar.queued{background:transparent;border:1.5px dashed var(--ink-3);border-left:0}
+.qrow .qbar.running{background:var(--act-tint);border:1px solid var(--act);border-left:0}
+.qrow .qbar.running .qfill{position:absolute;left:0;top:0;bottom:0;background:var(--act);transition:width .4s}
+.qrow .qbar.done{background:var(--ok)}.qrow .qbar.failed,.qrow .qbar.cancelled{background:var(--stamp)}
+.qrow .qside{font-size:12.5px;color:var(--ink-2);text-align:right;overflow:hidden;text-overflow:ellipsis}
+.qrow.st-running .qside{color:var(--act);font-weight:600}
+.pbar{display:block;margin-top:8px;height:6px;border-radius:3px;background:var(--rule);overflow:hidden;max-width:420px}
+.pbar > span{display:block;height:100%;background:var(--act);transition:width .4s}
+@media (max-width:820px){.qrow{grid-template-columns:minmax(0,1fr) minmax(90px,auto)}.qrow .qtrack{display:none}}

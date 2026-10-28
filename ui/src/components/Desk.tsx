@@ -6,7 +6,7 @@ import Timeline, { briefArgs, toolLabel, toUiEvent } from "./EventList";
 import ResultCard from "./ResultCard";
 import Rich from "./Rich";
 
-export interface Sheet { id: number; base: string; agent: string; question: string; events: UiEvent[]; pending: PendingApproval[]; decided: Record<string, "approve" | "deny">; answer: string | null; draft: string; meta: string; error: string | null; runId: string | null; at: string }
+export interface Sheet { id: number; base: string; agent: string; question: string; events: UiEvent[]; pending: PendingApproval[]; decided: Record<string, "approve" | "deny">; answer: string | null; draft: string; meta: string; error: string | null; runId: string | null; at: string; progress?: { name: string; done: number; total: number; label: string } | null }
 
 interface Props {
   base: string; agentName: string; welcome: string; examples: string[][]; emptyHint: string;
@@ -41,7 +41,9 @@ export default function Desk({ base, agentName, welcome, examples, emptyHint, sh
       await streamChat({ message, session_id: sid }, (event, d) => {
         if (event === "run") { runId = String(d.run_id); patch(id, (t) => ({ ...t, runId })); }
         if (event === "delta") patch(id, (t) => ({ ...t, draft: t.draft + String(d.text ?? "") }));
-        if (event === "tool_call") patch(id, (t) => ({ ...t, draft: "" }));
+        if (event === "tool_call") patch(id, (t) => ({ ...t, draft: "", progress: null }));
+        if (event === "progress") patch(id, (t) => ({ ...t, progress: { name: String(d.name), done: Number(d.done), total: Number(d.total), label: String(d.label ?? "") } }));
+        if (event === "tool_result" || event === "tool_error") patch(id, (t) => ({ ...t, progress: null }));
         if (event === "approval_pending") patch(id, (t) => ({ ...t, pending: [...t.pending, { approval_id: String(d.approval_id), tool: String(d.tool), arguments: (d.arguments as Record<string, unknown>) ?? {}, tier: String(d.tier) }] }));
         if (event === "approval_result") patch(id, (t) => ({ ...t, decided: { ...t.decided, ...Object.fromEntries(t.pending.filter((p) => !t.decided[p.approval_id]).map((p) => [p.approval_id, d.approved ? "approve" : "deny"])) } }));  // 결재함에서 처리돼도 작업지 전표에 도장이 찍힌다
         if (event === "final") patch(id, (t) => ({ ...t, answer: String(d.answer ?? "") }));
@@ -102,6 +104,7 @@ function SheetView({ t, canApprove, onDecide, onOpenRun, onData }: { t: Sheet; c
       <p className="q">{t.question}</p>
       {working ? (
         t.draft ? <div className="answer"><Rich text={t.draft} /><span className="caret" aria-hidden="true" /></div>
+          : t.progress ? <div className="answer waiting"><span>{toolLabel(t.progress.name)} {t.progress.done}/{t.progress.total}{t.progress.label ? ` · ${t.progress.label}` : ""}</span><span className="pbar"><span style={{ width: `${t.progress.total ? Math.min(100, (100 * t.progress.done) / t.progress.total) : 0}%` }} /></span></div>
           : <div className="answer waiting">{waitingApproval ? "결재를 기다리고 있습니다. 아래 전표에서 승인하거나 반려하세요." : toolSteps ? "확인한 내용을 정리하는 중입니다" : "데이터를 확인하는 중입니다"}</div>
       ) : <div className="answer"><Rich text={t.answer || t.error || "(답변 없음)"} /></div>}
       {t.error && t.answer !== null && t.answer !== "" && <p className="error">{t.error}</p>}
