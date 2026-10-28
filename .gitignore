@@ -35,8 +35,7 @@ data/*.db
 data/*.db-journal
 data/*.db-wal
 data/*.db-shm
-harness/evals/results/
-!harness/evals/results/.gitkeep
+harness/evals/results/traces/   # 평가 결과(json·md·채점·report.html)는 공개한다. 트레이스(343개)만 제외
 
 # ---- 모델 가중치 / 캐시 (수 GB) ----
 *.gguf

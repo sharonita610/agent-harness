@@ -1,0 +1,66 @@
+{
+  "results": "20261028-003519_local_gpt-oss-20b-n3",
+  "graded_at": "2026-10-27T18:17:28.097Z",
+  "grades": {
+    "t02:1": {
+      "pass": true
+    },
+    "w02:1": {
+      "pass": true
+    },
+    "q05:3": {
+      "pass": true
+    },
+    "m01:1": {
+      "pass": true
+    },
+    "d03:2": {
+      "pass": true
+    },
+    "t04:2": {
+      "pass": true
+    },
+    "w01:2": {
+      "pass": true
+    },
+    "q04:2": {
+      "pass": true
+    },
+    "m01:2": {
+      "pass": true
+    },
+    "d01:2": {
+      "pass": true
+    },
+    "t01:1": {
+      "pass": true
+    },
+    "w02:3": {
+      "pass": true
+    },
+    "q04:3": {
+      "pass": true
+    },
+    "m02:2": {
+      "pass": true
+    },
+    "d02:1": {
+      "pass": true
+    },
+    "t02:2": {
+      "pass": true
+    },
+    "w01:1": {
+      "pass": true
+    },
+    "q03:3": {
+      "pass": true
+    },
+    "m02:1": {
+      "pass": true
+    },
+    "d01:1": {
+      "pass": true
+    }
+  }
+}

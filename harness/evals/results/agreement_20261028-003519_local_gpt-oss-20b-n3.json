@@ -1,0 +1,16 @@
+{
+  "n": 20,
+  "human_pass_rate": 1.0,
+  "rules_vs_human": {
+    "agreement": 0.95,
+    "kappa": 0.0
+  },
+  "judge_vs_human": {
+    "agreement": 0.95,
+    "kappa": 0.0
+  },
+  "disagreements": [
+    "w01:2",
+    "t01:1"
+  ]
+}

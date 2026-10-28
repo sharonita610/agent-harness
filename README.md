@@ -449,6 +449,8 @@ Hermes 는 64K 미만 컨텍스트를 거부하고, 자체 프롬프트가 1.8�
 - **루프와 운영 층을 분리**: 도구·정책·채점기는 루프를 모른다. 그래서 LangGraph 그래프에도 그대로 꽂혀 같은 점수가 나왔다. 직접 쓴 루프의 몫은 결재·실패 모드 보정·컨텍스트 예산·트레이스다(`docs/experiments/langgraph/`).
 
 ## 평가
+결과 파일은 전부 레포에 있다: [`harness/evals/results/`](harness/evals/results/) 의 실행별 json(문제별 통과·도구 호출·토큰)과 md 요약, 사람 채점(`human-*.json`)과 일치도(`agreement_*.json`), 검색 평가(`retrieval_*.json`), 그리고 모델×팩 표를 한 장으로 보는 [`report.html`](harness/evals/results/report.html)(내려받아 열거나 `python3 -m http.server --directory harness/evals/results 8765`). 트레이스 343개만 용량 때문에 제외했다.
+
 `harness/evals/tasks.yaml` 의 16개 태스크를 모델별로 n회 반복해 통과율·스텝·지연·토큰·비용을 비교한다. 유형: 조회(5) · 규정(3) · 복합(2) · 변경→승인 요청(2) · 함정(4: 지시문 주입, 개인정보 일괄 요청, 삭제 요청, 모호한 질문).
 
 채점은 세 층이다.
@@ -467,7 +469,7 @@ gpt-oss-20b n=3 결과(48개 답변)에 판정자(같은 로컬 모델)를 돌�
 설계: ADR-003, ADR-011. 결과 표는 아래에 갱신한다.
 
 <!-- EVAL_RESULTS_START -->
-_출처: `harness/evals/results/20261027-012753_local_day3-smoke.json`, `harness/evals/results/20261027-153738_local_gpt-oss-20b.json`, `harness/evals/results/20261028-003519_local_gpt-oss-20b-n3.json`, `harness/evals/results/20261028-004241_local_hermes-4-14b-n3.json`, `harness/evals/results/20261028-025754_local_gpt-oss-20b-n3-v2.json`, `harness/evals/results/20261028-045150_openai-gpt-5-mini_gpt-5-mini-n3.json`_ · 같은 문제, n = 태스크당 반복 횟수
+_출처: [20261027-012753_local_day3-smoke.json](harness/evals/results/20261027-012753_local_day3-smoke.json), [20261027-153738_local_gpt-oss-20b.json](harness/evals/results/20261027-153738_local_gpt-oss-20b.json), [20261028-003519_local_gpt-oss-20b-n3.json](harness/evals/results/20261028-003519_local_gpt-oss-20b-n3.json), [20261028-004241_local_hermes-4-14b-n3.json](harness/evals/results/20261028-004241_local_hermes-4-14b-n3.json), [20261028-025754_local_gpt-oss-20b-n3-v2.json](harness/evals/results/20261028-025754_local_gpt-oss-20b-n3-v2.json), [20261028-045150_openai-gpt-5-mini_gpt-5-mini-n3.json](harness/evals/results/20261028-045150_openai-gpt-5-mini_gpt-5-mini-n3.json)_ · 같은 문제, n = 태스크당 반복 횟수
 
 | 모델 | 통과율 | 판정자 | query | mixed | doc | write | trap | 평균 스텝 | 지연 p50 | 지연 p95 | 실행당 토큰 | 비용(전체) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -510,7 +512,7 @@ _출처: `harness/evals/results/20261027-012753_local_day3-smoke.json`, `harness
 n=1(프롬프트 v1) 에서 두 가지가 드러났다. d01("1M 은 메가야 밀리야?")에 모델이 **자기 지식으로 "메가" 라고 틀리게 답하고 매뉴얼을 찾지 않았다** → 규칙을 "확실하지 않으면 검색" 에서 "문법·접미사 질문은 반드시 검색" 으로 바꾼 v2. s06 은 llama-server 가 모델 출력을 도구 호출 문법으로 못 읽는 서버 오류(500) → 프로바이더가 1회 재시도. 그 밖에 모델이 넷리스트 안에 `.measure` 를 쓰거나, 줄바꿈을 `\n` 글자로 보내거나, `.op` 에 측정식을 붙이는 습관은 도구가 흡수한다(ADR-013).
 
 <!-- SPICE_EVAL_RESULTS_START -->
-_출처: `harness/evals/results/20261028-041619_local_spice_n1.json`, `harness/evals/results/20261028-042724_local_spice_n3-v2.json`, `harness/evals/results/20261028-050253_openai-gpt-5-mini_spice_gpt-5-mini-n3-v2.json`, `harness/evals/results/20261028-073925_local_spice_n3-v2-20tasks.json`_ · 같은 문제, n = 태스크당 반복 횟수
+_출처: [20261028-041619_local_spice_n1.json](harness/evals/results/20261028-041619_local_spice_n1.json), [20261028-042724_local_spice_n3-v2.json](harness/evals/results/20261028-042724_local_spice_n3-v2.json), [20261028-050253_openai-gpt-5-mini_spice_gpt-5-mini-n3-v2.json](harness/evals/results/20261028-050253_openai-gpt-5-mini_spice_gpt-5-mini-n3-v2.json), [20261028-073925_local_spice_n3-v2-20tasks.json](harness/evals/results/20261028-073925_local_spice_n3-v2-20tasks.json)_ · 같은 문제, n = 태스크당 반복 횟수
 
 | 모델 | 통과율 | 판정자 | sim | sweep | doc | write | trap | history | 평균 스텝 | 지연 p50 | 지연 p95 | 실행당 토큰 | 비용(전체) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -545,7 +547,7 @@ _출처: `harness/evals/results/20261028-041619_local_spice_n1.json`, `harness/e
 **로컬 gpt-oss-20b n=3:** 96%(49/51). 집계·급증·원인·야간 패턴·로트·조치 효과·규정·승인 요청·함정 전부 통과. 실패 2건은 같은 문제(m01: 규정 범위 + 실제 온도 평균)에서 모델이 파라미터 평균을 SQL 로 직접 집계하려다 오류를 반복했거나 서버 파싱 오류가 났다. `correlate_params` 가 그 평균을 바로 주는데도 SQL 을 고집한 경우라, 도구 설명을 다듬을 여지가 있다. 1차 실행에서 드러난 채점 결함(날짜를 "2026‑10‑18" 처럼 특수 하이픈으로 써서 "18일" 검사 실패)과 도구 결함(제목을 빼먹은 티켓 요청을 5번 연속 거절)은 고친 뒤의 수치다.
 
 <!-- FACTORY_EVAL_RESULTS_START -->
-_출처: `harness/evals/results/20261028-080237_local_factory_n3.json`_ · 같은 문제, n = 태스크당 반복 횟수
+_출처: [20261028-080237_local_factory_n3.json](harness/evals/results/20261028-080237_local_factory_n3.json)_ · 같은 문제, n = 태스크당 반복 횟수
 
 - 통과율 96% (51회 실행, 태스크 17개) · 유형별 query 100%, spike 100%, mixed 33%, doc 100%, write 100%, trap 100%
 - 평균 스텝 3.43 · 지연 p50 13.3s / p95 45.5s · 실행당 토큰 14342 · 비용 $0.0000 (호스팅이면 $0.0167) · 프롬프트 v1
@@ -577,7 +579,7 @@ _출처: `harness/evals/results/20261028-080237_local_factory_n3.json`_ · 같�
 **로컬 gpt-oss-20b n=3:** 100%(24/24). 라우팅·복합·규정·결재 대기·거절 전달·되물음 전부. p50 13s, 복합 질문은 위임 두 번으로 35~45s. 이 숫자에 오기까지 두 번 고쳤다: 채점이 위임 대상의 별칭("회사")과 id("enterprise")를 못 맞춘 것, 그리고 **결재를 기다리는 태스크가 하위 비서의 작업 줄(워커 1개)을 막아 뒤의 위임이 3분씩 걸린 것**. 후자는 설계 결함이라 A2A 태스크를 태스크별 스레드로 바꿨다(ADR-017).
 
 <!-- SUPERVISOR_EVAL_RESULTS_START -->
-_출처: `harness/evals/results/20261029-014321_local_supervisor_n3.json`_ · 같은 문제, n = 태스크당 반복 횟수
+_출처: [20261029-014321_local_supervisor_n3.json](harness/evals/results/20261029-014321_local_supervisor_n3.json)_ · 같은 문제, n = 태스크당 반복 횟수
 
 - 통과율 100% (24회 실행, 태스크 8개) · 유형별 route 100%, compound 100%, approval 100%, trap 100%
 - 평균 스텝 2.75 · 지연 p50 13.1s / p95 34.3s · 실행당 토큰 3788 · 비용 $0.0000 (호스팅이면 $0.0025) · 프롬프트 v1
