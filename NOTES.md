@@ -193,3 +193,9 @@ uv run harness eval --n 1            # 평가 16개
 - 20문제 2차(75%)도 폐기: `seed_before` 가 그래프 **파일을 지우는** 바람에 도구가 연 SQLite 연결이 지워진 inode 를 붙들고 "attempt to write a readonly database" 로 실패(h02·h03), 조회는 옛 데이터(스윕 점)를 봄(h04). 시드는 파일을 두고 표만 비우도록(`ExperimentGraph.clear`) 고치고 연결 유지 테스트 추가. x01 은 세 번 다 "저장하시겠습니까?" 되물음 → 규칙 4 를 "되묻지 말고 바로 호출" 로(회사 팩 v2 의 같은 교훈). 3차 실행.
 - 20문제 3차(75%)도 폐기: 2차 수정 스크립트가 같은 변수를 두 번 써서 **unlink 제거가 덮어써졌다**(수정했다고 믿고 돌림). 재현 스크립트로 "readonly database" 를 직접 확인하고 고침. 교훈: 수정은 재현 스크립트로 확인한 뒤 돌린다. 공정 팩 1차(88%): s01 ×3 은 채점 결함(모델이 "2026‑10‑18" 로 써서 "18일" 검사 실패, 특수 하이픈) → 검사·정규화 수정; w02 ×3 은 모델이 create_action 의 title 을 빼먹어 검증 오류 5회 반복 → title 선택(설명에서 보충). 두 팩 4차 실행.
 - 4차(유효): 회로 20문제 n=3 v2 **90%**(실패: s06·s08 각 1, 서버 파싱 오류 1, h02 암산 2, h03 1). 공정 17문제 n=3 **96%**(실패: m01 ×2, 파라미터 평균을 SQL 로 집계하려다 반복 오류·서버 파싱 오류). 회로 p50 12.8s / p95 110s, 공정 p50 13.3s / p95 46s.
+
+### 멀티에이전트·A2A (2026-10-29)
+- `service/a2a.py`: agent card(스킬 = 팩 예시 + 도구 목록, 별칭 metadata), JSON-RPC message/send(blocking: 끝나거나 input-required 까지 폴링)·message/stream(저장 이벤트 0.4초 폴링 → status-update/artifact-update SSE)·tasks/get·tasks/cancel. 태스크 = run, contextId = 세션, 결재 대기 = input-required(상태 메시지에 도구·인자·결재 경로).
+- `packs/supervisor`: A2A 클라이언트(httpx, 테스트는 TestClient 주입) 도구 3개 + 위임 규칙 문서. 별칭으로 대상 선택(회사/회로/공정).
+- 잠복 결함: JobQueue.submit 이 스레드풀에서 asyncio.Queue.put_nowait → 워커가 안 깨어남(기존 /jobs 는 다른 요청이 루프를 깨워 우연히 동작). A2A blocking 에서 드러남 → call_soon_threadsafe.
+- 라이브: 총괄 비서(8790) ← 회사(8786 dev)·회로(8788)·공정(8789). "지연 주문 + RC fc" → list_agents → delegate ×2 → 합성, 4스텝 28.8초. 서버 상한 5개라 8787(인증 켠 회사 비서)은 잠시 내림.

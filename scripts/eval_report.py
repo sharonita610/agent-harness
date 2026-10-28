@@ -14,8 +14,8 @@ for p in jsons:
     label = p.stem.split("_", 2)[-1] if p.stem.count("_") >= 2 else p.stem
     by_pack.setdefault(d["summary"].get("pack") or "enterprise", []).append((label, d))
 
-PACK_KO = {"enterprise": "회사 데이터 비서 (enterprise)", "spice": "회로 시뮬레이션 비서 (spice)", "factory": "공정 NG 분석 비서 (factory)"}
-TYPE_KO = {"query": "조회", "mixed": "복합", "doc": "규정", "write": "변경→승인", "trap": "함정", "sim": "해석", "sweep": "스윕", "history": "기록", "spike": "급증·원인"}
+PACK_KO = {"enterprise": "회사 데이터 비서 (enterprise)", "spice": "회로 시뮬레이션 비서 (spice)", "factory": "공정 NG 분석 비서 (factory)", "supervisor": "총괄 비서 (supervisor, A2A)"}
+TYPE_KO = {"query": "조회", "mixed": "복합", "doc": "규정", "write": "변경→승인", "trap": "함정", "sim": "해석", "sweep": "스윕", "history": "기록", "spike": "급증·원인", "route": "라우팅", "compound": "복합", "approval": "결재 대기"}
 
 
 def esc(x):

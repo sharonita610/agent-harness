@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
-MARKERS = {"enterprise": "EVAL_RESULTS", "spice": "SPICE_EVAL_RESULTS", "factory": "FACTORY_EVAL_RESULTS"}
+MARKERS = {"enterprise": "EVAL_RESULTS", "spice": "SPICE_EVAL_RESULTS", "factory": "FACTORY_EVAL_RESULTS", "supervisor": "SUPERVISOR_EVAL_RESULTS"}
 jsons = sorted(p for p in (root / "harness/evals/results").glob("*.json") if not p.name.startswith(("retrieval_", "agreement_", "human-")))
 if not jsons:
     sys.exit("결과 파일 없음. 먼저 uv run harness eval")

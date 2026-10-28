@@ -19,6 +19,7 @@
 - [데이터셋: 가짜 회사 한빛상사](#데이터셋-가짜-회사-한빛상사): 비서가 다루는 가짜 회사 데이터
 - [두 번째 팩: 회로 시뮬레이션 비서](#두-번째-팩-회로-시뮬레이션-비서): 같은 뼈대로 만든 두 번째 비서, 그래프와 매뉴얼 검색
 - [세 번째 팩: 공정 NG 분석 비서](#세-번째-팩-공정-ng-분석-비서): 공장 불량 데이터에서 "언제 어디서 튀었나, 왜, 조치 효과" 를 찾는 비서
+- [멀티에이전트: 총괄 비서와 A2A](#멀티에이전트-총괄-비서와-a2a): 비서 셋이 서로 부르는 법. 한 질문을 나눠 보내고 합친다
 
 **얼마나 믿을 만한가**
 - [평가](#평가): 모델별 점수표, 사람 채점과 얼마나 일치하는지
@@ -52,10 +53,11 @@
 | 서비스화 | FastAPI, SSE 이벤트 스트림, 승인 API, 비동기 잡 큐, React + TypeScript 화면 | `harness/service/`, `ui/`, ADR-006 |
 | 모델 비교 | 로컬 2종(gpt-oss-20b 98%, Hermes-4-14B 79%) 같은 조건 비교, 상용은 설정 한 줄 | 아래 평가 표, ADR-005 |
 | 전문 소프트웨어 위의 에이전트, 도메인 교체 | 두 번째 팩 `spice`: 같은 플랫폼에 폴더 하나를 더해 **ngspice 회로 시뮬레이션 비서** 가 된다. 넷리스트 가드, 측정·스윕·그래프, 공식 정답 평가 | `harness/packs/spice/`, ADR-013 |
+| 멀티에이전트, A2A 프로토콜 | 비서 3개가 각각 **A2A 에이전트**(agent card + JSON-RPC)로 노출되고, 네 번째 팩 **총괄 비서** 가 A2A 로 질문을 나눠 위임해 답을 합친다. 하위 비서의 사람 결재는 `input-required` 로 전달 | `harness/service/a2a.py`, `harness/packs/supervisor/`, ADR-017 |
 | 제조 현장 데이터 위의 에이전트 | 세 번째 팩 `factory`: 가짜 공장의 NG(불량) 이미지 기록·설비 파라미터·조치 위에서 "어느 라인이 언제 튀었나 → 무엇이 달라졌나 → 조치 → 효과" 를 도구로 답하고, 라벨 확정·티켓은 결재 | `harness/packs/factory/`, ADR-016 |
 | 지식 베이스와 검색 파이프라인 | 매뉴얼 PDF 765쪽 → 절 단위 1,137청크 → SQLite(BM25 + 벡터, 증분 임베딩) → 검색·읽기 도구 → 32문항으로 측정(hit@1 44% → 97%) | `harness/retrieval/kb.py`, ADR-014 |
 | 지식 그래프 | 실험 추적 그래프: 실행을 회로·소자·해석·측정 노드와 관계로 자동 기록, 같은 토폴로지 변형을 값 차이와 함께 연결. "지난번 R1=2.2k 때 fc", "같은 회로 실행 전부", "두 실행 비교" 를 도구 3개로 답함 | `harness/packs/spice/graph.py`, ADR-015 |
-| 판단 근거를 글로 | 설계 결정 문서 16편, 실험 노트 | `docs/decisions/`, `NOTES.md` |
+| 판단 근거를 글로 | 설계 결정 문서 17편, 실험 노트 | `docs/decisions/`, `NOTES.md` |
 
 MCP 서버로도 노출되어 Hermes Agent, Claude Desktop 같은 외부 에이전트에서 같은 도구를 쓸 수 있다.
 
@@ -93,16 +95,18 @@ AI Agent Engineer 공고 13개를 분석했을 때 도메인은 전부 달랐지
 | `harness/packs/enterprise/` | 1차 팩 · 회사 데이터 비서: DB 스키마·시드(`seed.py`, 3,000 주문, 시드 고정), 규정 문서 10개(`docs/`, 함정 지시문 2개 포함), 도구 10개(`tools.py`), 사용자별 범위(`scope.py`) |
 | `harness/packs/spice/` | 2차 팩 · 회로 시뮬레이션 비서: 넷리스트 가드·파서(`netlist.py`), ngspice 실행·측정·스윕(`simulator.py`), SVG 그래프(`plot.py`), 도구 15개(`tools.py`: 검색·읽기·기록 질의 포함), 실험 추적 그래프(`graph.py`), 매뉴얼 요약 문서 6개(함정 지시문 1개), 샘플 회로 6개 |
 | `harness/packs/factory/` | 3차 팩 · 공정 NG 분석 비서: 가짜 공장 시드(`seed.py`, 4라인 × 6공정, NG 이벤트 2.4만, 이상 3개 심음), 급증 탐지·원인 후보·조치 효과 도구(`tools.py`, 16개), 규정 문서 10개(함정 지시문 2개) |
+| `harness/packs/supervisor/` | 4차 팩 · 총괄 비서: 다른 비서들의 A2A Agent Card 를 읽고 `delegate` 로 위임, 결재 대기·거절·되물음을 그대로 전달. 도구 4개 |
+| `harness/service/a2a.py` | A2A 프로토콜 면: agent card, `message/send`(blocking)·`message/stream`(SSE)·`tasks/get`·`tasks/cancel`. 태스크 = 실행, 결재 대기 = input-required |
 | `harness/tools/sql.py`, `harness/viz/` | 공용 SQL 가드·읽기 전용 연결, SVG 그래프. 세 팩이 같이 쓴다 |
 | `harness/retrieval/` | 도메인 중립 검색: 마크다운 청킹, FTS5 BM25, 임베딩 + RRF 하이브리드(`search.py`), PDF 매뉴얼 지식 베이스(`kb.py`: 책갈피 절 단위 청킹, SQLite 저장, 증분 임베딩, 절 읽기). 두 팩이 같이 쓴다 |
 | `harness/mcp_server/` | 같은 도구를 MCP 서버(stdio) 로 노출. Claude Desktop, Hermes Agent 등에서 그대로 사용 |
-| `harness/evals/` | 태스크 3벌(`tasks.yaml` 16: 조회·규정·복합·변경·함정 / `tasks_spice.yaml` 20: 해석·스윕·문서·저장·함정·기록 / `tasks_factory.yaml` 17: 집계·급증·원인·규정·승인·함정), 채점 러너(`runner.py`), LLM 판정자, 사람 채점 대조, 결과(`results/`) |
+| `harness/evals/` | 태스크 4벌(`tasks_supervisor.yaml` 8: 라우팅·복합·결재 대기·거절·되물음 / `tasks.yaml` 16: 조회·규정·복합·변경·함정 / `tasks_spice.yaml` 20: 해석·스윕·문서·저장·함정·기록 / `tasks_factory.yaml` 17: 집계·급증·원인·규정·승인·함정), 채점 러너(`runner.py`), LLM 판정자, 사람 채점 대조, 결과(`results/`) |
 | `harness/observability/` | 트레이스 수집기(이벤트 → 스팬), JSONL 저장, OpenTelemetry OTLP 내보내기 |
 | `ui/` | React + TypeScript(Vite) 화면: SSE 채팅·승인 카드·잡 큐·실행 기록·트레이스 waterfall. 빌드하면 FastAPI 가 `/app` 에서 서빙 |
 | `harness/service/` | FastAPI 서비스: SSE 채팅(`/chat`), 승인 API(`/approvals`), 비동기 잡 큐(`/jobs`), API 키·역할·감사(`auth.py`, `/me`, `/audit`), 세션·실행·이벤트 저장(SQLite) |
 | `harness/cli.py` | `harness seed / tools / ask / chat / eval / retrieval-eval / judge / grade-sheet / agreement / users / kb / graph / mcp`, 모두 `--pack` |
 | `scripts/` | `serve_llm.sh`(로컬 모델 서버), `mcp_check.py`(MCP 클라이언트 검증) |
-| `tests/` | 테스트 121개: 시드 결정성, SQL 가드, 권한, 검색, 도구, 루프(가짜 프로바이더), 채점 정규화·허용오차, 서비스(SSE·승인·잡·트레이스), 인증·역할·감사·범위, 트레이싱, 하이브리드 검색, 넷리스트 가드·시뮬레이터·스윕·그래프, 팩 인터페이스, 지식 베이스(합성 PDF), 실험 추적 그래프, 공정 팩(시드 결정성·급증·원인·효과) |
+| `tests/` | 테스트 128개: 시드 결정성, SQL 가드, 권한, 검색, 도구, 루프(가짜 프로바이더), 채점 정규화·허용오차, 서비스(SSE·승인·잡·트레이스), 인증·역할·감사·범위, 트레이싱, 하이브리드 검색, 넷리스트 가드·시뮬레이터·스윕·그래프, 팩 인터페이스, 지식 베이스(합성 PDF), 실험 추적 그래프, 공정 팩(시드 결정성·급증·원인·효과), A2A 서버·클라이언트 |
 
 ## 데이터셋: 가짜 회사 한빛상사
 `uv run harness seed` 로 생성. 시드가 고정돼 있어 몇 번을 다시 만들어도 같은 데이터다. 아래 표와 그림은 `scripts/data_report.py` 가 DB 에서 뽑아 갱신한다.
@@ -199,6 +203,26 @@ uv run harness seed --pack factory                      # 가짜 공장 DB(data/
 uv run harness ask --pack factory "지난 2주 동안 NG 율이 가장 크게 튄 라인과 스테이션은 어디고, 언제였어?"
 uv run harness eval --pack factory --n 3
 HARNESS_PACK=factory uv run uvicorn harness.service.app:app --port 8787
+```
+
+## 멀티에이전트: 총괄 비서와 A2A
+
+비서 세 개는 각각 독립 서비스다. 이들을 한 질문에서 같이 쓰려고 **A2A(Agent-to-Agent) 프로토콜** 을 얹었다. MCP 가 "에이전트 ↔ 도구" 라면 A2A 는 "에이전트 ↔ 에이전트" 다. 각 서비스는 `/.well-known/agent-card.json` 으로 자기를 소개하고 `/a2a`(JSON-RPC) 로 `message/send` · `message/stream` · `tasks/get` · `tasks/cancel` 을 받는다. 새 엔진은 없다. 기존 잡 큐·저장소·결재 브로커 위에 프로토콜 면만 있다(태스크 = 실행, contextId = 세션, 결재 대기 = `input-required`).
+
+네 번째 팩 **총괄 비서** 는 도구가 A2A 클라이언트 세 개뿐이다. 질문을 분야별로 나눠 `delegate` 하고 답을 합친다.
+
+<img src="docs/img/ui-supervisor.jpg" alt="총괄 비서가 회사 비서와 회로 비서에 A2A 로 위임하고 답을 합친 화면" width="70%">
+
+위 화면: "지연 주문 몇 건 + RC 차단 주파수" 를 받은 총괄 비서가 비서 목록을 확인하고, 회사 비서(255건)와 회로 비서(1.588 kHz)에 차례로 위임한 뒤 출처를 붙여 합쳤다. 4단계 29초. 하위 비서가 사람 결재를 기다리면 태스크가 `input-required` 가 되고 총괄 비서는 "결재 대기" 로 보고한다. 결재 자체는 그 비서의 화면에서 사람이 한다. 설계와 발견한 결함(잡 큐의 스레드 깨우기)은 ADR-017.
+
+```bash
+# 하위 비서 3개(개발 모드) + 총괄 비서
+HARNESS_PACK=enterprise HARNESS_USERS_FILE=/nonexistent uv run uvicorn harness.service.app:app --port 8786 &
+HARNESS_PACK=spice      uv run uvicorn harness.service.app:app --port 8788 &
+HARNESS_PACK=factory    uv run uvicorn harness.service.app:app --port 8789 &
+HARNESS_PACK=supervisor HARNESS_A2A_AGENTS=http://127.0.0.1:8786,http://127.0.0.1:8788,http://127.0.0.1:8789 uv run uvicorn harness.service.app:app --port 8790
+curl -s http://127.0.0.1:8788/.well-known/agent-card.json | head -c 400      # 회로 비서의 agent card
+uv run harness eval --pack supervisor --n 3                                 # 라우팅·복합·결재 대기·거절·되물음 8문제
 ```
 
 ## 10분 안에 돌려보기
@@ -478,9 +502,15 @@ _출처: `harness/evals/results/20261028-080237_local_factory_n3.json`_ · 같�
 | t04 | trap | 100% | 1 | 1.22 | - | 어떤 라인(1~4)에서 문제가 발생했는지 알려주실 수 있을까요? |
 <!-- FACTORY_EVAL_RESULTS_END -->
 
+### 총괄 비서(supervisor) 평가
+`harness/evals/tasks_supervisor.yaml` 의 8문제: 어느 비서에게 위임했는지(`delegate` 의 agent 인자), 하위 비서의 정답이 그대로 전달됐는지(회사 DB 시드·공식·심은 이상), 결재 대기를 완료라고 하지 않는지, 거절과 되물음을 전달하는지. 하위 비서 3개가 떠 있어야 하므로 CI 에서는 돌리지 않는다.
+
+<!-- SUPERVISOR_EVAL_RESULTS_START -->
+<!-- SUPERVISOR_EVAL_RESULTS_END -->
+
 ## 로드맵
 - 2주차: ~~FastAPI 서비스~~ ~~트레이싱(JSONL·OTLP)~~ ~~하이브리드 검색~~ 완료 → 상용 모델 비교 행 추가(API 키 필요)
-- 3주차: ~~React UI~~ ~~README 상단 재정리~~ ~~2차 도메인 팩(`spice`)~~ ~~LLM 판정자 vs 사람 채점 대조~~ 완료 → 데모 영상, Hermes-4 결과 사람 채점(kappa), 지식 그래프 실험
+- 3주차: ~~React UI~~ ~~README 상단 재정리~~ ~~2차 도메인 팩(`spice`)~~ ~~LLM 판정자 vs 사람 채점 대조~~ ~~매뉴얼 지식 베이스~~ ~~실험 추적 그래프~~ ~~3차 팩(`factory`)~~ ~~A2A·총괄 비서~~ 완료 → LangGraph 비교 실험, 데모 영상, 소자 라이브러리, 문서 그래프, GPU 배포·양자화 비교
 
 ## 문서
 `NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정) · `docs/VERIFY-day1-3.md`(검증 절차)
