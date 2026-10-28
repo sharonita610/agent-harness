@@ -1,4 +1,4 @@
-import type { Approval, Health, Run, RunEvent, Session, Tool, Trace, Workspace } from "./types";
+import type { Approval, Health, Panel, Run, RunEvent, Session, Tool, Trace, Workspace } from "./types";
 
 const KEY_STORAGE = "harness.apiKey";
 const BASE_STORAGE = "harness.base";
@@ -34,6 +34,7 @@ export function makeApi(base: () => string) {
     me: () => j<Me>(base(), "/me"),
     workspace: () => j<Workspace>(base(), "/workspace"),
     audit: (limit = 50) => j<AuditEntry[]>(base(), `/audit?limit=${limit}`),
+    dashboard: () => j<Panel[]>(base(), "/dashboard"),
     tools: () => j<Tool[]>(base(), "/tools"),
     createSession: () => j<Session>(base(), "/sessions", { method: "POST", body: "{}" }),
     session: (id: string) => j<Session>(base(), `/sessions/${id}`),

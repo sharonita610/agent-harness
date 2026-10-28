@@ -1,14 +1,15 @@
 import type { Me } from "../api";
-import type { Health } from "../types";
+import type { Health, View } from "../types";
 import Login from "./Login";
 
 export interface AgentEntry { base: string; name: string; pack: string | null; description: string; ok: boolean; pending: number }
 export type Theme = "auto" | "light" | "dark";
 
-interface Props { agents: AgentEntry[]; current: string; onPick: (base: string) => void; health: Health | null; down: boolean; me: Me | null; onAuthChange: () => void; theme: Theme; onTheme: (t: Theme) => void; railHidden: boolean; onToggleRail: () => void }
+interface Props { agents: AgentEntry[]; current: string; onPick: (base: string) => void; view: View; onView: (v: View) => void; pendingTotal: number; health: Health | null; down: boolean; me: Me | null; onAuthChange: () => void; theme: Theme; onTheme: (t: Theme) => void; railHidden: boolean; onToggleRail: () => void }
 
 /** 왼쭉 사이드바: 비서 목록, 연결 상태, 로그인, 화면 설정. */
-export default function Sidebar({ agents, current, onPick, health, down, me, onAuthChange, theme, onTheme, railHidden, onToggleRail }: Props) {
+export default function Sidebar({ agents, current, onPick, view, onView, pendingTotal, health, down, me, onAuthChange, theme, onTheme, railHidden, onToggleRail }: Props) {
+  const views: [View, string][] = [["desk", "작업지"], ["inbox", "결재함"], ["jobs", "맡긴 작업"], ["history", "기록"], ...(health?.pack?.dashboard ? [["data", "데이터"] as [View, string]] : [])];
   const nextTheme: Record<Theme, Theme> = { auto: "light", light: "dark", dark: "auto" };
   const themeKo: Record<Theme, string> = { auto: "화면 자동", light: "화면 밝게", dark: "화면 어둡게" };
   return (
@@ -24,6 +25,16 @@ export default function Sidebar({ agents, current, onPick, health, down, me, onA
           ))}
         </div>
       </div>
+      <div>
+        <h4>보기</h4>
+        <div className="agents views">
+          {views.map(([v, label]) => (
+            <button key={v} className={`agent ${view === v ? "on" : ""}`} onClick={() => onView(v)} aria-current={view === v ? "page" : undefined}>
+              <span /><span>{label}</span>{v === "inbox" && pendingTotal > 0 ? <span className="n" aria-label={`결재 ${pendingTotal}건`}>{pendingTotal}</span> : <span />}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="foot">
         <div className="status">
           <span>{down ? <span className="st-failed">연결되지 않음</span> : health ? <>도구 <b>{health.tools}개</b></> : "연결 확인 중"}</span>
@@ -32,7 +43,7 @@ export default function Sidebar({ agents, current, onPick, health, down, me, onA
         <Login me={me} onChange={onAuthChange} />
         <div className="links">
           <button className="ghost small" onClick={() => onTheme(nextTheme[theme])}>{themeKo[theme]}</button>
-          <button className="ghost small" onClick={onToggleRail}>{railHidden ? "결재함 보기" : "결재함 숨기기"}</button>
+          {view === "desk" && <button className="ghost small" onClick={onToggleRail}>{railHidden ? "오른쪽 요약 보기" : "오른쪽 요약 숨기기"}</button>}
           <a href={(current || "") + "/docs"} target="_blank" rel="noreferrer">API 문서</a>
         </div>
       </div>

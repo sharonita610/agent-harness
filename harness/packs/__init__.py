@@ -37,10 +37,43 @@ class Pack:
     examples: list[list[str]] = field(default_factory=list)  # 화면 예시 [라벨, 질문]
     empty_hint: str = ""                              # 대화가 비었을 때 안내
     aliases: list[str] = field(default_factory=list)  # 총괄 비서가 위임 대상을 고를 때 쓰는 별칭(한국어)
+    dashboard: Callable[..., list[dict[str, Any]]] | None = None   # (scope=None) -> 패널 목록. 화면 "데이터" 탭이 모양대로 그린다(아래 PANEL_KINDS)
 
     @property
     def system_prompt(self) -> str:
         return self.system_prompts["v1"]
+
+
+# 대시보드 패널 규약. 플랫폼은 팩 내부를 모르므로 팩이 "무엇을 어떤 모양으로" 보여줄지 통째로 준다.
+#   {"id": str, "title": str, "kind": <아래>, "data": ..., "note": str?, "span": 1|2}
+#   stats: [{"label", "value", "unit"?, "tone"?: "ok"|"warn"|"bad"}]
+#   table: {"columns": [str], "rows": [dict]}
+#   line | bar: {"x": [str], "series": [{"name": str, "values": [number|None]}], "unit"?: str}
+#   heat:  {"rows": [str], "cols": [str], "values": [[number|None]], "unit"?: str}
+#   image: {"url": str, "alt"?: str}
+PANEL_KINDS = ("stats", "table", "line", "bar", "heat", "image")
+
+
+def check_panels(panels: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """패널 목록의 모양을 검사한다(팩 테스트와 서비스에서 호출). 틀리면 ValueError."""
+    for pn in panels:
+        for k in ("id", "title", "kind", "data"):
+            if k not in pn:
+                raise ValueError(f"패널에 {k} 가 없습니다: {pn}")
+        if pn["kind"] not in PANEL_KINDS:
+            raise ValueError(f"알 수 없는 패널 종류 {pn['kind']!r} (가능: {PANEL_KINDS})")
+        d = pn["data"]
+        if pn["kind"] == "stats" and not isinstance(d, list):
+            raise ValueError("stats 의 data 는 목록")
+        if pn["kind"] == "table" and not (isinstance(d, dict) and "columns" in d and "rows" in d):
+            raise ValueError("table 의 data 는 {columns, rows}")
+        if pn["kind"] in ("line", "bar") and not (isinstance(d, dict) and "x" in d and "series" in d):
+            raise ValueError(f"{pn['kind']} 의 data 는 {{x, series}}")
+        if pn["kind"] == "heat" and not (isinstance(d, dict) and {"rows", "cols", "values"} <= set(d)):
+            raise ValueError("heat 의 data 는 {rows, cols, values}")
+        if pn["kind"] == "image" and not (isinstance(d, dict) and "url" in d):
+            raise ValueError("image 의 data 는 {url}")
+    return panels
 
 
 def current_pack_name() -> str:

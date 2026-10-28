@@ -12,13 +12,13 @@ interface Props {
   base: string; agentName: string; welcome: string; examples: string[][]; emptyHint: string;
   sheets: Sheet[]; setSheets: (f: (s: Sheet[]) => Sheet[]) => void;
   ensureSession: (base: string) => Promise<string>; onRunFinished: (base: string, runId: string) => void; onOpenRun: (runId: string) => void;
-  canApprove: boolean; canChat: boolean; blockedWhy: string | null;
+  canApprove: boolean; canChat: boolean; blockedWhy: string | null; onData?: () => void;
 }
 
 /** 근거로 보여줄 가치가 없는 '둘러보기' 도구. 확인 과정에는 남는다. */
 const QUIET = /^(list_|describe_table$|check_netlist$|check_task$|get_waveform$)/;
 
-export default function Desk({ base, agentName, welcome, examples, emptyHint, sheets, setSheets, ensureSession, onRunFinished, onOpenRun, canApprove, canChat, blockedWhy }: Props) {
+export default function Desk({ base, agentName, welcome, examples, emptyHint, sheets, setSheets, ensureSession, onRunFinished, onOpenRun, canApprove, canChat, blockedWhy, onData }: Props) {
   const [q, setQ] = useState("");
   const [busyBases, setBusyBases] = useState<Set<string>>(new Set());  // 비서별로 따로 바쁘다. 한 비서가 결재를 기다려도 다른 비서에게 물을 수 있다
   const busy = busyBases.has(base);
@@ -77,13 +77,13 @@ export default function Desk({ base, agentName, welcome, examples, emptyHint, sh
 
       <div className="sheets">
         {mine.length === 0 && <p className="empty">{emptyHint}</p>}
-        {mine.map((t) => <SheetView key={t.id} t={t} canApprove={canApprove} onDecide={(aid, d) => decide(t, aid, d)} onOpenRun={onOpenRun} />)}
+        {mine.map((t) => <SheetView key={t.id} t={t} canApprove={canApprove} onDecide={(aid, d) => decide(t, aid, d)} onOpenRun={onOpenRun} onData={onData} />)}
       </div>
     </main>
   );
 }
 
-function SheetView({ t, canApprove, onDecide, onOpenRun }: { t: Sheet; canApprove: boolean; onDecide: (aid: string, d: "approve" | "deny") => Promise<void>; onOpenRun: (runId: string) => void }) {
+function SheetView({ t, canApprove, onDecide, onOpenRun, onData }: { t: Sheet; canApprove: boolean; onDecide: (aid: string, d: "approve" | "deny") => Promise<void>; onOpenRun: (runId: string) => void; onData?: () => void }) {
   // 근거 카드: 도구 결과 중 결과 원본이 있고 둘러보기가 아닌 것. 바로 앞의 호출에서 '무엇을 보냈는지'를 제목에 붙인다.
   const cards: { ev: UiEvent; title: string; sub: string }[] = [];
   let lastCall: UiEvent | null = null;
@@ -110,7 +110,7 @@ function SheetView({ t, canApprove, onDecide, onOpenRun }: { t: Sheet; canApprov
         <div className="evidence">
           {cards.slice(-6).map(({ ev, title, sub }) => (
             <div className="card" key={ev.id}>
-              <div className="ct"><b>{title}</b>{sub && <span title={sub}>{sub}</span>}</div>
+              <div className="ct"><b>{title}</b>{sub && <span title={sub}>{sub}</span>}{onData && <button className="ghost small" onClick={onData} title="비서 없이 원 데이터를 본다">데이터 보기</button>}</div>
               <ResultCard result={ev.result} tool={ev.tool} />
             </div>
           ))}

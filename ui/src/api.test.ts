@@ -6,6 +6,8 @@ import { layoutSpans } from "./components/TraceView";
 import { briefArgs, setToolLabels, toUiEvent } from "./components/EventList";
 import ResultCard from "./components/ResultCard";
 import Rich from "./components/Rich";
+import Chart from "./components/Chart";
+import { Heat, Stats } from "./components/DataView";
 import type { Span } from "./types";
 
 describe("parseSSEChunk", () => {
@@ -84,5 +86,27 @@ describe("ResultCard", () => {
   });
   it("falls back to collapsed raw json for unknown shapes", () => {
     expect(html([[1, 2], [3, 4]])).toContain("원문 보기");
+  });
+});
+
+describe("data tab", () => {
+  it("draws a line chart with one polyline per series, a legend, end labels and few x labels", () => {
+    const h = renderToStaticMarkup(createElement(Chart, { kind: "line", data: { x: Array.from({ length: 14 }, (_, i) => `10-${i + 14}`), series: [{ name: "1라인", values: Array(14).fill(1.2) }, { name: "2라인", values: [1, 2, null, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] }], unit: "%" } }));
+    expect((h.match(/<polyline/g) ?? []).length).toBe(3);        // 2라인은 빈 값에서 끊겨 두 토막
+    expect(h).toContain("class=\"legend\"");
+    expect(h).toContain(">2라인</text>");
+    expect((h.match(/y="206"/g) ?? []).length).toBeLessThanOrEqual(8);  // x 라벨은 8개 이하
+    expect(h).toContain("표로 보기");
+  });
+  it("draws grouped bars and renders stats and heat cells", () => {
+    const bars = renderToStaticMarkup(createElement(Chart, { kind: "bar", data: { x: ["a", "b"], series: [{ name: "n", values: [3, 5] }] } }));
+    expect((bars.match(/<rect/g) ?? []).length).toBe(2);
+    const st = renderToStaticMarkup(createElement(Stats, { data: [{ label: "NG율", value: 2.345, unit: "%", tone: "bad" }, { label: "연결", value: "3/3" }] }));
+    expect(st).toContain("2.35");
+    expect(st).toContain("stat bad");
+    const heat = renderToStaticMarkup(createElement(Heat, { data: { rows: ["1라인"], cols: ["코팅", "권취"], values: [[0.5, 2.0]], unit: "%" } }));
+    expect(heat).toContain("rgba(15,110,102,0.800)");             // 최댓값 칸이 가장 진하다
+    expect(heat).toContain("rgba(15,110,102,0.080)");             // 최솟값 칸이 가장 옅다
+    expect(heat).toContain("color:#fff");
   });
 });

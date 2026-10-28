@@ -1,6 +1,6 @@
 export type Tier = "read" | "write" | "destructive";
 
-export interface Pack { name: string; title: string; description: string; welcome: string; examples: string[][]; empty_hint: string; tool_labels: Record<string, string> }
+export interface Pack { name: string; title: string; description: string; welcome: string; examples: string[][]; empty_hint: string; tool_labels: Record<string, string>; dashboard?: boolean }
 export interface Health { status: string; tools: number; provider: string; pending_approvals: number; auth_required?: boolean; model?: { provider: string; reachable: boolean; hosted: boolean }; pack?: Pack }
 export interface WorkspaceAgent { url: string; name: string | null; pack: string | null; description: string; ok: boolean; error?: string }
 export interface Workspace { self: { pack: string; name: string; description: string }; agents: WorkspaceAgent[] }
@@ -21,3 +21,11 @@ export interface Trace { summary: { spans: number; llm_calls: number; tool_calls
 
 /** 화면에 쌓는 한 줄. label 은 사람 말, detail 은 접힌 원문, result 는 도구 결과 원본(카드로 그린다). */
 export interface UiEvent { id: number; kind: string; label: string; detail: string; tone: "" | "tool" | "ok" | "err" | "warn"; approvalId?: string; image?: string; result?: unknown; tool?: string; args?: Record<string, unknown> }
+
+/** 데이터 탭 패널(서버 harness/packs/__init__.py 의 규약과 같다). */
+export type PanelKind = "stats" | "table" | "line" | "bar" | "heat" | "image";
+export interface Panel { id: string; title: string; kind: PanelKind; data: unknown; note?: string; span?: 1 | 2 }
+export interface Stat { label: string; value: number | string; unit?: string; tone?: "ok" | "warn" | "bad" }
+export interface SeriesData { x: string[]; series: { name: string; values: (number | null)[] }[]; unit?: string }
+export interface HeatData { rows: string[]; cols: string[]; values: (number | null)[][]; unit?: string }
+export type View = "desk" | "inbox" | "jobs" | "history" | "data";

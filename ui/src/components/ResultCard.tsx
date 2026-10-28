@@ -26,7 +26,7 @@ const KEY_KO: Record<string, string> = {
 const ko = (k: string) => KEY_KO[k] ?? k;
 const HIDE = new Set(["note", "next", "sql_executed", "saved_vectors", "vectors", "ngspice", "svg_path", "truncated", "columns", "rows", "url", "measurements", "task_id", "history", "errors"]);
 
-function Table({ rows, max = 12 }: { rows: Row[]; max?: number }) {
+export function Table({ rows, max = 12 }: { rows: Row[]; max?: number }) {
   if (!rows.length) return <p className="muted small">결과 없음</p>;
   const cols = Array.from(rows.reduce((s, r) => { Object.keys(r).forEach((k) => s.add(k)); return s; }, new Set<string>()));
   const shown = rows.slice(0, max);

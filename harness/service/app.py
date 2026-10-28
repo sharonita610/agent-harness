@@ -157,7 +157,7 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         return {"status": "ok", "tools": len(registry), "provider": state.default_provider, "pending_approvals": len(state.broker.pending()),
                 "auth_required": state.users.required, "model": model_status(),
                 "pack": {"name": pk.name, "title": pk.title, "description": pk.description, "welcome": pk.welcome, "examples": pk.examples,
-                         "empty_hint": pk.empty_hint, "tool_labels": pk.tool_labels}, "a2a": {"card": "/.well-known/agent-card.json", "rpc": "/a2a"}}
+                         "empty_hint": pk.empty_hint, "tool_labels": pk.tool_labels, "dashboard": pk.dashboard is not None}, "a2a": {"card": "/.well-known/agent-card.json", "rpc": "/a2a"}}
 
     @app.get("/workspace")
     def workspace():
@@ -170,6 +170,14 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         return {"name": user.name, "role": user.role, "anonymous": user.anonymous, "auth_required": state.users.required, "pack": pk.name,
                 "scope": sc.to_dict() if sc else None, "scope_text": sc.describe() if sc else None,
                 "can": {"chat": user.has("operator"), "approve": user.has("approver"), "admin": user.has("admin")}}
+
+    @app.get("/dashboard")
+    def dashboard(user: User = Depends(current_user)):
+        """화면 "데이터" 탭. 팩이 정한 패널 목록을 사용자 범위로 돌려준다(없는 팩은 빈 목록)."""
+        if pk.dashboard is None:
+            return []
+        from ..packs import check_panels
+        return check_panels(pk.dashboard(scope=state.scope_of(user)))
 
     @app.get("/audit")
     def audit(limit: int = 100, user: User = Depends(require("approver"))):
