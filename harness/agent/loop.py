@@ -200,6 +200,8 @@ class Agent:
         content = truncate_result(result, self.result_max_chars)
         entry["result_preview"] = content[:300]
         extra = {"url": result["url"]} if isinstance(result, dict) and isinstance(result.get("url"), str) else {}
+        if isinstance(result, (dict, list)) and len(content) <= self.result_max_chars:
+            extra["result"] = result  # 화면이 표·수치·출처 카드로 그릴 수 있게 원본 구조를 함께 보낸다(모델에게 가는 내용과 같은 범위)
         emit("tool_result", step, name=call.name, preview=content[:300], chars=len(content), **extra)
         return content, True
 

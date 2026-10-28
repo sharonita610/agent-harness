@@ -225,3 +225,23 @@ def test_grading_page_and_save(tmp_path, seeded_db, monkeypatch):
     with TestClient(app) as c:
         assert c.get("/grading/missing").status_code == 404
         assert c.get("/grading/../x").status_code in (400, 404)
+
+
+def test_workspace_and_cors_and_result_payload(seeded_db, tmp_path, monkeypatch):
+    """/workspace 는 자기 자신 + 환경변수의 비서들(닿지 않으면 ok=False), CORS 헤더, tool_result 에 result 원본."""
+    db, _ = seeded_db
+    monkeypatch.setenv("HARNESS_WORKSPACE", "http://127.0.0.1:1")
+    script = [LLMResponse(tool_calls=[ToolCall(id="c1", name="run_sql", arguments={"sql": "SELECT COUNT(*) AS n FROM orders"})]), LLMResponse(text="끝")]
+    app = create_app(db_path=tmp_path / "svc.db", provider_factory=lambda spec: ScriptProvider(list(script)), registry=ToolRegistry(build_tools(db)), system_prompt=SYSTEM_PROMPT)
+    with TestClient(app) as c:
+        ws = c.get("/workspace", headers={"Origin": "http://localhost:9999"})
+        assert ws.json()["self"]["pack"] == "enterprise" and ws.json()["agents"][0]["ok"] is False and ws.headers.get("access-control-allow-origin") == "*"
+        sid = c.post("/sessions", json={}).json()["id"]
+        events = []
+        with c.stream("POST", "/chat", json={"message": "몇 건?", "session_id": sid}) as r:
+            for line in r.iter_lines():
+                if line.startswith("event: tool_result"):
+                    events.append("tool_result")
+                if line.startswith("data: ") and '"columns"' in line:
+                    events.append("has_result")
+        assert "tool_result" in events and "has_result" in events

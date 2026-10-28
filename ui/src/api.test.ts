@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createElement } from "react";
 import { parseSSEChunk } from "./api";
 import { layoutSpans } from "./components/TraceView";
-import { setToolLabels, toUiEvent } from "./components/EventList";
+import { briefArgs, setToolLabels, toUiEvent } from "./components/EventList";
+import ResultCard from "./components/ResultCard";
+import Rich from "./components/Rich";
 import type { Span } from "./types";
 
 describe("parseSSEChunk", () => {
@@ -27,13 +31,58 @@ describe("layoutSpans", () => {
 });
 
 describe("toUiEvent", () => {
-  it("shows a plot when a tool result carries an image url, and uses pack labels", () => {
+  it("shows a plot when a tool result carries an image url, uses pack labels, and keeps the raw result", () => {
     setToolLabels({ run_simulation: "시뮬레이션 실행" });
     const call = toUiEvent(1, "tool_call", { name: "run_simulation", arguments: { netlist: "* rc\nR1 a 0 1k", measurements: ["fc WHEN vdb(out)=-3"] } });
-    expect(call).toMatchObject({ label: "시뮬레이션 실행", tone: "tool" });
+    expect(call).toMatchObject({ label: "시뮬레이션 실행", tone: "tool", tool: "run_simulation" });
     expect(call?.detail.split("\n")[0]).toBe("fc WHEN vdb(out)=-3");
     const plot = toUiEvent(2, "tool_result", { name: "plot_waveform", preview: "{}", url: "/files/spice/swp_1/plot.svg" });
-    expect(plot).toMatchObject({ label: "그래프", image: "/files/spice/swp_1/plot.svg" });
-    expect(toUiEvent(3, "tool_result", { name: "run_sql", preview: "{}" })?.image).toBeUndefined();
+    expect(plot).toMatchObject({ label: "그래프", image: "/files/spice/swp_1/plot.svg", tool: "plot_waveform" });
+    const sql = toUiEvent(3, "tool_result", { name: "run_sql", preview: "{}", result: { columns: ["a"], rows: [{ a: 1 }] } });
+    expect(sql?.image).toBeUndefined();
+    expect(sql?.result).toEqual({ columns: ["a"], rows: [{ a: 1 }] });
+  });
+  it("summarises what was sent per tool", () => {
+    expect(briefArgs("delegate", { agent: "spice", question: "RC 차단 주파수" })).toBe("spice 비서에게: RC 차단 주파수");
+    expect(briefArgs("run_sql", { sql: "SELECT 1" })).toBe("SELECT 1");
+  });
+});
+
+describe("Rich", () => {
+  const html = (text: string) => renderToStaticMarkup(createElement(Rich, { text }));
+  it("renders markdown tables, bullets, bold and italics", () => {
+    const h = html("결과\n| R1 | fc |\n|---|---|\n| 1 kΩ | 1.59 kHz |\n- 첫째\n- **둘째**\n*조건* 끝");
+    expect(h).toContain("<table class=\"md\"");
+    expect(h).toMatch(/<th>(<span>)?R1(<\/span>)?<\/th>/);
+    expect(h).toContain("1.59 kHz");
+    expect(h).toMatch(/<ul class="md"><li>(<span>)?첫째(<\/span>)?<\/li><li>(<span><\/span>)?<strong>둘째<\/strong>/);
+    expect(h).toContain("<em>조건</em>");
+  });
+});
+
+describe("ResultCard", () => {
+  const html = (result: unknown, tool?: string) => renderToStaticMarkup(createElement(ResultCard, { result, tool }));
+  it("renders query rows as a table with korean headers", () => {
+    const h = html({ columns: ["line", "ng_rate_pct"], rows: [{ line: 2, ng_rate_pct: 3.456 }], row_count: 1, truncated: false });
+    expect(h).toContain("<table");
+    expect(h).toContain("NG율(%)");
+    expect(h).toContain("3.456");
+    expect(h).toContain("행 수");
+    expect(h).not.toContain("truncated");
+  });
+  it("renders measurements as big numbers and a plot when the result has an image url", () => {
+    const h = html({ run_id: "run_1", measurements_readable: { fc: "1.59 kHz" }, url: "/files/spice/run_1/plot.svg" });
+    expect(h).toContain("1.59 kHz");
+    expect(h).toContain("<img");
+  });
+  it("renders search hits as a source list and delegate answers as a quote", () => {
+    expect(html([{ source: "규정 > 환불", snippet: "7일 안에", score: 0.9 }])).toContain("규정 &gt; 환불");
+    const inDict = html({ query: "환불", mode: "bm25", hits: [{ doc: "규정", section: "환불", text: "7일 안에 환불", score: 0.9, source: "규정 > 환불" }] });
+    expect(inDict).toContain("<ul class=\"sources\"");
+    expect(inDict).not.toContain("<table");
+    expect(html({ agent: "spice", state: "completed", answer: "1.59 kHz 입니다", task_id: "t1" }, "delegate")).toContain("spice 비서의 답");
+  });
+  it("falls back to collapsed raw json for unknown shapes", () => {
+    expect(html([[1, 2], [3, 4]])).toContain("원문 보기");
   });
 });

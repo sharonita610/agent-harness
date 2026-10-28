@@ -118,9 +118,32 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         yield
         await state.jobs.stop()
 
-    app = FastAPI(title="agent-harness service", version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title="agent-harness service", version="0.3.0", lifespan=lifespan)
     app.state.harness = state
     policy = Policy()
+    from fastapi.middleware.cors import CORSMiddleware
+    origins = [o.strip() for o in os.getenv("HARNESS_CORS_ORIGINS", "*").split(",") if o.strip()]
+    app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=False, allow_methods=["*"], allow_headers=["*"])  # 한 화면에서 여러 비서 서비스를 부른다
+
+    workspace_cache: dict[str, Any] = {"at": 0.0, "agents": []}
+
+    def workspace_agents() -> list[dict[str, Any]]:
+        """HARNESS_WORKSPACE(쉼표 구분 URL)에 적힌 비서들의 agent card 를 30초 캐시로 모은다. 비어 있으면 자기 자신만."""
+        urls = [u.strip().rstrip("/") for u in os.getenv("HARNESS_WORKSPACE", "").split(",") if u.strip()]
+        if time.monotonic() - workspace_cache["at"] < 30 and workspace_cache["agents"]:
+            return workspace_cache["agents"]
+        import json as _json
+        import urllib.request
+        out = []
+        for u in urls:
+            try:
+                with urllib.request.urlopen(u + "/.well-known/agent-card.json", timeout=2) as r:
+                    card = _json.load(r)
+                out.append({"url": u, "name": card.get("name"), "pack": card.get("metadata", {}).get("pack"), "description": card.get("description", ""), "ok": True})
+            except Exception as e:
+                out.append({"url": u, "name": u, "pack": None, "description": "", "ok": False, "error": type(e).__name__})
+        workspace_cache.update({"at": time.monotonic(), "agents": out})
+        return out
 
     def _session(sid: str | None, provider: str | None) -> str:
         if sid:
@@ -135,6 +158,11 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
                 "auth_required": state.users.required, "model": model_status(),
                 "pack": {"name": pk.name, "title": pk.title, "description": pk.description, "welcome": pk.welcome, "examples": pk.examples,
                          "empty_hint": pk.empty_hint, "tool_labels": pk.tool_labels}, "a2a": {"card": "/.well-known/agent-card.json", "rpc": "/a2a"}}
+
+    @app.get("/workspace")
+    def workspace():
+        """한 화면에서 전환할 수 있는 비서 목록. 첫 항목은 이 서비스 자신."""
+        return {"self": {"pack": pk.name, "name": pk.title, "description": pk.description}, "agents": workspace_agents()}
 
     @app.get("/me")
     def me(user: User = Depends(current_user)):

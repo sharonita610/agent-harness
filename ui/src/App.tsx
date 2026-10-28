@@ -1,78 +1,92 @@
-import { useCallback, useEffect, useState } from "react";
-import { api, type Me } from "./api";
-import Login from "./components/Login";
-import Chat from "./components/Chat";
-import Approvals from "./components/Approvals";
-import Jobs from "./components/Jobs";
-import Runs from "./components/Runs";
-import RunDetail from "./components/RunDetail";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { api, apiAt, getBase, setBase, type Me } from "./api";
+import Sidebar, { type AgentEntry, type Theme } from "./components/Sidebar";
+import Desk, { type Sheet } from "./components/Desk";
+import Rail, { type TrayItem } from "./components/Rail";
+import Drawer from "./components/Drawer";
 import { setToolLabels } from "./components/EventList";
-import type { Health } from "./types";
+import type { Health, WorkspaceAgent } from "./types";
 
-type Tab = "runs" | "jobs" | "approvals";
+const THEME_KEY = "harness.theme";
+function readTheme(): Theme { const q = new URLSearchParams(location.search).get("theme"); if (q === "light" || q === "dark") return q; try { const t = localStorage.getItem(THEME_KEY); if (t === "light" || t === "dark") return t; } catch { /* ignore */ } return "auto"; }
 
 export default function App() {
-  const [health, setHealth] = useState<Health | null>(null);
+  const [base, setBaseState] = useState(getBase());
+  const [home, setHome] = useState<Health | null>(null);           // 이 화면을 서빙한 비서(홈). 작업 공간 목록의 기준.
+  const [agents, setAgents] = useState<WorkspaceAgent[]>([]);
+  const [health, setHealth] = useState<Health | null>(null);        // 지금 보고 있는 비서
   const [down, setDown] = useState(false);
   const [me, setMe] = useState<Me | null>(null);
   const [authErr, setAuthErr] = useState<string | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("runs");
+  const [sessions, setSessions] = useState<Record<string, string>>({});
+  const sessionsRef = useRef(sessions); sessionsRef.current = sessions;
+  const [sheets, setSheets] = useState<Sheet[]>([]);
+  const [tray, setTray] = useState<TrayItem[]>([]);
   const [selectedRun, setSelectedRunState] = useState<string | null>(() => new URLSearchParams(location.search).get("run"));
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [theme, setThemeState] = useState<Theme>(readTheme);
+  const [railHidden, setRailHidden] = useState(false);
+
   const setSelectedRun = useCallback((id: string | null) => {
     setSelectedRunState(id);
     const u = new URL(location.href); id ? u.searchParams.set("run", id) : u.searchParams.delete("run"); history.replaceState(null, "", u);
   }, []);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const pick = useCallback((b: string) => { setBase(b); setBaseState(b); setSelectedRun(null); setHealth(null); }, [setSelectedRun]);
+  const setTheme = useCallback((t: Theme) => { setThemeState(t); try { t === "auto" ? localStorage.removeItem(THEME_KEY) : localStorage.setItem(THEME_KEY, t); } catch { /* ignore */ } }, []);
+  useEffect(() => { if (theme === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme; }, [theme]);
 
+  // 홈 비서의 작업 공간(다른 비서 목록)은 30초마다, 지금 비서의 상태는 5초마다.
+  useEffect(() => {
+    const homeApi = apiAt("");
+    const load = async () => {
+      try { const [h, w] = await Promise.all([homeApi.health(), homeApi.workspace()]); setHome(h); setAgents(w.agents);
+        // 결재함 전표는 다른 비서의 도구 이름을 쓰므로 모든 비서의 라벨을 미리 모아 둔다
+        await Promise.all(w.agents.filter((a) => a.ok).map(async (a) => { try { setToolLabels((await apiAt(a.url).health()).pack?.tool_labels); } catch { /* 그 비서 다운 */ } }));
+      } catch { /* 홈 다운 */ }
+    };
+    load(); const t = setInterval(load, 30000); return () => clearInterval(t);
+  }, []);
   const refreshHealth = useCallback(async () => {
     try { const h = await api.health(); setToolLabels(h.pack?.tool_labels); setHealth(h); setDown(false); } catch { setDown(true); }
-    try { setMe(await api.me()); setAuthErr(null); } catch (e) { setMe(null); setAuthErr(String((e as Error).message)); }
+    try { setMe(await api.me()); setAuthErr(null); } catch (e) { setMe(null); setAuthErr((e as Error).message); }
   }, []);
-  useEffect(() => { refreshHealth(); const t = setInterval(refreshHealth, 5000); return () => clearInterval(t); }, [refreshHealth]);
-  useEffect(() => { if (health?.pack?.title) document.title = health.pack.title; }, [health?.pack?.title]);
-  useEffect(() => { const th = new URLSearchParams(location.search).get("theme"); if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; }, []);  // 캡처·시연용 ?theme=light
-  const newSession = useCallback(async () => { const s = await api.createSession(); setSessionId(s.id); return s.id; }, []);
+  useEffect(() => { refreshHealth(); const t = setInterval(refreshHealth, 5000); return () => clearInterval(t); }, [refreshHealth, base]);
+  useEffect(() => { document.title = health?.pack?.title ? `${health.pack.title} · 업무 비서` : "업무 비서"; }, [health?.pack?.title]);
+
+  // 비서 목록 = 홈 + 작업 공간. 결재함은 전부에서 모아 온다.
+  const bases = useMemo(() => ["", ...agents.filter((a) => a.ok).map((a) => a.url)], [agents]);
+  const nameOf = useCallback((b: string) => (b === "" ? home?.pack?.title ?? "비서" : agents.find((a) => a.url === b)?.name ?? b), [home, agents]);
+  const loadTray = useCallback(async () => {
+    const all = await Promise.all(bases.map(async (b) => { try { return (await apiAt(b).approvals("pending")).map((a) => ({ base: b, agent: nameOf(b), a })); } catch { return [] as TrayItem[]; } }));
+    setTray(all.flat().sort((x, y) => x.a.created_at.localeCompare(y.a.created_at)));
+  }, [bases, nameOf]);
+  useEffect(() => { loadTray(); const t = setInterval(loadTray, 3000); return () => clearInterval(t); }, [loadTray]);
+
+  const entries: AgentEntry[] = useMemo(() => [
+    { base: "", name: nameOf(""), pack: home?.pack?.name ?? null, description: home?.pack?.description ?? "", ok: !!home, pending: tray.filter((t) => t.base === "").length },
+    ...agents.map((a) => ({ base: a.url, name: a.name ?? a.url, pack: a.pack, description: a.description, ok: a.ok, pending: tray.filter((t) => t.base === a.url).length })),
+  ], [home, agents, tray, nameOf]);
+
+  const ensureSession = useCallback(async (b: string) => {
+    const have = sessionsRef.current[b]; if (have) return have;
+    const s = await apiAt(b).createSession(); setSessions((m) => ({ ...m, [b]: s.id })); sessionsRef.current = { ...sessionsRef.current, [b]: s.id }; return s.id;
+  }, []);
+  const onRunFinished = useCallback(() => { setRefreshKey((k) => k + 1); refreshHealth(); loadTray(); }, [refreshHealth, loadTray]);  // 드로어는 작업지의 "실행 상세" 로만 연다
+
+  const modelOff = !!health?.model && !health.model.hosted && !health.model.reachable;
+  const canChat = (me?.can.chat ?? false) && !modelOff && !down;
+  const blockedWhy = down ? "이 비서 서비스에 연결되지 않았습니다. 서비스가 켜져 있는지 확인하세요."
+    : authErr && health ? "이 비서는 API 키가 필요합니다. 왼쪽 아래에서 운영자나 결재자 키로 로그인하세요."
+    : modelOff ? "모델 서버가 꺼져 있어 질문할 수 없습니다. 터미널에서 scripts/serve_llm.sh 를 실행하면 10초 안에 다시 연결됩니다." : null;
 
   return (
-    <div className="app">
-      <header className="masthead">
-        <div>
-          <h1>{health?.pack?.title ?? "비서"}</h1>
-          <p>{health?.pack?.welcome ?? "도구를 호출해 답하고, 바꾸는 일은 결재를 받은 뒤에만 합니다."}</p>
-        </div>
-        <div className="status">
-          <span><i className={`dot ${down ? "off" : ""}`} />{down ? "서버에 연결되지 않았습니다" : health ? <>도구 <b>{health.tools}개</b></> : "연결 확인 중"}</span>
-          {health && <span>모델 <b>{health.provider}</b>{health.model && !health.model.hosted && (health.model.reachable ? <span className="st-ok"> 연결됨</span> : <span className="st-failed"> 꺼짐</span>)}</span>}
-          {health && health.pending_approvals > 0 && <span>결재 대기 <b className="st-running">{health.pending_approvals}건</b></span>}
-          <a href="/docs" target="_blank" rel="noreferrer">API 문서</a>
-          <Login me={me} onChange={refreshHealth} />
-        </div>
-      </header>
-      {authErr && health && !down && <p className="notice">이 서비스는 API 키가 필요합니다. 오른쪽 위에 운영자나 결재자 키를 넣고 로그인하세요.</p>}
-      {health?.model && !health.model.hosted && !health.model.reachable && <p className="notice">모델 서버가 꺼져 있어 질문할 수 없습니다. 터미널에서 <code>scripts/serve_llm.sh</code> 를 실행하면 10초 안에 다시 연결됩니다.</p>}
-
-      <div className="layout">
-        <main>
-          <Chat sessionId={sessionId} ensureSession={newSession} onNewSession={newSession} canApprove={me?.can.approve ?? false} canChat={(me?.can.chat ?? false) && (health?.model ? health.model.hosted || health.model.reachable : true)}
-                examples={health?.pack?.examples ?? []} emptyHint={health?.pack?.empty_hint ?? "질문을 보내면 비서가 한 일을 순서대로 보여줍니다."}
-                onRunFinished={(runId) => { setRefreshKey((k) => k + 1); setSelectedRun(runId); refreshHealth(); }} />
-        </main>
-        <aside className="ledger">
-          <div className="tabs" role="tablist">
-            {(["runs", "jobs", "approvals"] as Tab[]).map((t) => (
-              <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>
-                {t === "runs" ? "실행 기록" : t === "jobs" ? "예약 작업" : health?.pending_approvals ? `결재 ${health.pending_approvals}` : "결재"}
-              </button>
-            ))}
-          </div>
-          {tab === "runs" && <Runs refreshKey={refreshKey} selected={selectedRun} onSelect={setSelectedRun} />}
-          {tab === "jobs" && <Jobs sessionId={sessionId} ensureSession={newSession} selected={selectedRun} onSelect={setSelectedRun} />}
-          {tab === "approvals" && <Approvals onDecided={refreshHealth} canApprove={me?.can.approve ?? false} />}
-        </aside>
-      </div>
-
-      {selectedRun && <RunDetail runId={selectedRun} refreshKey={refreshKey} onClose={() => setSelectedRun(null)} />}
+    <div className={`shell ${railHidden ? "" : "show-rail"}`} style={railHidden ? { gridTemplateColumns: "var(--side-w) minmax(0,1fr)" } : undefined}>
+      <Sidebar agents={entries} current={base} onPick={pick} health={health} down={down} me={me} onAuthChange={refreshHealth} theme={theme} onTheme={setTheme} railHidden={railHidden} onToggleRail={() => setRailHidden((v) => !v)} />
+      <Desk base={base} agentName={health?.pack?.title ?? nameOf(base)} welcome={health?.pack?.welcome ?? "도구로 확인해 답하고, 바꾸는 일은 결재를 받은 뒤에만 합니다."} examples={health?.pack?.examples ?? []}
+            emptyHint={health?.pack?.empty_hint ?? "질문을 보내면 답과 근거를 한 장의 작업지로 정리합니다."} sheets={sheets} setSheets={setSheets} ensureSession={ensureSession}
+            onRunFinished={onRunFinished} onOpenRun={setSelectedRun} canApprove={me?.can.approve ?? false} canChat={canChat} blockedWhy={blockedWhy} />
+      {!railHidden && <Rail base={base} tray={tray} onDecided={() => { loadTray(); refreshHealth(); }} canApprove={me?.can.approve ?? false} sessionId={sessions[base] ?? null} ensureSession={ensureSession} selected={selectedRun} onSelect={setSelectedRun} refreshKey={refreshKey} />}
+      {selectedRun && <Drawer base={base} runId={selectedRun} refreshKey={refreshKey} onClose={() => setSelectedRun(null)} />}
     </div>
   );
 }
