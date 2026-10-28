@@ -1,6 +1,6 @@
 /* 업무 데스크. 따뜻한 종이 위에 먹으로 쓴 글, 포인트는 남색 하나, 유일한 장식은 결재 도장이다. 글꼴은 Pretendard 하나. */
 :root{
-  --paper:#f5f2ec;--sheet:#fffdf9;--side:#ece7dd;--rule:#e2dcd1;--rule-strong:#c4bcae;
+  --paper:#f4f3f0;--sheet:#ffffff;--side:#ebeae6;--rule:#dfddd8;--rule-strong:#bfbcb5;
   --ink:#1d2430;--ink-2:#5a6270;--ink-3:#8b919c;
   --act:#1f4e79;--act-hover:#173d60;--act-tint:#e8eef5;
   --stamp:#c43d2f;--stamp-tint:#fbeae8;--ok:#1f7a4d;--warn:#8a6100;--warn-tint:#fcf3da;
@@ -10,15 +10,15 @@
   --side-w:224px;--rail-w:312px;
 }
 :root[data-theme=dark]{
-  --paper:#1b1917;--sheet:#23201d;--side:#151311;--rule:#36322d;--rule-strong:#4d473f;
-  --ink:#ece7df;--ink-2:#aaa39a;--ink-3:#7a746c;
+  --paper:#1a1a19;--sheet:#232322;--side:#141413;--rule:#333331;--rule-strong:#4a4946;
+  --ink:#eae9e6;--ink-2:#a7a59f;--ink-3:#79776f;
   --act:#8fb4dc;--act-hover:#a9c6e6;--act-tint:#1e2a38;
   --stamp:#ef6b60;--stamp-tint:#3a2320;--ok:#5fc48f;--warn:#e2b84a;--warn-tint:#332b14;
   --s-llm:#3987e5;--s-tool:#d9742b;--s-approval:#199e70;--s-run:#6f6e68;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){
-  --paper:#1b1917;--sheet:#23201d;--side:#151311;--rule:#36322d;--rule-strong:#4d473f;
-  --ink:#ece7df;--ink-2:#aaa39a;--ink-3:#7a746c;
+  --paper:#1a1a19;--sheet:#232322;--side:#141413;--rule:#333331;--rule-strong:#4a4946;
+  --ink:#eae9e6;--ink-2:#a7a59f;--ink-3:#79776f;
   --act:#8fb4dc;--act-hover:#a9c6e6;--act-tint:#1e2a38;
   --stamp:#ef6b60;--stamp-tint:#3a2320;--ok:#5fc48f;--warn:#e2b84a;--warn-tint:#332b14;
   --s-llm:#3987e5;--s-tool:#d9742b;--s-approval:#199e70;--s-run:#6f6e68;
@@ -112,8 +112,8 @@ ul.md{margin:4px 0;padding-left:18px;white-space:normal}ul.md li{margin:2px 0}
 @media (prefers-reduced-motion:no-preference){.caret{animation:blink 1s steps(2,start) infinite}@keyframes blink{to{visibility:hidden}}}
 .evidence{margin-top:14px;display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
 .card{border:1px solid var(--rule);border-radius:var(--r);padding:10px 12px;background:var(--paper);min-width:0;overflow:hidden}
-:root[data-theme=dark] .card{background:#1d1a17}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .card{background:#1d1a17}}
+:root[data-theme=dark] .card{background:#1c1c1b}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .card{background:#1c1c1b}}
 .card .ct{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--ink-2);margin-bottom:6px}
 .card .ct b{color:var(--ink);font-weight:600;flex-shrink:0}
 .card .ct span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
