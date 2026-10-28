@@ -102,7 +102,7 @@ export default function App() {
     : modelOff ? "모델 서버가 꺼져 있어 질문할 수 없습니다. 터미널에서 scripts/serve_llm.sh 를 실행하면 10초 안에 다시 연결됩니다." : null;
 
   return (
-    <div className={`shell ${railHidden || view !== "desk" ? "" : "show-rail"}`} style={railHidden || view !== "desk" ? { gridTemplateColumns: "var(--side-w) minmax(0,1fr)" } : undefined}>
+    <div className={`shell ${railHidden || view !== "desk" ? "no-rail" : "show-rail"}`}>
       <Sidebar agents={entries} current={base} onPick={pick} view={view} onView={setView} pendingTotal={tray.length} health={health} down={down} me={me} onAuthChange={refreshHealth} theme={theme} onTheme={setTheme} railHidden={railHidden} onToggleRail={() => setRailHidden((v) => !v)} />
       {view === "desk" && <Desk base={base} agentName={agentName} welcome={health?.pack?.welcome ?? "도구로 확인해 답하고, 바꾸는 일은 결재를 받은 뒤에만 합니다."} examples={health?.pack?.examples ?? []}
             emptyHint={health?.pack?.empty_hint ?? "질문을 보내면 답과 근거를 한 장의 작업지로 정리합니다."} sheets={sheets} setSheets={setSheets} ensureSession={ensureSession}
