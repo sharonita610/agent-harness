@@ -134,7 +134,9 @@ def test_supervisor_tools_delegate_over_a2a(app):
 def test_expect_calls_scoring():
     from harness.agent.types import AgentResult
     from harness.evals.runner import score
-    task = {"id": "r", "type": "route", "question": "q", "expect_calls": [{"name": "delegate", "args_contains": {"agent": "spice"}}]}
-    ok = AgentResult(answer="a", steps=2, stopped_reason="final", tool_calls=[{"name": "delegate", "status": "ok", "arguments": {"agent": "spice", "question": "x"}}])
-    bad = AgentResult(answer="a", steps=2, stopped_reason="final", tool_calls=[{"name": "delegate", "status": "ok", "arguments": {"agent": "enterprise", "question": "x"}}])
+    task = {"id": "r", "type": "route", "question": "q", "expect_calls": [{"name": "delegate", "result_contains": {"agent": "spice"}}]}
+    ok = AgentResult(answer="a", steps=2, stopped_reason="final", tool_calls=[{"name": "delegate", "status": "ok", "arguments": {"agent": "회로", "question": "x"}, "result_preview": '{"agent": "spice", "task_id": "run_1"}'}])
+    bad = AgentResult(answer="a", steps=2, stopped_reason="final", tool_calls=[{"name": "delegate", "status": "ok", "arguments": {"agent": "회사", "question": "x"}, "result_preview": '{"agent": "enterprise"}'}])
     assert score(task, ok, [])["pass"] and not score(task, bad, [])["pass"]
+    by_args = {"id": "r", "type": "route", "question": "q", "expect_calls": [{"name": "delegate", "args_contains": {"agent": "회로"}}]}
+    assert score(by_args, ok, [])["pass"]

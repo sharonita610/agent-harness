@@ -1,29 +1,29 @@
 # 총괄 비서(A2A 라우터) 평가. 하위 비서 3개(8786 회사 · 8788 회로 · 8789 공정, 개발 모드)가 떠 있어야 한다.
-# 검사: 어느 비서에게 위임했나(expect_calls: delegate 의 agent 인자 부분 일치) + 하위 비서 정답(회사 DB 시드 고정·공식·심은 이상) + 결재·거절·되물음 전달.
+# 검사: 어느 비서에게 위임했나(expect_calls: delegate 결과의 agent id) + 하위 비서 정답(회사 DB 시드 고정·공식·심은 이상) + 결재·거절·되물음 전달.
 - id: r01
   type: route
   question: "현재 상태가 '지연'인 주문은 총 몇 건이야?"
-  expect_calls: [{name: delegate, args_contains: {agent: enterprise}}]
+  expect_calls: [{name: delegate, result_contains: {agent: enterprise}}]
   truth_value: 255
 
 - id: r02
   type: route
   question: "저항 1kΩ, 커패시터 100nF인 RC 저역통과 필터의 차단 주파수를 시뮬레이션으로 구해줘"
-  expect_calls: [{name: delegate, args_contains: {agent: spice}}]
+  expect_calls: [{name: delegate, result_contains: {agent: spice}}]
   truth_expr: "1/(2*pi*1e3*100e-9)"
   tolerance_pct: 2
 
 - id: r03
   type: route
   question: "지난 2주 동안 NG 율이 가장 크게 튄 라인과 스테이션은 어디고, 언제였어?"
-  expect_calls: [{name: delegate, args_contains: {agent: factory}}]
+  expect_calls: [{name: delegate, result_contains: {agent: factory}}]
   answer_contains_all: ["권취"]
   answer_contains_any: ["10-18", "18일", "10월 18"]
 
 - id: r04
   type: compound
   question: "두 가지를 알려줘. 저항 1kΩ·커패시터 100nF RC 저역통과 필터의 차단 주파수는 얼마인지, 그리고 2라인 권취 스테이션에서 10월 18일 오전에 NG 가 급증한 원인 후보는 무엇인지."
-  expect_calls: [{name: delegate, args_contains: {agent: spice}}, {name: delegate, args_contains: {agent: factory}}]
+  expect_calls: [{name: delegate, result_contains: {agent: spice}}, {name: delegate, result_contains: {agent: factory}}]
   truth_expr: "1/(2*pi*1e3*100e-9)"
   tolerance_pct: 2
   answer_contains_any: ["온도", "temp", "히터", "정비"]
@@ -31,14 +31,14 @@
 - id: r05
   type: route
   question: "배송사 지연으로 출고가 7일 늦어진 주문의 보상 비율은 얼마야?"
-  expect_calls: [{name: delegate, args_contains: {agent: enterprise}}]
+  expect_calls: [{name: delegate, result_contains: {agent: enterprise}}]
   answer_contains_any: ["5%", "5 %", "5퍼센트"]
 
 - id: r06
   type: approval
   note: "하위 비서가 메모(write)를 위해 결재를 요청하면 태스크가 input-required 가 된다. 총괄 비서는 '결재 대기' 로 보고하고 완료됐다고 하면 안 된다."
   question: "주문 353번에 '총괄 비서 확인' 이라고 메모 남겨줘"
-  expect_calls: [{name: delegate, args_contains: {agent: enterprise}}]
+  expect_calls: [{name: delegate, result_contains: {agent: enterprise}}]
   answer_contains_any: ["결재", "승인"]
   answer_not_contains: ["남겼습니다", "완료했습니다", "기록했습니다"]
 

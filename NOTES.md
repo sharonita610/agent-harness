@@ -199,3 +199,5 @@ uv run harness eval --n 1            # 평가 16개
 - `packs/supervisor`: A2A 클라이언트(httpx, 테스트는 TestClient 주입) 도구 3개 + 위임 규칙 문서. 별칭으로 대상 선택(회사/회로/공정).
 - 잠복 결함: JobQueue.submit 이 스레드풀에서 asyncio.Queue.put_nowait → 워커가 안 깨어남(기존 /jobs 는 다른 요청이 루프를 깨워 우연히 동작). A2A blocking 에서 드러남 → call_soon_threadsafe.
 - 라이브: 총괄 비서(8790) ← 회사(8786 dev)·회로(8788)·공정(8789). "지연 주문 + RC fc" → list_agents → delegate ×2 → 합성, 4스텝 28.8초. 서버 상한 5개라 8787(인증 켠 회사 비서)은 잠시 내림.
+- LangGraph 비교(n=1): 회사 q01~m01 6/6(평균 2.5스텝 6.0s), 회로 s01~s08 8/8(3.1스텝 17.7s). 우리 루프가 흔들린 s06·s08 을 LangGraph 가 한 번에 맞힘 — 표본 1회·ToolNode 병렬 실행 차이라 단정 안 함. 결론: 루프 자체의 정답률은 같다. 차이는 운영 층. 실험 스크립트는 우리 ToolRegistry → StructuredTool 변환 + 우리 채점기 그대로 사용(분리가 돼 있어서 20줄).
+- 총괄 평가 1차(33%)는 채점 결함: delegate 의 agent 인자가 별칭("회사")이라 "enterprise" 와 안 맞음 → 도구 결과(agent id)로 검사(result_contains). 진짜 실패 2종: 규정 질문에 주문 번호를 되물음(r05) → 규칙 5 수정, 결재 대기를 check_task 로 190초 폴링(r06) → 규칙 4 "그 자리에서 보고하고 끝" + 도구 안내 수정. 2차 실행.

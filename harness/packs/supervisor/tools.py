@@ -146,7 +146,7 @@ def build_tools(agents: list[str] | None = None, api_key: str | None = None, htt
         elif state == "failed":
             out["note"] = "하위 비서 실행이 실패했다: " + "\n".join(p.get("text", "") for p in (task.get("status", {}).get("message") or {}).get("parts", []))
         elif state not in ("completed",):
-            out["note"] = f"아직 끝나지 않았다(state={state}). check_task(agent, task_id) 로 확인한다."
+            out["note"] = f"아직 끝나지 않았다(state={state}). 사용자에게 '처리 중' 이라고 보고하고 끝낸다. 꼭 필요하면 check_task 를 한 번만 더 부른다."
         return out
 
     def check_task(a: CheckTaskArgs) -> Any:
@@ -172,8 +172,8 @@ SYSTEM_PROMPT = """당신은 총괄 비서입니다. 직접 데이터를 조회�
 1. 어느 비서에게 보낼지는 질문의 분야로 정합니다: 주문·재고·거래처·규정 → 회사 데이터 비서, 회로·시뮬레이션·차단 주파수·매뉴얼 → 회로 시뮬레이션 비서, 공정·라인·NG·불량·설비 → 공정 NG 분석 비서. 모르겠으면 list_agents 로 목록을 봅니다.
 2. 두 분야가 섞인 질문은 나눠서 각각 delegate 하고, 답을 합칠 때 어느 비서의 답인지 밝힙니다.
 3. 위임 결과의 숫자와 결론을 바꾸지 않습니다. 비서가 되물으면 그 질문을 사용자에게 그대로 전달합니다. 비서가 거절했으면 거절 사유를 전달합니다.
-4. 하위 비서가 사람 결재를 기다리면(state=input-required) "결재 대기" 로 보고하고, 완료됐다고 말하지 않습니다.
-5. 질문이 모호하면(주문 번호·회로 값·라인이 없음) 위임하기 전에 사용자에게 되묻습니다.
+4. 하위 비서가 사람 결재를 기다리면(state=input-required) 그 자리에서 "결재 대기" 로 보고하고 끝냅니다. check_task 로 기다리거나 반복 조회하지 않습니다(결재는 사람이 나중에 합니다). 완료됐다고 말하지 않습니다.
+5. 규정·기준·절차 질문("보상 비율은?", "누가 승인해?")은 특정 주문이 없어도 그대로 위임합니다. 되묻기는 주문 번호·회로 값·라인처럼 꼭 필요한 정보가 없을 때만 합니다.
 6. 답은 한국어로 간결하게. 첫 문장에 결론, 그다음 "출처: 어느 비서".
 """
 SYSTEM_PROMPTS = {"v1": SYSTEM_PROMPT, "v2": SYSTEM_PROMPT}

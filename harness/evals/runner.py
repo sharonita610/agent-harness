@@ -154,7 +154,10 @@ def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
                 if c.get("name") != exp.get("name") or c.get("status") not in ("ok", None):
                     continue
                 args = c.get("arguments") or {}
-                if all(str(v).lower() in str(args.get(k, "")).lower() for k, v in (exp.get("args_contains") or {}).items()):
+                preview = str(c.get("result_preview") or "")
+                args_ok = all(str(v).lower() in str(args.get(k, "")).lower() for k, v in (exp.get("args_contains") or {}).items())
+                result_ok = all((f'"{k}": "{v}"' in preview) or (f'"{k}":"{v}"' in preview) for k, v in (exp.get("result_contains") or {}).items())
+                if args_ok and result_ok:
                     return True
             return False
         checks["calls"] = all(_call_ok(e) for e in task["expect_calls"])
