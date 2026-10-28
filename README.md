@@ -58,9 +58,9 @@
 | 제조 현장 데이터 위의 에이전트 | 세 번째 팩 `factory`: 가짜 공장의 NG(불량) 이미지 기록·설비 파라미터·조치 위에서 "어느 라인이 언제 튀었나 → 무엇이 달라졌나 → 조치 → 효과" 를 도구로 답하고, 라벨 확정·티켓은 결재 | `harness/packs/factory/`, ADR-016 |
 | 지식 베이스와 검색 파이프라인 | 매뉴얼 PDF 765쪽 → 절 단위 1,137청크 → SQLite(BM25 + 벡터, 증분 임베딩) → 검색·읽기 도구 → 32문항으로 측정(hit@1 44% → 97%) | `harness/retrieval/kb.py`, ADR-014 |
 | 지식 그래프 | 실험 추적 그래프: 실행을 회로·소자·해석·측정 노드와 관계로 자동 기록, 같은 토폴로지 변형을 값 차이와 함께 연결. "지난번 R1=2.2k 때 fc", "같은 회로 실행 전부", "두 실행 비교" 를 도구 3개로 답함 | `harness/packs/spice/graph.py`, ADR-015 |
-| 판단 근거를 글로 | 설계 결정 문서 20편, 실험 노트 | `docs/decisions/`, `NOTES.md` |
+| 판단 근거를 글로 | 설계 결정 문서 21편, 실험 노트 | `docs/decisions/`, `NOTES.md` |
 
-MCP 서버로도 노출되어 Hermes Agent, Claude Desktop 같은 외부 에이전트에서 같은 도구를 쓸 수 있다.
+MCP 서버로도 노출되어 Hermes Agent, Claude Desktop 같은 외부 에이전트에서 같은 도구를 쓸 수 있다. HTTP 로 열면 웹과 같은 키·범위·결재함을 거친다.
 
 ## 60초 둘러보기
 
@@ -355,7 +355,17 @@ uv run harness retrieval-eval     # bm25 / vector / hybrid 의 hit@1, hit@3, MRR
 지식 베이스가 적중률을 두 배로 올렸고(요약만으로는 인덕터·커패시터·.FOUR 같은 주제가 없었다), **하이브리드가 항상 낫지는 않다**: 로컬 임베딩은 한국어 질문 → 영어 기술 문서에서 벡터 69% 에 그쳐 융합해도 BM25 단독(84%)보다 낮았고, 호스팅 임베딩은 벡터 81% 로 올라가 융합이 97% 가 됐다. 융합의 이득은 두 신호가 서로 다른 문항을 맞힐 때만 생긴다(ADR-014).
 
 ## MCP로 쓰기
-같은 도구를 MCP 서버로 노출하므로 외부 에이전트가 그대로 쓴다. 확인한 클라이언트: Hermes Agent(아래), Hugging Face **Tiny Agents**(`huggingface_hub[mcp]`, 70줄짜리 최소 루프). Tiny Agents 는 `docs/experiments/tiny-agents/` 의 `agent.json` 하나로 로컬 gpt-oss-20b + 우리 MCP 서버에 붙어 회사 팩 "지연 주문 몇 건" 을 6회 도구 호출 12.9초, 회로 팩 "RC 차단 주파수" 를 1회 호출 14.9초에 맞혔다. 우리 루프와의 차이는 승인 단계·실패 모드 보정·평가가 없다는 것이고, 그 차이가 이 프로젝트의 플랫폼 부분이다.
+같은 도구를 MCP 서버로 노출하므로 외부 에이전트가 그대로 쓴다. 두 가지 길이 있다.
+
+| 길 | 누가 쓰나 | 인증·범위·결재 |
+|---|---|---|
+| stdio (`uv run harness mcp`) | 같은 컴퓨터의 Claude Desktop·Cursor·Hermes | 없음. 변경 도구는 "실행 전 사용자 확인" 힌트만 붙고 클라이언트 쪽 사람이 확인한다 |
+| HTTP (`http://<서비스>/mcp/`) | 네트워크 너머의 여러 사람 | 웹 API 와 **같은 키·역할·데이터 범위**. 변경 도구는 **같은 결재함**을 거쳐 승인된 뒤에만 실행된다(ADR-021) |
+
+HTTP 는 서비스 포트에 같이 열린다. 부산 담당자 키로 부르면 부산 주문만 보이고, `create_note` 를 부르면 결재자 화면에 "[MCP · ops] create_note …" 전표가 뜬다. 승인하면 그때 실행되어 결과가 돌아가고, 반려하면 실행하지 않는다. 실행 기록(kind `mcp`)과 감사 기록에 남는다.
+```json
+{"mcpServers": {"hanbit-enterprise-http": {"url": "http://127.0.0.1:8787/mcp/", "headers": {"Authorization": "Bearer hk_..."}}}}
+``` 확인한 클라이언트: Hermes Agent(아래), Hugging Face **Tiny Agents**(`huggingface_hub[mcp]`, 70줄짜리 최소 루프). Tiny Agents 는 `docs/experiments/tiny-agents/` 의 `agent.json` 하나로 로컬 gpt-oss-20b + 우리 MCP 서버에 붙어 회사 팩 "지연 주문 몇 건" 을 6회 도구 호출 12.9초, 회로 팩 "RC 차단 주파수" 를 1회 호출 14.9초에 맞혔다. 우리 루프와의 차이는 승인 단계·실패 모드 보정·평가가 없다는 것이고, 그 차이가 이 프로젝트의 플랫폼 부분이다.
 
 ```bash
 uv run python scripts/mcp_check.py   # 서버 띄워 도구 목록·호출·리소스 확인
@@ -565,4 +575,4 @@ _출처: `harness/evals/results/20261029-014321_local_supervisor_n3.json`_ · �
 - 3주차: ~~React UI~~ ~~README 상단 재정리~~ ~~2차 도메인 팩(`spice`)~~ ~~LLM 판정자 vs 사람 채점 대조~~ ~~매뉴얼 지식 베이스~~ ~~실험 추적 그래프~~ ~~3차 팩(`factory`)~~ ~~A2A·총괄 비서~~ 완료 → LangGraph 비교 실험, 데모 영상, 소자 라이브러리, 문서 그래프, GPU 배포·양자화 비교
 
 ## 문서
-`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정 20편, 최근: ADR-019 결재함·기록·데이터 탭, ADR-020 긴 도구의 진행률) · `docs/ADDING-A-PACK.md`(팩 추가) · `docs/demo-script.md`(데모 대본) · `docs/VERIFY-day1-3.md`(검증 절차) · `scripts/capture_ui.py`(README 화면 캡처, 실제 실행)
+`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정 21편, 최근: ADR-020 긴 도구의 진행률, ADR-021 MCP over HTTP) · `docs/ADDING-A-PACK.md`(팩 추가) · `docs/demo-script.md`(데모 대본) · `docs/VERIFY-day1-3.md`(검증 절차) · `scripts/capture_ui.py`(README 화면 캡처, 실제 실행)

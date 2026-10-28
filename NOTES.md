@@ -228,3 +228,9 @@ uv run harness eval --n 1            # 평가 16개
 - 이름 점검(같은 날): 규칙(snake_case·PascalCase·상수 대문자)은 맞았고, 문제는 뜻이 안 보이는 짧은 보조 함수 이름이었다. Python 20여 개(`_h`→`_short_hash`, `_w`→`_edge_weight`, `q`→`query`, `_rw`→`_connect_rw`, `has`→`has_role`, `dep`→`require_role`, `ev`→`eval_node`, `_err`→`_rpc_error`, `tc`→`tool_call` 등)와 TS 20여 개(`j`→`requestJson`, `s`→`asText`, `fmt`→`formatValue`, `ko`→`labelOf`, `KV`→`KeyValues`, `px/py`→`xAt/yAt`, `ms`→`toMillis`, `Heat`→`HeatGrid` 등)를 바꿨고 함수 안의 대문자 지역 변수(W, H, INK …)는 소문자로. 정규식 치환은 f-string 의 `{R}` 과 문자열 리터럴 `"{R}"` 을 구분하지 못해 한 곳이 깨졌고 ruff F821 이 잡았다.
 - 선 그래프 축(같은 날): 일별 NG율 네 선이 0~1.5 축에서 1.0 근처에 겹쳐 안 보인다는 지적. 막대는 0 기준을 지키되, 선은 값 범위가 최대의 60% 미만이면 데이터 주변으로 축을 잡게 했다(0.9~1.6). 계열이 셋 이상이면 높이 +60, 공정 일별 패널은 가로 전체. 2라인 10-18 과 1라인 10-22 의 튐이 바로 보인다.
 
+### MCP over HTTP (2026-10-29)
+- 사용자: "우리 서비스를 MCP 로 다른 사람이 쓸 수 있어?" → stdio 는 되지만 네트워크·인증·범위·결재가 빈칸. 셋 다 채움(ADR-021).
+- 서비스 앱에 streamable HTTP 앱을 마운트(`/mcp/`). ASGI 미들웨어가 키 → 사용자 → contextvar, 도구 핸들러는 `registry_for(user)` 로 실행. write 는 브로커에 전표를 올리고 `anyio.to_thread` 로 기다린다(이벤트 루프를 막지 않게).
+- 함정 셋: ① SDK 의 Host 검사가 테스트 호스트(testserver)와 역프록시를 막는다 → 허용 목록을 줄 때만 켬. ② 도구 예외를 SDK 가 "Error executing tool" 로 가린다 → ToolError 로 감싸 문장을 살림. ③ 범위 밖 주문에 결재를 받아도 도구가 "없음" 으로 거절한다 → 테스트가 먼저 범위 안 주문을 고르게. 거절이 맞는 동작이라 코드는 안 고쳤다.
+- 마운트 경로는 끝 슬래시(`/mcp/`). 없이 부르면 307.
+

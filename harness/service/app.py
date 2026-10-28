@@ -130,7 +130,8 @@ def create_app(
     async def lifespan(app: FastAPI):
         store.fail_stale()
         await state.jobs.start()
-        yield
+        async with mcp_face.lifespan():  # /mcp (streamable HTTP) 세션 관리자. 켤 때마다 새로 만든다
+            yield
         await state.jobs.stop()
 
     app = FastAPI(title="agent-harness service", version="0.3.0", lifespan=lifespan)
@@ -201,6 +202,7 @@ def create_app(
                 "dashboard": pk.dashboard is not None,
             },
             "a2a": {"card": "/.well-known/agent-card.json", "rpc": "/a2a"},
+            "mcp": {"url": "/mcp/", "transport": "streamable-http"},
         }
 
     @app.get("/workspace")
@@ -416,7 +418,10 @@ def create_app(
             raise HTTPException(404, "실행 없음")
         return store.events(run_id, after_seq)
 
+    from ..mcp_server.http import mount_mcp
     from .a2a import mount_a2a
+
+    mcp_face = mount_mcp(app, state, pk, policy)  # 같은 포트의 /mcp: 같은 키·범위·결재함
 
     mount_a2a(
         app, state, pk, current_user, require

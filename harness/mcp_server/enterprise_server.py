@@ -1,4 +1,4 @@
-"""팩의 도구를 MCP 서버로 노출한다 (mcp 2.x, stdio). 기본 팩은 enterprise(회사 데이터 비서), `harness mcp --pack spice` 로 회로 팩.
+"""팩의 도구를 MCP 서버로 노출한다 (mcp 2.x). 이 모듈은 stdio(같은 컴퓨터의 클라이언트). HTTP 는 http.py 가 서비스 포트의 /mcp 에 연다. 기본 팩은 enterprise(회사 데이터 비서), `harness mcp --pack spice` 로 회로 팩.
 
 같은 Tool 레지스트리를 쓰므로 CLI 에이전트와 MCP 클라이언트(Claude Desktop, Hermes Agent 등)가 똑같은 도구를 본다.
 - read 도구: readOnlyHint=True
@@ -11,7 +11,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Annotated, Any
+from typing import Annotated, Any, Callable
 
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
@@ -23,8 +23,11 @@ from ..tools.permissions import Decision, Policy
 from ..tools.registry import Tool, ToolRegistry
 
 
-def _wrap(tool: Tool):
-    """pydantic 인자 모델 → 명시적 키워드 인자 시그니처를 가진 함수. MCP 가 스키마를 뽑을 수 있게 한다."""
+def wrap_tool(tool: Tool, call: Callable[[str, dict[str, Any]], Any] | None = None, is_async: bool = False):
+    """pydantic 인자 모델 → 명시적 키워드 인자 시그니처를 가진 함수. MCP 가 스키마를 뽑을 수 있게 한다.
+
+    call(name, kwargs) 를 주면 실행을 그쪽에 맡긴다(HTTP 면은 사용자 범위·결재를 거친다). 없으면 도구를 바로 돌린다(stdio).
+    """
     params = []
     annotations: dict[str, Any] = {}
     for name, field in tool.params.model_fields.items():
@@ -40,8 +43,15 @@ def _wrap(tool: Tool):
         annotations[name] = ann
         params.append(inspect.Parameter(name, inspect.Parameter.KEYWORD_ONLY, default=default, annotation=ann))
 
-    def handler(**kwargs: Any) -> Any:
-        return tool.run(kwargs)
+    if is_async:
+
+        async def handler(**kwargs: Any) -> Any:  # type: ignore[misc]
+            return await call(tool.name, kwargs)  # type: ignore[misc]
+
+    else:
+
+        def handler(**kwargs: Any) -> Any:
+            return call(tool.name, kwargs) if call else tool.run(kwargs)
 
     handler.__name__ = tool.name
     handler.__doc__ = tool.description
@@ -64,13 +74,26 @@ def build_server(
             continue
         read_only = decision == Decision.ALLOW
         server.add_tool(
-            _wrap(tool),
+            wrap_tool(tool),
             name=tool.name,
             description=tool.description + ("" if read_only else " [변경 작업: 실행 전 사용자 확인 필요]"),
             annotations=ToolAnnotations(
                 read_only_hint=read_only, destructive_hint=False, idempotent_hint=read_only, open_world_hint=False
             ),
         )
+
+    add_doc_resource(server, docs_dir)
+    return server
+
+
+def tool_annotations(read_only: bool) -> ToolAnnotations:
+    return ToolAnnotations(
+        read_only_hint=read_only, destructive_hint=False, idempotent_hint=read_only, open_world_hint=False
+    )
+
+
+def add_doc_resource(server: MCPServer, docs_dir) -> None:
+    """팩 문서 폴더를 docs://{name} 리소스로."""
 
     @server.resource(
         "docs://{name}",
@@ -85,8 +108,6 @@ def build_server(
         if not path.exists():
             raise FileNotFoundError(f"문서 없음: {name}. 목록: {[p.stem for p in sorted(docs_dir.glob('*.md'))]}")
         return path.read_text(encoding="utf-8")
-
-    return server
 
 
 def main(pack: str | None = None) -> None:

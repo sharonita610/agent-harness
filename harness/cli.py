@@ -464,7 +464,7 @@ def graph_svg(out: Path = typer.Option(Path("docs/img/experiment-graph.svg")), m
 
 @app.command()
 def mcp(pack: Optional[str] = typer.Option(None, help=PACK_HELP)):
-    """회사 데이터 비서 도구를 MCP 서버(stdio) 로 노출한다."""
+    """팩 도구를 MCP 서버(stdio) 로 노출한다. 네트워크·인증·결재가 필요하면 서비스의 /mcp/ (streamable HTTP) 를 쓴다."""
     from .mcp_server.enterprise_server import main
 
     main(pack)
