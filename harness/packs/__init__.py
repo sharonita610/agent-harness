@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-PACK_NAMES = ("enterprise", "spice", "factory")
+PACK_NAMES = ("enterprise", "spice", "factory", "supervisor")
 DEFAULT_PACK = "enterprise"
 
 
@@ -36,6 +36,7 @@ class Pack:
     welcome: str = ""                                 # 화면 머리말 한 줄
     examples: list[list[str]] = field(default_factory=list)  # 화면 예시 [라벨, 질문]
     empty_hint: str = ""                              # 대화가 비었을 때 안내
+    aliases: list[str] = field(default_factory=list)  # 총괄 비서가 위임 대상을 고를 때 쓰는 별칭(한국어)
 
     @property
     def system_prompt(self) -> str:

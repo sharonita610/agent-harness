@@ -17,6 +17,7 @@ class JobQueue:
         self._tasks: list[asyncio.Task] = []
 
     async def start(self) -> None:
+        self._loop = asyncio.get_running_loop()
         self._tasks = [asyncio.create_task(self._worker(i)) for i in range(self.concurrency)]
 
     async def stop(self) -> None:
@@ -31,7 +32,16 @@ class JobQueue:
     def submit(self, session_id: str, question: str, provider_spec: str | None, user=None) -> str:
         run_id = self.state.store.create_run(session_id, "job", question)
         self._cancel[run_id] = threading.Event()
-        self._queue.put_nowait((run_id, session_id, question, provider_spec, user))
+        item = (run_id, session_id, question, provider_spec, user)
+        loop = getattr(self, "_loop", None)
+        try:
+            running = asyncio.get_running_loop()
+        except RuntimeError:
+            running = None
+        if loop is not None and running is not loop:
+            loop.call_soon_threadsafe(self._queue.put_nowait, item)  # 스레드풀(def 엔드포인트·A2A blocking)에서 넣어도 워커가 깨어난다
+        else:
+            self._queue.put_nowait(item)
         return run_id
 
     def cancel(self, run_id: str) -> bool:

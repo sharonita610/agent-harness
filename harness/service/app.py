@@ -134,7 +134,7 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         return {"status": "ok", "tools": len(registry), "provider": state.default_provider, "pending_approvals": len(state.broker.pending()),
                 "auth_required": state.users.required, "model": model_status(),
                 "pack": {"name": pk.name, "title": pk.title, "description": pk.description, "welcome": pk.welcome, "examples": pk.examples,
-                         "empty_hint": pk.empty_hint, "tool_labels": pk.tool_labels}}
+                         "empty_hint": pk.empty_hint, "tool_labels": pk.tool_labels}, "a2a": {"card": "/.well-known/agent-card.json", "rpc": "/a2a"}}
 
     @app.get("/me")
     def me(user: User = Depends(current_user)):
@@ -280,6 +280,9 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         if not store.get_run(run_id):
             raise HTTPException(404, "실행 없음")
         return store.events(run_id, after_seq)
+
+    from .a2a import mount_a2a
+    mount_a2a(app, state, pk, current_user, require)  # A2A 에이전트 카드 + JSON-RPC(message/send·stream, tasks/get·cancel)
 
     for key, folder in pk.files.items():  # 팩이 만든 파일(그래프 등). 결과 카드가 /files/<key>/... 로 연다
         Path(folder).mkdir(parents=True, exist_ok=True)

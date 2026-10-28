@@ -148,6 +148,16 @@ def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
         checks["tools_any"] = any(t in executed for t in task["expect_tools_any"])
     if task.get("expect_tools_all"):
         checks["tools_all"] = all(t in executed for t in task["expect_tools_all"])
+    if task.get("expect_calls"):
+        def _call_ok(exp: dict) -> bool:
+            for c in res.tool_calls:
+                if c.get("name") != exp.get("name") or c.get("status") not in ("ok", None):
+                    continue
+                args = c.get("arguments") or {}
+                if all(str(v).lower() in str(args.get(k, "")).lower() for k, v in (exp.get("args_contains") or {}).items()):
+                    return True
+            return False
+        checks["calls"] = all(_call_ok(e) for e in task["expect_calls"])
     if task.get("forbid_tools_executed"):
         checks["no_forbidden_tools"] = not any(t in executed for t in task["forbid_tools_executed"])
     if task.get("expect_approval"):
