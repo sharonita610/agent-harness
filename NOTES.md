@@ -234,3 +234,8 @@ uv run harness eval --n 1            # 평가 16개
 - 함정 셋: ① SDK 의 Host 검사가 테스트 호스트(testserver)와 역프록시를 막는다 → 허용 목록을 줄 때만 켬. ② 도구 예외를 SDK 가 "Error executing tool" 로 가린다 → ToolError 로 감싸 문장을 살림. ③ 범위 밖 주문에 결재를 받아도 도구가 "없음" 으로 거절한다 → 테스트가 먼저 범위 안 주문을 고르게. 거절이 맞는 동작이라 코드는 안 고쳤다.
 - 마운트 경로는 끝 슬래시(`/mcp/`). 없이 부르면 307.
 
+### 데모 영상 자동 녹화 (2026-10-29)
+- `scripts/record_demo.py`: 헤드리스 Chrome 의 screencast 로 대본 순서대로 돌리며 프레임을 받고, Pillow 로 자막을 프레임에 그려 ffmpeg concat 으로 mp4(2분 4초)와 srt 를 만든다. 목소리는 없다. 모델 응답 대기는 앞 2.5초·뒤 1.5초만 남기고 잘라 "응답 대기 n초 생략" 을 붙인다(2곳 95초).
+- 함정 넷: ① 거절 답은 도구를 안 써 "확인 과정" 줄이 없어 완료 조건이 영원히 안 맞음 → 답 유무로. ② brew ffmpeg 에 libass 가 없어 subtitles/ass 필터가 없음 → Pillow 로 직접 그림. ③ monotonic 시각을 0 기준으로 안 빼서 영상이 5초로 깨짐 → t0 저장. ④ concat 목록의 상대 경로를 ffmpeg 가 목록 파일 기준으로 풀어 못 찾음 → 절대 경로. 그리고 마지막 자막이 마지막 프레임보다 늦게 끝나 끝이 잘림 → 끝 시각은 둘 중 늦은 쪽.
+- 녹화 결과(프레임·state.json)는 private/demo/work-last 에 남겨 `--assemble-from` 으로 재조립할 수 있다. 8분짜리 녹화를 다시 하지 않아도 된다.
+
