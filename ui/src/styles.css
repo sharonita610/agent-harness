@@ -1,27 +1,27 @@
-/* 업무 데스크. 서류 종이 위에 글만 두고, 유일한 장식은 결재 도장이다. 글꼴은 Pretendard 하나. */
+/* 업무 데스크. 따뜻한 종이 위에 먹으로 쓴 글, 포인트는 남색 하나, 유일한 장식은 결재 도장이다. 글꼴은 Pretendard 하나. */
 :root{
-  --paper:#eef0f3;--sheet:#ffffff;--side:#e4e8ed;--rule:#d9dee4;--rule-strong:#b7c0ca;
-  --ink:#182028;--ink-2:#53616f;--ink-3:#8492a0;
-  --act:#0f6e66;--act-hover:#0b5a53;--act-tint:#e3f0ee;
+  --paper:#f5f2ec;--sheet:#fffdf9;--side:#ece7dd;--rule:#e2dcd1;--rule-strong:#c4bcae;
+  --ink:#1d2430;--ink-2:#5a6270;--ink-3:#8b919c;
+  --act:#1f4e79;--act-hover:#173d60;--act-tint:#e8eef5;
   --stamp:#c43d2f;--stamp-tint:#fbeae8;--ok:#1f7a4d;--warn:#8a6100;--warn-tint:#fcf3da;
-  --s-llm:#2a78d6;--s-tool:#eb6834;--s-approval:#1baf7a;--s-run:#9a9890;
+  --s-llm:#2a78d6;--s-tool:#e07a2d;--s-approval:#1baf7a;--s-run:#9a9890;
   --r:6px;--font:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
   --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   --side-w:224px;--rail-w:312px;
 }
 :root[data-theme=dark]{
-  --paper:#15181c;--sheet:#1c2026;--side:#111417;--rule:#2d333a;--rule-strong:#444c56;
-  --ink:#e7eaee;--ink-2:#a2abb5;--ink-3:#727b86;
-  --act:#5cc2b6;--act-hover:#7fd3c9;--act-tint:#172e2b;
+  --paper:#1b1917;--sheet:#23201d;--side:#151311;--rule:#36322d;--rule-strong:#4d473f;
+  --ink:#ece7df;--ink-2:#aaa39a;--ink-3:#7a746c;
+  --act:#8fb4dc;--act-hover:#a9c6e6;--act-tint:#1e2a38;
   --stamp:#ef6b60;--stamp-tint:#3a2320;--ok:#5fc48f;--warn:#e2b84a;--warn-tint:#332b14;
-  --s-llm:#3987e5;--s-tool:#d95926;--s-approval:#199e70;--s-run:#6f6e68;
+  --s-llm:#3987e5;--s-tool:#d9742b;--s-approval:#199e70;--s-run:#6f6e68;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){
-  --paper:#15181c;--sheet:#1c2026;--side:#111417;--rule:#2d333a;--rule-strong:#444c56;
-  --ink:#e7eaee;--ink-2:#a2abb5;--ink-3:#727b86;
-  --act:#5cc2b6;--act-hover:#7fd3c9;--act-tint:#172e2b;
+  --paper:#1b1917;--sheet:#23201d;--side:#151311;--rule:#36322d;--rule-strong:#4d473f;
+  --ink:#ece7df;--ink-2:#aaa39a;--ink-3:#7a746c;
+  --act:#8fb4dc;--act-hover:#a9c6e6;--act-tint:#1e2a38;
   --stamp:#ef6b60;--stamp-tint:#3a2320;--ok:#5fc48f;--warn:#e2b84a;--warn-tint:#332b14;
-  --s-llm:#3987e5;--s-tool:#d95926;--s-approval:#199e70;--s-run:#6f6e68;
+  --s-llm:#3987e5;--s-tool:#d9742b;--s-approval:#199e70;--s-run:#6f6e68;
 }}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--paper);color:var(--ink);font:14px/1.55 var(--font);font-feature-settings:"tnum" 1}
@@ -112,8 +112,8 @@ ul.md{margin:4px 0;padding-left:18px;white-space:normal}ul.md li{margin:2px 0}
 @media (prefers-reduced-motion:no-preference){.caret{animation:blink 1s steps(2,start) infinite}@keyframes blink{to{visibility:hidden}}}
 .evidence{margin-top:14px;display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
 .card{border:1px solid var(--rule);border-radius:var(--r);padding:10px 12px;background:var(--paper);min-width:0;overflow:hidden}
-:root[data-theme=dark] .card{background:#181c21}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .card{background:#181c21}}
+:root[data-theme=dark] .card{background:#1d1a17}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .card{background:#1d1a17}}
 .card .ct{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--ink-2);margin-bottom:6px}
 .card .ct b{color:var(--ink);font-weight:600;flex-shrink:0}
 .card .ct span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

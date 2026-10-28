@@ -105,8 +105,8 @@ describe("data tab", () => {
     expect(st).toContain("2.35");
     expect(st).toContain("stat bad");
     const heat = renderToStaticMarkup(createElement(Heat, { data: { rows: ["1라인"], cols: ["코팅", "권취"], values: [[0.5, 2.0]], unit: "%" } }));
-    expect(heat).toContain("rgba(15,110,102,0.800)");             // 최댓값 칸이 가장 진하다
-    expect(heat).toContain("rgba(15,110,102,0.080)");             // 최솟값 칸이 가장 옅다
+    expect(heat).toContain("rgba(31,78,121,0.800)");             // 최댓값 칸이 가장 진하다
+    expect(heat).toContain("rgba(31,78,121,0.080)");             // 최솟값 칸이 가장 옅다
     expect(heat).toContain("color:#fff");
   });
 });

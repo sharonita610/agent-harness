@@ -3,7 +3,7 @@ import type { SeriesData } from "../types";
 import { Table } from "./ResultCard";
 
 /** 계열 색은 고정 순서(청록·파랑·주황·보라). 필터로 계열 수가 바뀌어도 같은 이름은 같은 색이어야 하므로 이름이 아니라 자리로 준다. */
-export const SERIES_COLORS = ["#0f6e66", "#2a78d6", "#eb6834", "#6b4c9a"];
+export const SERIES_COLORS = ["#1f4e79", "#1a9c8f", "#e07a2d", "#7b4fa6"];  // 남색(포인트)·청록·주황·보라
 const W = 640, H = 220, L = 46, R = 16, T = 14, B = 30;
 const fmt = (v: number | null | undefined, unit = "") => (v === null || v === undefined ? "값 없음" : `${Number.isInteger(v) ? v.toLocaleString("ko-KR") : v.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}${unit ? " " + unit : ""}`);
 

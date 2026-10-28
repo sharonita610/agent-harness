@@ -17,7 +17,7 @@ export function Heat({ data }: { data: HeatData }) {
     <div className="tablewrap"><table className="data heat">
       <thead><tr><th></th>{data.cols.map((c) => <th key={c}>{c}</th>)}</tr></thead>
       <tbody>{data.rows.map((r, i) => <tr key={r}><th>{r}</th>{data.cols.map((c, j) => { const v = data.values[i]?.[j]; const a = v === null || v === undefined ? 0 : 0.08 + 0.72 * ((v - min) / span);  // 최소~최대 사이로 펼쳐 작은 차이도 보이게
-        return <td key={c} className="num" style={{ background: `rgba(15,110,102,${a.toFixed(3)})`, color: a > 0.5 ? "#fff" : undefined }} title={`${r} ${c}: ${fmtv(v, data.unit)}`}>{v === null || v === undefined ? "" : fmtv(v)}</td>; })}</tr>)}</tbody>
+        return <td key={c} className="num" style={{ background: `rgba(31,78,121,${a.toFixed(3)})`, color: a > 0.5 ? "#fff" : undefined }} title={`${r} ${c}: ${fmtv(v, data.unit)}`}>{v === null || v === undefined ? "" : fmtv(v)}</td>; })}</tr>)}</tbody>
     </table></div>
   );
 }
