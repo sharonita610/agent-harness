@@ -2,6 +2,7 @@
 사용: uv run python scripts/mcp_check.py            (enterprise 팩)
       uv run python scripts/mcp_check.py spice      (회로 팩: list_circuits → run_simulation → search_manual)
 """
+
 import asyncio
 import json
 import sys
@@ -12,9 +13,17 @@ from mcp import ClientSession, StdioServerParameters, stdio_client
 async def check_spice(s, names: list[str]) -> None:
     r = await s.call_tool("list_circuits", {})
     print("list_circuits ->", r.content[0].text[:120])
-    r = await s.call_tool("run_simulation", {"netlist": "* RC\nV1 in 0 dc 0 ac 1\nR1 in out 1k\nC1 out 0 100n\n.ac dec 20 10 1meg", "measurements": ["fc WHEN vdb(out)=-3"]})
+    r = await s.call_tool(
+        "run_simulation",
+        {
+            "netlist": "* RC\nV1 in 0 dc 0 ac 1\nR1 in out 1k\nC1 out 0 100n\n.ac dec 20 10 1meg",
+            "measurements": ["fc WHEN vdb(out)=-3"],
+        },
+    )
     print("run_simulation ->", json.loads(r.content[0].text)["measurements"])
-    r = await s.call_tool("run_simulation", {"netlist": "* RC\n.include /etc/passwd\nR1 in 0 1k\n.op", "measurements": []})
+    r = await s.call_tool(
+        "run_simulation", {"netlist": "* RC\n.include /etc/passwd\nR1 in 0 1k\n.op", "measurements": []}
+    )
     print("run_simulation(.include) -> isError:", r.is_error, "|", r.content[0].text[:80])
     r = await s.call_tool("search_manual", {"query": "차단 주파수 공식", "k": 2})
     hits = [json.loads(c.text) for c in r.content]  # 목록 결과는 항목마다 content 하나

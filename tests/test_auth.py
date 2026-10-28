@@ -1,4 +1,5 @@
 """인증·인가·감사: 키 없음 401, 역할 부족 403, 결재자만 승인, 감사 기록에 사용자 이름."""
+
 import json
 import threading
 
@@ -10,7 +11,7 @@ from harness.packs.enterprise.tools import SYSTEM_PROMPT, build_tools
 from harness.service.app import create_app
 from harness.service.auth import UserStore
 from harness.tools.registry import ToolRegistry
-from tests.test_service import ScriptProvider, parse_sse
+from tests.test_service import ScriptProvider
 
 
 def tc(name, **args):
@@ -24,10 +25,18 @@ def auth_client(tmp_path, seeded_db):
     k_op = us.add("운영자", "operator")
     k_ap = us.add("팀장", "approver")
     k_ad = us.add("관리자", "admin")
-    scripts = [[LLMResponse(tool_calls=[tc("create_note", order_id=3, note="인증 테스트")]), LLMResponse(text="남겼습니다.")]]
+    scripts = [
+        [LLMResponse(tool_calls=[tc("create_note", order_id=3, note="인증 테스트")]), LLMResponse(text="남겼습니다.")]
+    ]
     it = iter(scripts)
-    app = create_app(db_path=tmp_path / "svc.db", provider_factory=lambda spec: ScriptProvider(next(it)), registry=ToolRegistry(build_tools(db)),
-                     system_prompt=SYSTEM_PROMPT, approval_timeout_s=5, users=us)
+    app = create_app(
+        db_path=tmp_path / "svc.db",
+        provider_factory=lambda spec: ScriptProvider(next(it)),
+        registry=ToolRegistry(build_tools(db)),
+        system_prompt=SYSTEM_PROMPT,
+        approval_timeout_s=5,
+        users=us,
+    )
     return TestClient(app), {"op": k_op, "ap": k_ap, "ad": k_ad}
 
 
@@ -100,7 +109,9 @@ def test_user_store_hashes_keys_and_persists(tmp_path):
 def test_dev_mode_without_users_is_open(tmp_path, seeded_db):
     db, _ = seeded_db
     us = UserStore(path=tmp_path / "none.json")  # 사용자 없음 → required False
-    app = create_app(db_path=tmp_path / "svc.db", registry=ToolRegistry(build_tools(db)), system_prompt=SYSTEM_PROMPT, users=us)
+    app = create_app(
+        db_path=tmp_path / "svc.db", registry=ToolRegistry(build_tools(db)), system_prompt=SYSTEM_PROMPT, users=us
+    )
     with TestClient(app) as c:
         me = c.get("/me").json()
         assert me["anonymous"] is True and me["role"] == "admin" and me["auth_required"] is False
@@ -111,7 +122,9 @@ def test_admin_can_approve_too(tmp_path, seeded_db):
     db, _ = seeded_db
     us = UserStore(path=tmp_path / "users.json")
     k_ad = us.add("관리자", "admin")
-    app = create_app(db_path=tmp_path / "svc.db", registry=ToolRegistry(build_tools(db)), system_prompt=SYSTEM_PROMPT, users=us)
+    app = create_app(
+        db_path=tmp_path / "svc.db", registry=ToolRegistry(build_tools(db)), system_prompt=SYSTEM_PROMPT, users=us
+    )
     with TestClient(app) as c:
         me = c.get("/me", headers=H(k_ad)).json()
         assert me["can"] == {"chat": True, "approve": True, "admin": True}

@@ -3,6 +3,7 @@
 - 사용자 파일(data/users.json)이 있거나 HARNESS_AUTH=1 이면 인증 필수. 없으면 개발 모드(익명 'dev', 모든 역할) 로 열되 /me 에 표시한다.
 - 역할: viewer(조회) < operator(질문·잡) < approver(결재) < admin(사용자 관리·감사 조회)
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -25,7 +26,7 @@ class User:
     name: str
     role: str
     anonymous: bool = False
-    scope: dict | None = None   # 데이터 범위 (packs.enterprise.scope.Scope.parse 형식). None = 전체
+    scope: dict | None = None  # 데이터 범위 (packs.enterprise.scope.Scope.parse 형식). None = 전체
 
     def has(self, role: str) -> bool:
         return RANK[self.role] >= RANK[role]
@@ -72,7 +73,10 @@ class UserStore:
         if not self.path:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps({"users": [{"key_hash": h, **u} for h, u in self.users.items()]}, ensure_ascii=False, indent=2), encoding="utf-8")
+        self.path.write_text(
+            json.dumps({"users": [{"key_hash": h, **u} for h, u in self.users.items()]}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
 
     def authenticate(self, key: str | None) -> User | None:
         if key is None:
@@ -108,6 +112,7 @@ def make_dependencies(user_store: UserStore) -> tuple[Callable, Callable[[str], 
             if not user.has(role):
                 raise HTTPException(403, f"'{role}' 역할이 필요합니다. 현재 역할: {user.role}")
             return user
+
         return dep
 
     return current_user, require

@@ -1,4 +1,5 @@
 """에이전트 루프 단위 테스트: 가짜 프로바이더로 스크립트된 응답을 흘려 넣는다."""
+
 from pydantic import BaseModel, Field
 
 from harness.agent.loop import Agent
@@ -21,11 +22,13 @@ calls_made: list[str] = []
 
 def make_registry():
     calls_made.clear()
-    return ToolRegistry([
-        Tool("add", "더하기", AddArgs, lambda x: {"sum": x.a + x.b}),
-        Tool("write_note", "메모", NoteArgs, lambda x: calls_made.append(x.text) or {"ok": True}, Tier.WRITE),
-        Tool("nuke", "삭제", NoteArgs, lambda x: calls_made.append("NUKE") or {"ok": True}, Tier.DESTRUCTIVE),
-    ])
+    return ToolRegistry(
+        [
+            Tool("add", "더하기", AddArgs, lambda x: {"sum": x.a + x.b}),
+            Tool("write_note", "메모", NoteArgs, lambda x: calls_made.append(x.text) or {"ok": True}, Tier.WRITE),
+            Tool("nuke", "삭제", NoteArgs, lambda x: calls_made.append("NUKE") or {"ok": True}, Tier.DESTRUCTIVE),
+        ]
+    )
 
 
 class FakeProvider:
@@ -55,7 +58,13 @@ def test_tool_then_final():
 
 
 def test_validation_error_is_fed_back_and_counted():
-    p = FakeProvider([LLMResponse(tool_calls=[tc("add", a="x", b=1)]), LLMResponse(tool_calls=[tc("add", a=1, b=1)]), LLMResponse(text="2")])
+    p = FakeProvider(
+        [
+            LLMResponse(tool_calls=[tc("add", a="x", b=1)]),
+            LLMResponse(tool_calls=[tc("add", a=1, b=1)]),
+            LLMResponse(text="2"),
+        ]
+    )
     res = Agent(p, make_registry(), "sys").run("q")
     assert res.tool_calls[0]["status"] == "validation_error"
     assert "인자 검증 실패" in p.seen[1][-1]["content"]
@@ -82,7 +91,9 @@ def test_destructive_is_denied_even_with_auto_approve():
 
 
 def test_salvages_tool_call_from_text():
-    p = FakeProvider([LLMResponse(text='<tool_call>{"name":"add","arguments":{"a":1,"b":1}}</tool_call>'), LLMResponse(text="2")])
+    p = FakeProvider(
+        [LLMResponse(text='<tool_call>{"name":"add","arguments":{"a":1,"b":1}}</tool_call>'), LLMResponse(text="2")]
+    )
     res = Agent(p, make_registry(), "sys").run("q")
     assert res.tool_calls[0]["name"] == "add" and res.tool_calls[0]["status"] == "ok"
 
@@ -101,8 +112,13 @@ def test_max_steps_triggers_wrap_up_without_tools():
 
 
 def test_nudges_when_model_writes_sql_as_text_then_calls_tool():
-    p = FakeProvider([LLMResponse(text="먼저 이렇게 조회합니다:\n```sql\nSELECT COUNT(*) FROM orders\n```"),
-                      LLMResponse(tool_calls=[tc("add", a=1, b=2)]), LLMResponse(text="3")])
+    p = FakeProvider(
+        [
+            LLMResponse(text="먼저 이렇게 조회합니다:\n```sql\nSELECT COUNT(*) FROM orders\n```"),
+            LLMResponse(tool_calls=[tc("add", a=1, b=2)]),
+            LLMResponse(text="3"),
+        ]
+    )
     res = Agent(p, make_registry(), "sys").run("q")
     kinds = [e.kind for e in res.events]
     assert "nudge" in kinds and res.answer == "3" and res.tool_calls[0]["status"] == "ok"
@@ -110,7 +126,9 @@ def test_nudges_when_model_writes_sql_as_text_then_calls_tool():
 
 
 def test_nudge_only_once():
-    p = FakeProvider([LLMResponse(text="```sql\nSELECT 1 FROM x\n```"), LLMResponse(text="```sql\nSELECT 2 FROM y\n```")])
+    p = FakeProvider(
+        [LLMResponse(text="```sql\nSELECT 1 FROM x\n```"), LLMResponse(text="```sql\nSELECT 2 FROM y\n```")]
+    )
     res = Agent(p, make_registry(), "sys").run("q")
     assert [e.kind for e in res.events].count("nudge") == 1 and res.stopped_reason == "final"
 
@@ -140,7 +158,10 @@ def test_cap_per_step_keeps_first_n_distinct():
 
 def test_salvages_fenced_json_tool_call_block():
     from harness.agent.providers import salvage_text_tool_calls
-    text = '조회합니다.\n```json\n{"tool_call": [{"name": "run_sql", "arguments": {"sql": "SELECT 1", "limit": 1}}]}\n```'
+
+    text = (
+        '조회합니다.\n```json\n{"tool_call": [{"name": "run_sql", "arguments": {"sql": "SELECT 1", "limit": 1}}]}\n```'
+    )
     calls = salvage_text_tool_calls(text)
     assert [c.name for c in calls] == ["run_sql"] and calls[0].arguments["limit"] == 1
     single = salvage_text_tool_calls('```json\n{"name": "add", "arguments": {"a": 1, "b": 2}}\n```')
@@ -151,8 +172,7 @@ def test_salvages_fenced_json_tool_call_block():
 def test_truncated_empty_completion_is_retried_once():
     """추론 토큰이 예산을 다 써 본문이 빈 채 finish=length 로 끝나면 한 번 되묻고, 두 번째엔 정상 답을 받는다."""
     from harness.agent.loop import Agent
-    from harness.agent.types import LLMResponse
-    from harness.agent.types import Usage
+    from harness.agent.types import LLMResponse, Usage
     from harness.tools.registry import ToolRegistry
 
     class Trunc:
@@ -164,9 +184,16 @@ def test_truncated_empty_completion_is_retried_once():
         def complete(self, messages, schemas, **_):
             self.calls += 1
             if self.calls == 1:
-                return LLMResponse(text=None, tool_calls=[], usage=Usage(prompt_tokens=10, completion_tokens=1024), finish_reason="length")
+                return LLMResponse(
+                    text=None,
+                    tool_calls=[],
+                    usage=Usage(prompt_tokens=10, completion_tokens=1024),
+                    finish_reason="length",
+                )
             assert any("길이 제한" in (m.get("content") or "") for m in messages if m["role"] == "user")
-            return LLMResponse(text="짧은 답", tool_calls=[], usage=Usage(prompt_tokens=10, completion_tokens=3), finish_reason="stop")
+            return LLMResponse(
+                text="짧은 답", tool_calls=[], usage=Usage(prompt_tokens=10, completion_tokens=3), finish_reason="stop"
+            )
 
     prov = Trunc()
     res = Agent(prov, ToolRegistry([]), "sys").run("질문")
@@ -198,6 +225,12 @@ def test_openai_reasoning_models_use_max_completion_tokens():
 
 def test_code_fence_alone_does_not_trigger_nudge():
     """문법 설명 답변의 코드 블록(SQL 도 도구 이름도 없음)은 되묻기 신호가 아니다."""
-    p = FakeProvider([LLMResponse(text="측정식은 이렇게 씁니다:\n```\ntrise TRIG v(out) VAL=0.1 RISE=1 TARG v(out) VAL=0.9 RISE=1\n```")])
+    p = FakeProvider(
+        [
+            LLMResponse(
+                text="측정식은 이렇게 씁니다:\n```\ntrise TRIG v(out) VAL=0.1 RISE=1 TARG v(out) VAL=0.9 RISE=1\n```"
+            )
+        ]
+    )
     res = Agent(p, ToolRegistry([]), "sys").run("상승 시간 측정식?")
     assert res.steps == 1 and "TRIG" in res.answer and not any(e.kind == "nudge" for e in res.events)

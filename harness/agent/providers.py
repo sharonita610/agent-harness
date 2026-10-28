@@ -1,4 +1,5 @@
 """LLM 프로바이더 추상화. 설정 한 줄로 로컬(llama.cpp) / OpenAI / Anthropic 교체."""
+
 from __future__ import annotations
 
 import json
@@ -110,7 +111,10 @@ def assemble_stream(chunks: Any, on_delta: OnDelta | None = None) -> LLMResponse
     for ch in chunks:
         u = getattr(ch, "usage", None)
         if u:
-            usage = Usage(prompt_tokens=getattr(u, "prompt_tokens", 0) or 0, completion_tokens=getattr(u, "completion_tokens", 0) or 0)
+            usage = Usage(
+                prompt_tokens=getattr(u, "prompt_tokens", 0) or 0,
+                completion_tokens=getattr(u, "completion_tokens", 0) or 0,
+            )
         if not getattr(ch, "choices", None):
             continue
         c0 = ch.choices[0]
@@ -146,8 +150,16 @@ class OpenAICompatProvider:
 
     supports_stream = True
 
-    def __init__(self, model: str, base_url: str | None = None, api_key: str | None = None,
-                 temperature: float = 0.2, max_tokens: int = 2048, extra_body: dict | None = None, name: str = "openai-compat"):
+    def __init__(
+        self,
+        model: str,
+        base_url: str | None = None,
+        api_key: str | None = None,
+        temperature: float = 0.2,
+        max_tokens: int = 2048,
+        extra_body: dict | None = None,
+        name: str = "openai-compat",
+    ):
         from openai import OpenAI
 
         self.name = name
@@ -157,7 +169,9 @@ class OpenAICompatProvider:
         self.extra_body = extra_body or {}
         # OpenAI 의 추론 모델(gpt-5·o 시리즈)은 max_tokens 대신 max_completion_tokens 를 받고 temperature 를 바꿀 수 없다
         self.reasoning_api = name == "openai" and model.lower().startswith(("gpt-5", "o1", "o3", "o4"))
-        self._client = OpenAI(base_url=base_url, api_key=api_key or os.getenv("OPENAI_API_KEY") or "no-key", timeout=300)
+        self._client = OpenAI(
+            base_url=base_url, api_key=api_key or os.getenv("OPENAI_API_KEY") or "no-key", timeout=300
+        )
 
     def complete(self, messages, tools=None, on_delta: OnDelta | None = None) -> LLMResponse:
         from openai import NOT_GIVEN, APIStatusError
@@ -182,12 +196,15 @@ class OpenAICompatProvider:
         calls: list[ToolCall] = []
         for tc in msg.tool_calls or []:
             args, err = _parse_args(tc.function.arguments)
-            calls.append(ToolCall(id=tc.id or f"call_{len(calls)}", name=tc.function.name, arguments=args, parse_error=err))
+            calls.append(
+                ToolCall(id=tc.id or f"call_{len(calls)}", name=tc.function.name, arguments=args, parse_error=err)
+            )
         usage = Usage()
         if resp.usage:
-            usage = Usage(prompt_tokens=resp.usage.prompt_tokens or 0, completion_tokens=resp.usage.completion_tokens or 0)
+            usage = Usage(
+                prompt_tokens=resp.usage.prompt_tokens or 0, completion_tokens=resp.usage.completion_tokens or 0
+            )
         return LLMResponse(text=msg.content, tool_calls=calls, usage=usage, finish_reason=choice.finish_reason)
-
 
     def _create(self, messages, tools, NOT_GIVEN, stream: bool = False):
         kw: dict[str, Any] = dict(
@@ -252,9 +269,17 @@ class AnthropicProvider:
 
     def complete(self, messages, tools=None) -> LLMResponse:
         system, converted = self._convert(messages)
-        a_tools = [{"name": t["function"]["name"], "description": t["function"].get("description", ""),
-                    "input_schema": t["function"].get("parameters", {"type": "object", "properties": {}})} for t in (tools or [])]
-        kwargs: dict[str, Any] = dict(model=self.model, max_tokens=self.max_tokens, temperature=self.temperature, messages=converted)
+        a_tools = [
+            {
+                "name": t["function"]["name"],
+                "description": t["function"].get("description", ""),
+                "input_schema": t["function"].get("parameters", {"type": "object", "properties": {}}),
+            }
+            for t in (tools or [])
+        ]
+        kwargs: dict[str, Any] = dict(
+            model=self.model, max_tokens=self.max_tokens, temperature=self.temperature, messages=converted
+        )
         if system:
             kwargs["system"] = system
         if a_tools:
@@ -267,7 +292,9 @@ class AnthropicProvider:
             elif block.type == "tool_use":
                 calls.append(ToolCall(id=block.id, name=block.name, arguments=dict(block.input or {})))
         usage = Usage(prompt_tokens=resp.usage.input_tokens, completion_tokens=resp.usage.output_tokens)
-        return LLMResponse(text="\n".join(text_parts) or None, tool_calls=calls, usage=usage, finish_reason=resp.stop_reason)
+        return LLMResponse(
+            text="\n".join(text_parts) or None, tool_calls=calls, usage=usage, finish_reason=resp.stop_reason
+        )
 
 
 def make_provider(spec: str | None = None, **kw) -> Provider:
@@ -275,13 +302,20 @@ def make_provider(spec: str | None = None, **kw) -> Provider:
     spec = spec or os.getenv("HARNESS_PROVIDER", "local")
     kind, _, rest = spec.partition(":")
     if kind == "local":
-        return OpenAICompatProvider(model=rest or os.getenv("LLM_MODEL", DEFAULT_LOCAL_MODEL),
-                                    base_url=os.getenv("LLM_BASE_URL", DEFAULT_LOCAL_BASE_URL), api_key="llama.cpp", name="local", **kw)
+        return OpenAICompatProvider(
+            model=rest or os.getenv("LLM_MODEL", DEFAULT_LOCAL_MODEL),
+            base_url=os.getenv("LLM_BASE_URL", DEFAULT_LOCAL_BASE_URL),
+            api_key="llama.cpp",
+            name="local",
+            **kw,
+        )
     if kind == "openai":
         return OpenAICompatProvider(model=rest or "gpt-5-mini", name="openai", **kw)
     if kind == "anthropic":
         return AnthropicProvider(model=rest or "claude-sonnet-4-5", **kw)
     if kind == "compat":
         base_url, _, model = rest.partition("|")
-        return OpenAICompatProvider(model=model or DEFAULT_LOCAL_MODEL, base_url=base_url, api_key="no-key", name="compat", **kw)
+        return OpenAICompatProvider(
+            model=model or DEFAULT_LOCAL_MODEL, base_url=base_url, api_key="no-key", name="compat", **kw
+        )
     raise ValueError(f"알 수 없는 프로바이더: {spec}")

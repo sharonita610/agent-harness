@@ -1,4 +1,5 @@
 """API 요청/응답 스키마."""
+
 from __future__ import annotations
 
 from typing import Literal

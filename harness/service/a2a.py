@@ -7,6 +7,7 @@
   done→completed, failed→failed, cancelled→canceled. 답변은 text 아티팩트, 도구가 만든 그림(url)은 file 아티팩트.
 사람 결재는 A2A 로 넘기지 않는다: 하위 비서의 결재는 그 비서 화면에서 사람이 하고, 상위 에이전트는 input-required 를 보고 기다린다.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -32,8 +33,14 @@ def _now() -> str:
 
 
 def _text_message(role: str, text: str, task_id: str | None = None, context_id: str | None = None) -> dict[str, Any]:
-    return {"kind": "message", "role": role, "parts": [{"kind": "text", "text": text}], "messageId": "msg_" + uuid.uuid4().hex[:12],
-            **({"taskId": task_id} if task_id else {}), **({"contextId": context_id} if context_id else {})}
+    return {
+        "kind": "message",
+        "role": role,
+        "parts": [{"kind": "text", "text": text}],
+        "messageId": "msg_" + uuid.uuid4().hex[:12],
+        **({"taskId": task_id} if task_id else {}),
+        **({"contextId": context_id} if context_id else {}),
+    }
 
 
 def _err(rid: Any, code: int, message: str, data: Any = None) -> dict[str, Any]:
@@ -73,18 +80,41 @@ class A2AFacade:
     def card(self, request_base: str) -> dict[str, Any]:
         pk = self.pack
         base = (self.base_url or request_base).rstrip("/")
-        skills = [{"id": f"example-{i + 1}", "name": label, "description": text, "tags": [pk.name], "examples": [text]}
-                  for i, (label, text) in enumerate(pk.examples)]
+        skills = [
+            {"id": f"example-{i + 1}", "name": label, "description": text, "tags": [pk.name], "examples": [text]}
+            for i, (label, text) in enumerate(pk.examples)
+        ]
         tool_names = self.state.registry.names()
-        skills.append({"id": "tools", "name": "도구 목록", "description": "이 비서가 함수 호출로 쓰는 도구: " + ", ".join(tool_names), "tags": ["tools"]})
+        skills.append(
+            {
+                "id": "tools",
+                "name": "도구 목록",
+                "description": "이 비서가 함수 호출로 쓰는 도구: " + ", ".join(tool_names),
+                "tags": ["tools"],
+            }
+        )
         return {
-            "protocolVersion": PROTOCOL_VERSION, "name": pk.title, "description": pk.description, "url": f"{base}/a2a", "version": "0.1.0",
-            "preferredTransport": "JSONRPC", "provider": {"organization": "agent-harness", "url": "https://github.com/sharonita610/agent-harness"},
+            "protocolVersion": PROTOCOL_VERSION,
+            "name": pk.title,
+            "description": pk.description,
+            "url": f"{base}/a2a",
+            "version": "0.1.0",
+            "preferredTransport": "JSONRPC",
+            "provider": {"organization": "agent-harness", "url": "https://github.com/sharonita610/agent-harness"},
             "capabilities": {"streaming": True, "pushNotifications": False, "stateTransitionHistory": False},
-            "defaultInputModes": ["text/plain"], "defaultOutputModes": ["text/plain", "image/svg+xml"],
-            "securitySchemes": {"apiKey": {"type": "apiKey", "in": "header", "name": "X-API-Key"}} if self.state.users.required else {},
+            "defaultInputModes": ["text/plain"],
+            "defaultOutputModes": ["text/plain", "image/svg+xml"],
+            "securitySchemes": {"apiKey": {"type": "apiKey", "in": "header", "name": "X-API-Key"}}
+            if self.state.users.required
+            else {},
             "security": [{"apiKey": []}] if self.state.users.required else [],
-            "skills": skills, "metadata": {"pack": pk.name, "aliases": pk.aliases, "tools": tool_names, "approvalNote": "write 등급 도구는 사람 결재 후 실행된다. 결재 대기 중엔 태스크가 input-required 상태가 된다."},
+            "skills": skills,
+            "metadata": {
+                "pack": pk.name,
+                "aliases": pk.aliases,
+                "tools": tool_names,
+                "approvalNote": "write 등급 도구는 사람 결재 후 실행된다. 결재 대기 중엔 태스크가 input-required 상태가 된다.",
+            },
         }
 
     # ---------------------------------------------------------------- task view
@@ -92,32 +122,66 @@ class A2AFacade:
         store = self.state.store
         rid = run["id"]
         pending = [a for a in store.list_approvals("pending", 200) if a["run_id"] == rid]
-        state = {"queued": "submitted", "running": "working", "done": "completed", "failed": "failed", "cancelled": "canceled"}.get(run["status"], "unknown")
+        state = {
+            "queued": "submitted",
+            "running": "working",
+            "done": "completed",
+            "failed": "failed",
+            "cancelled": "canceled",
+        }.get(run["status"], "unknown")
         status: dict[str, Any] = {"state": state, "timestamp": _now()}
         if state == "working" and pending:
             a = pending[0]
             status["state"] = "input-required"
-            status["message"] = _text_message("agent", f"사람 결재 대기: 도구 '{a['tool']}' ({a['tier']}) 인자 {json.dumps(a['args'], ensure_ascii=False)[:200]}. "
-                                              f"결재는 이 비서의 화면 또는 POST /approvals/{a['id']} 로 한다.", rid, run["session_id"])
+            status["message"] = _text_message(
+                "agent",
+                f"사람 결재 대기: 도구 '{a['tool']}' ({a['tier']}) 인자 {json.dumps(a['args'], ensure_ascii=False)[:200]}. "
+                f"결재는 이 비서의 화면 또는 POST /approvals/{a['id']} 로 한다.",
+                rid,
+                run["session_id"],
+            )
         elif state == "failed":
             status["message"] = _text_message("agent", run.get("error") or "실행 실패", rid, run["session_id"])
         artifacts: list[dict[str, Any]] = []
         if state == "completed":
-            artifacts.append({"artifactId": f"{rid}-answer", "name": "answer", "parts": [{"kind": "text", "text": run.get("answer") or ""}]})
+            artifacts.append(
+                {
+                    "artifactId": f"{rid}-answer",
+                    "name": "answer",
+                    "parts": [{"kind": "text", "text": run.get("answer") or ""}],
+                }
+            )
             base = (self.base_url or request_base).rstrip("/")
             for e in store.events(rid):
                 url = e["data"].get("url") if e["kind"] == "tool_result" else None
                 if isinstance(url, str):
                     mime = "image/svg+xml" if url.endswith(".svg") else "application/octet-stream"
-                    artifacts.append({"artifactId": f"{rid}-{e['seq']}", "name": e["data"].get("name", "file"),
-                                      "parts": [{"kind": "file", "file": {"uri": base + url, "mimeType": mime}}]})
+                    artifacts.append(
+                        {
+                            "artifactId": f"{rid}-{e['seq']}",
+                            "name": e["data"].get("name", "file"),
+                            "parts": [{"kind": "file", "file": {"uri": base + url, "mimeType": mime}}],
+                        }
+                    )
         history = [_text_message("user", run.get("question") or "", rid, run["session_id"])]
         if state == "completed":
             history.append(_text_message("agent", run.get("answer") or "", rid, run["session_id"]))
         if history_length is not None:
             history = history[-history_length:] if history_length > 0 else []
-        return {"kind": "task", "id": rid, "contextId": run["session_id"], "status": status, "artifacts": artifacts, "history": history,
-                "metadata": {"pack": self.pack.name, "steps": run.get("steps"), "latency_s": run.get("latency_s"), "stopped_reason": run.get("stopped_reason")}}
+        return {
+            "kind": "task",
+            "id": rid,
+            "contextId": run["session_id"],
+            "status": status,
+            "artifacts": artifacts,
+            "history": history,
+            "metadata": {
+                "pack": self.pack.name,
+                "steps": run.get("steps"),
+                "latency_s": run.get("latency_s"),
+                "stopped_reason": run.get("stopped_reason"),
+            },
+        }
 
     def _extract_text(self, message: dict[str, Any]) -> str:
         parts = message.get("parts") or []
@@ -135,7 +199,9 @@ class A2AFacade:
         if not sid or not store.get_session(sid):
             sid = store.create_session(self.state.default_provider, title="a2a")["id"]
         run_id = self._start_run(sid, text, user)
-        store.add_audit(getattr(user, "name", "a2a"), getattr(user, "role", "?"), "a2a.send", run_id, {"question": text[:200]})
+        store.add_audit(
+            getattr(user, "name", "a2a"), getattr(user, "role", "?"), "a2a.send", run_id, {"question": text[:200]}
+        )
         cfg = params.get("configuration") or {}
         if cfg.get("blocking"):
             deadline = time.monotonic() + float(cfg.get("timeoutSeconds") or 180)
@@ -200,6 +266,7 @@ def mount_a2a(app: FastAPI, state, pack, current_user, require) -> None:
 
     def _base(request: Request) -> str:
         import os
+
         return os.getenv("HARNESS_PUBLIC_URL") or str(request.base_url).rstrip("/")
 
     @app.get("/.well-known/agent-card.json")
@@ -224,17 +291,26 @@ def mount_a2a(app: FastAPI, state, pack, current_user, require) -> None:
                 if not user.has("operator"):
                     return JSONResponse(_err(rid, -32001, "operator 역할이 필요합니다"), status_code=403)
                 if method == "message/stream":
-                    return StreamingResponse(facade.stream(rid, params, user, base), media_type="text/event-stream",
-                                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+                    return StreamingResponse(
+                        facade.stream(rid, params, user, base),
+                        media_type="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+                    )
                 loop = asyncio.get_running_loop()
                 task = await loop.run_in_executor(None, facade.send, params, user, base)
                 return JSONResponse({"jsonrpc": "2.0", "id": rid, "result": task})
             if method == "tasks/get":
                 task = facade.get(params, base)
-                return JSONResponse({"jsonrpc": "2.0", "id": rid, "result": task} if task else _err(rid, -32001, "Task not found", {"id": params.get("id")}))
+                return JSONResponse(
+                    {"jsonrpc": "2.0", "id": rid, "result": task}
+                    if task
+                    else _err(rid, -32001, "Task not found", {"id": params.get("id")})
+                )
             if method == "tasks/cancel":
                 task = facade.cancel(params, base)
-                return JSONResponse({"jsonrpc": "2.0", "id": rid, "result": task} if task else _err(rid, -32001, "Task not found"))
+                return JSONResponse(
+                    {"jsonrpc": "2.0", "id": rid, "result": task} if task else _err(rid, -32001, "Task not found")
+                )
             if method in ("tasks/pushNotificationConfig/set", "tasks/pushNotificationConfig/get", "tasks/resubscribe"):
                 return JSONResponse(_err(rid, -32004, "This operation is not supported"))
             return JSONResponse(_err(rid, -32601, f"Method not found: {method}"))

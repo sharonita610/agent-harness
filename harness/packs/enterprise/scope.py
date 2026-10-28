@@ -3,6 +3,7 @@
 SQLite 는 이름이 겹치면 temp 스키마를 먼저 찾으므로, 모델이 쓰는 임의의 SELECT 도 범위 밖 행을 볼 수 없다.
 `main.orders` 처럼 스키마를 명시한 우회는 SQL 가드가 막는다(tools.guard_select).
 """
+
 from __future__ import annotations
 
 import sqlite3

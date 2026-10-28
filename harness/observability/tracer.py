@@ -4,6 +4,7 @@
 - JSONL 로 저장하고, OTLP 엔드포인트(HARNESS_OTLP_ENDPOINT)가 있으면 OpenTelemetry 로도 내보낸다(Jaeger·Langfuse·Phoenix 등).
 - 서비스에 저장된 이벤트(ts 포함)로도 같은 스팬을 재구성할 수 있다(spans_from_events).
 """
+
 from __future__ import annotations
 
 import json
@@ -30,16 +31,24 @@ class Span:
     span_id: str
     parent_id: str | None
     name: str
-    kind: str              # run | llm | tool | approval | nudge
-    start: float           # epoch seconds
+    kind: str  # run | llm | tool | approval | nudge
+    start: float  # epoch seconds
     end: float | None = None
-    status: str = "ok"     # ok | error | denied | not_approved | cancelled | ...
+    status: str = "ok"  # ok | error | denied | not_approved | cancelled | ...
     attrs: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {"span_id": self.span_id, "parent_id": self.parent_id, "name": self.name, "kind": self.kind,
-                "start": self.start, "end": self.end, "duration_ms": round((self.end - self.start) * 1000, 1) if self.end else None,
-                "status": self.status, "attrs": self.attrs}
+        return {
+            "span_id": self.span_id,
+            "parent_id": self.parent_id,
+            "name": self.name,
+            "kind": self.kind,
+            "start": self.start,
+            "end": self.end,
+            "duration_ms": round((self.end - self.start) * 1000, 1) if self.end else None,
+            "status": self.status,
+            "attrs": self.attrs,
+        }
 
 
 class TraceCollector:
@@ -47,7 +56,14 @@ class TraceCollector:
 
     def __init__(self, run_id: str, question: str, meta: dict[str, Any] | None = None, start: float | None = None):
         self.run_id = run_id
-        self.root = Span(_sid(), None, "agent.run", "run", start or time.time(), attrs={"run_id": run_id, "question": question[:500], **(meta or {})})
+        self.root = Span(
+            _sid(),
+            None,
+            "agent.run",
+            "run",
+            start or time.time(),
+            attrs={"run_id": run_id, "question": question[:500], **(meta or {})},
+        )
         self.spans: list[Span] = [self.root]
         self._open_tools: list[Span] = []
         self._open_approval: Span | None = None
@@ -65,14 +81,45 @@ class TraceCollector:
         elif kind == "llm":
             lat = d.get("latency_s")
             start = now - lat if lat else (self._step_start or now)
-            self.spans.append(Span(_sid(), self.root.span_id, f"llm.step{step}", "llm", start, now,
-                                   attrs={"step": step, "prompt_tokens": d.get("prompt_tokens"), "completion_tokens": d.get("completion_tokens"),
-                                          "finish": d.get("finish"), "n_tool_calls": len(d.get("tool_calls") or []), "text_len": len(d.get("text") or "")}))
+            self.spans.append(
+                Span(
+                    _sid(),
+                    self.root.span_id,
+                    f"llm.step{step}",
+                    "llm",
+                    start,
+                    now,
+                    attrs={
+                        "step": step,
+                        "prompt_tokens": d.get("prompt_tokens"),
+                        "completion_tokens": d.get("completion_tokens"),
+                        "finish": d.get("finish"),
+                        "n_tool_calls": len(d.get("tool_calls") or []),
+                        "text_len": len(d.get("text") or ""),
+                    },
+                )
+            )
         elif kind == "nudge":
-            self.spans.append(Span(_sid(), self.root.span_id, "loop.nudge", "nudge", now, now, attrs={"step": step, "reason": d.get("reason")}))
+            self.spans.append(
+                Span(
+                    _sid(),
+                    self.root.span_id,
+                    "loop.nudge",
+                    "nudge",
+                    now,
+                    now,
+                    attrs={"step": step, "reason": d.get("reason")},
+                )
+            )
         elif kind == "tool_call":
-            sp = Span(_sid(), self.root.span_id, f"tool.{d.get('name')}", "tool", now,
-                      attrs={"step": step, "tool": d.get("name"), "arguments": d.get("arguments"), "call_id": d.get("id")})
+            sp = Span(
+                _sid(),
+                self.root.span_id,
+                f"tool.{d.get('name')}",
+                "tool",
+                now,
+                attrs={"step": step, "tool": d.get("name"), "arguments": d.get("arguments"), "call_id": d.get("id")},
+            )
             self.spans.append(sp)
             self._open_tools.append(sp)
         elif kind in ("tool_result", "tool_error", "denied"):
@@ -89,8 +136,14 @@ class TraceCollector:
                     sp.attrs["tier"] = d.get("tier")
         elif kind == "approval_request":
             # 사람 결재 대기는 도구 실행이 아니다: run 바로 아래에 별도 스팬으로 두고, 도구 스팬은 결재 뒤에 시작한 것으로 본다.
-            self._open_approval = Span(_sid(), self.root.span_id, f"human.approval.{d.get('name')}", "approval", now,
-                                       attrs={"step": step, "tool": d.get("name"), "arguments": d.get("arguments"), "tier": d.get("tier")})
+            self._open_approval = Span(
+                _sid(),
+                self.root.span_id,
+                f"human.approval.{d.get('name')}",
+                "approval",
+                now,
+                attrs={"step": step, "tool": d.get("name"), "arguments": d.get("arguments"), "tier": d.get("tier")},
+            )
             self.spans.append(self._open_approval)
         elif kind == "approval_result":
             if self._open_approval:
@@ -136,8 +189,16 @@ class TraceCollector:
         if not self._closed:
             self._close_root(now, result.stopped_reason if result else "unknown")
         if result:
-            self.root.attrs.update({"steps": result.steps, "prompt_tokens": result.usage.prompt_tokens, "completion_tokens": result.usage.completion_tokens,
-                                    "latency_s": result.latency_s, "n_tool_calls": len(result.tool_calls), "n_approvals": len(result.approvals)})
+            self.root.attrs.update(
+                {
+                    "steps": result.steps,
+                    "prompt_tokens": result.usage.prompt_tokens,
+                    "completion_tokens": result.usage.completion_tokens,
+                    "latency_s": result.latency_s,
+                    "n_tool_calls": len(result.tool_calls),
+                    "n_approvals": len(result.approvals),
+                }
+            )
 
     def to_dicts(self) -> list[dict[str, Any]]:
         return [s.to_dict() for s in self.spans]
@@ -147,10 +208,18 @@ class TraceCollector:
         llms = [s for s in self.spans if s.kind == "llm"]
         humans = [s for s in self.spans if s.kind == "approval"]
         dur = lambda xs: round(sum((s.end or s.start) - s.start for s in xs) * 1000)
-        return {"run_id": self.run_id, "spans": len(self.spans), "llm_calls": len(llms), "tool_calls": len(tools),
-                "tool_errors": sum(1 for s in tools if s.status == "error"), "approvals": len(humans),
-                "llm_ms": dur(llms), "tool_ms": dur(tools), "human_ms": dur(humans),
-                "total_ms": round(((self.root.end or time.time()) - self.root.start) * 1000)}
+        return {
+            "run_id": self.run_id,
+            "spans": len(self.spans),
+            "llm_calls": len(llms),
+            "tool_calls": len(tools),
+            "tool_errors": sum(1 for s in tools if s.status == "error"),
+            "approvals": len(humans),
+            "llm_ms": dur(llms),
+            "tool_ms": dur(tools),
+            "human_ms": dur(humans),
+            "total_ms": round(((self.root.end or time.time()) - self.root.start) * 1000),
+        }
 
 
 # ----------------------------------------------------------------------------- 저장/내보내기
@@ -164,13 +233,18 @@ def write_jsonl(collector: TraceCollector, path: Path | None = None) -> Path:
     return path
 
 
-def spans_from_events(run_id: str, question: str, events: list[dict[str, Any]], created_at: str | None = None) -> TraceCollector:
+def spans_from_events(
+    run_id: str, question: str, events: list[dict[str, Any]], created_at: str | None = None
+) -> TraceCollector:
     """서비스 저장소의 이벤트(ts 포함)로 스팬을 재구성한다."""
     start = datetime.fromisoformat(created_at).timestamp() if created_at else None
     first_ts = datetime.fromisoformat(events[0]["ts"]).timestamp() if events else None
     c = TraceCollector(run_id, question, start=start or first_ts)
     for e in events:
-        c.on_event({"kind": e["kind"], "step": e.get("step"), "data": e.get("data", {})}, ts=datetime.fromisoformat(e["ts"]).timestamp())
+        c.on_event(
+            {"kind": e["kind"], "step": e.get("step"), "data": e.get("data", {})},
+            ts=datetime.fromisoformat(e["ts"]).timestamp(),
+        )
     c.finish()
     return c
 
@@ -202,7 +276,12 @@ class OTelExporter:
             for k, v in s.attrs.items():
                 if v is None:
                     continue
-                span.set_attribute(f"harness.{k}", v if isinstance(v, (str, int, float, bool)) else json.dumps(v, ensure_ascii=False, default=str)[:2000])
+                span.set_attribute(
+                    f"harness.{k}",
+                    v
+                    if isinstance(v, (str, int, float, bool))
+                    else json.dumps(v, ensure_ascii=False, default=str)[:2000],
+                )
             span.set_attribute("harness.kind", s.kind)
             if s.status not in ("ok",):
                 span.set_status(StatusCode.ERROR if s.status in ("error", "unfinished") else StatusCode.UNSET, s.status)

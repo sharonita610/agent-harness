@@ -1,4 +1,5 @@
 """승인 브로커: 에이전트 스레드가 변경 도구 실행 전에 사람 결정을 기다리고, API 가 결정을 넣어준다."""
+
 from __future__ import annotations
 
 import threading

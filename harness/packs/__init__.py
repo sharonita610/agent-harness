@@ -3,6 +3,7 @@
 플랫폼(에이전트 루프·권한·서비스·평가·트레이스)은 팩 내부를 모른다. 팩은 아래 Pack 한 묶음만 제공하면 된다.
 선택은 HARNESS_PACK 환경변수(기본 enterprise) 또는 CLI --pack / create_app(pack=...) 로 한다.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -18,26 +19,28 @@ DEFAULT_PACK = "enterprise"
 @dataclass
 class Pack:
     name: str
-    title: str                                        # 사람용 이름(화면 머리말·README)
+    title: str  # 사람용 이름(화면 머리말·README)
     description: str
-    build_tools: Callable[..., list]                  # (scope=None, index=None, db_path=..., **kw) -> list[Tool]
-    system_prompts: dict[str, str]                    # {"v1": ..., "v2": ...}
-    parse_scope: Callable[[Any], Any]                 # str | dict | None -> Scope | None (범위 개념이 없으면 항상 None)
-    scope_note: Callable[[Any], str]                  # 프롬프트에 붙이는 범위 안내
-    shared_kwargs: Callable[[], dict[str, Any]]       # 서비스가 한 번 만들어 모든 레지스트리에 공유하는 자원(문서 인덱스 등)
-    tasks_path: Path                                  # 평가 태스크 yaml
-    docs_dir: Path                                    # MCP 리소스·검색 평가용 문서 폴더
-    tool_labels: dict[str, str] = field(default_factory=dict)   # 화면 타임라인용 한국어 라벨
-    files: dict[str, Path] = field(default_factory=dict)        # /files/<key> 로 서빙할 폴더(그래프 등)
-    seed: Callable[[], Any] | None = None             # 데이터 준비(없으면 None)
-    db_path: Path | None = None                       # 평가의 truth_sql/params_sql 을 실행할 DB(있는 팩만)
+    build_tools: Callable[..., list]  # (scope=None, index=None, db_path=..., **kw) -> list[Tool]
+    system_prompts: dict[str, str]  # {"v1": ..., "v2": ...}
+    parse_scope: Callable[[Any], Any]  # str | dict | None -> Scope | None (범위 개념이 없으면 항상 None)
+    scope_note: Callable[[Any], str]  # 프롬프트에 붙이는 범위 안내
+    shared_kwargs: Callable[[], dict[str, Any]]  # 서비스가 한 번 만들어 모든 레지스트리에 공유하는 자원(문서 인덱스 등)
+    tasks_path: Path  # 평가 태스크 yaml
+    docs_dir: Path  # MCP 리소스·검색 평가용 문서 폴더
+    tool_labels: dict[str, str] = field(default_factory=dict)  # 화면 타임라인용 한국어 라벨
+    files: dict[str, Path] = field(default_factory=dict)  # /files/<key> 로 서빙할 폴더(그래프 등)
+    seed: Callable[[], Any] | None = None  # 데이터 준비(없으면 None)
+    db_path: Path | None = None  # 평가의 truth_sql/params_sql 을 실행할 DB(있는 팩만)
     mcp_name: str = "agent-harness"
     mcp_instructions: str = ""
-    welcome: str = ""                                 # 화면 머리말 한 줄
+    welcome: str = ""  # 화면 머리말 한 줄
     examples: list[list[str]] = field(default_factory=list)  # 화면 예시 [라벨, 질문]
-    empty_hint: str = ""                              # 대화가 비었을 때 안내
+    empty_hint: str = ""  # 대화가 비었을 때 안내
     aliases: list[str] = field(default_factory=list)  # 총괄 비서가 위임 대상을 고를 때 쓰는 별칭(한국어)
-    dashboard: Callable[..., list[dict[str, Any]]] | None = None   # (scope=None) -> 패널 목록. 화면 "데이터" 탭이 모양대로 그린다(아래 PANEL_KINDS)
+    dashboard: Callable[..., list[dict[str, Any]]] | None = (
+        None  # (scope=None) -> 패널 목록. 화면 "데이터" 탭이 모양대로 그린다(아래 PANEL_KINDS)
+    )
 
     @property
     def system_prompt(self) -> str:

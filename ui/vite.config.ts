@@ -7,7 +7,23 @@ export default defineConfig({
   plugins: [react()],
   base: "/app/",
   server: {
-    proxy: Object.fromEntries(["/chat", "/sessions", "/approvals", "/jobs", "/runs", "/health", "/tools", "/me", "/audit", "/workspace", "/files", "/docs", "/openapi.json"].map((p) => [p, { target: API, changeOrigin: true }])),
+    proxy: Object.fromEntries(
+      [
+        "/chat",
+        "/sessions",
+        "/approvals",
+        "/jobs",
+        "/runs",
+        "/health",
+        "/tools",
+        "/me",
+        "/audit",
+        "/workspace",
+        "/files",
+        "/docs",
+        "/openapi.json",
+      ].map((p) => [p, { target: API, changeOrigin: true }]),
+    ),
   },
   test: { environment: "node" },
 });

@@ -1,4 +1,5 @@
 """도구(툴) 정의와 레지스트리. 모든 인자는 pydantic 으로 검증한다."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -9,8 +10,8 @@ from pydantic import BaseModel, ValidationError
 
 
 class Tier(StrEnum):
-    READ = "read"                # 조회. 자유롭게 실행
-    WRITE = "write"              # 데이터 변경. 사람 승인 필요
+    READ = "read"  # 조회. 자유롭게 실행
+    WRITE = "write"  # 데이터 변경. 사람 승인 필요
     DESTRUCTIVE = "destructive"  # 삭제 등 되돌릴 수 없는 변경. 기본 차단
 
 
@@ -38,7 +39,10 @@ class Tool:
         params = _strip_titles(self.params.model_json_schema())
         params.setdefault("type", "object")
         params.setdefault("properties", {})
-        return {"type": "function", "function": {"name": self.name, "description": self.description, "parameters": params}}
+        return {
+            "type": "function",
+            "function": {"name": self.name, "description": self.description, "parameters": params},
+        }
 
     def validate(self, raw_args: dict[str, Any]) -> BaseModel:
         return self.params.model_validate(raw_args)

@@ -4,6 +4,7 @@
       ~/.local/share/uv/tools/huggingface-hub/bin/python docs/experiments/tiny-agents/run.py "질문" [enterprise|spice]
 서버: scripts/serve_llm.sh 가 8080 에 떠 있어야 한다.
 """
+
 import asyncio
 import json
 import sys
@@ -20,10 +21,18 @@ async def main(question: str, pack: str) -> None:
     cfg = json.loads((HERE / "agent.json").read_text(encoding="utf-8"))
     servers = cfg["servers"]
     for s in servers:
-        s["args"] = [a.replace("/Users/sharonkim/IdeaProjects/local-agent-lab", str(ROOT)) for a in s["args"]] + (["--pack", pack] if pack != "enterprise" else [])
+        s["args"] = [a.replace("/Users/sharonkim/IdeaProjects/local-agent-lab", str(ROOT)) for a in s["args"]] + (
+            ["--pack", pack] if pack != "enterprise" else []
+        )
         s["cwd"] = str(ROOT)
-    prompt = (HERE / "PROMPT.md").read_text(encoding="utf-8") if pack == "enterprise" else "당신은 회로 시뮬레이션 비서입니다. 숫자는 run_simulation 으로 재고, 문법은 search_manual 로 찾습니다. 한국어로 간결하게 답합니다."
-    agent = Agent(model=cfg["model"], base_url=cfg["endpointUrl"], api_key=cfg.get("apiKey"), servers=servers, prompt=prompt)
+    prompt = (
+        (HERE / "PROMPT.md").read_text(encoding="utf-8")
+        if pack == "enterprise"
+        else "당신은 회로 시뮬레이션 비서입니다. 숫자는 run_simulation 으로 재고, 문법은 search_manual 로 찾습니다. 한국어로 간결하게 답합니다."
+    )
+    agent = Agent(
+        model=cfg["model"], base_url=cfg["endpointUrl"], api_key=cfg.get("apiKey"), servers=servers, prompt=prompt
+    )
     t0 = time.perf_counter()
     async with agent:
         await agent.load_tools()
@@ -41,8 +50,15 @@ async def main(question: str, pack: str) -> None:
                 for tc in getattr(d, "tool_calls", None) or []:
                     if getattr(tc.function, "name", None):
                         print(f"[call] {tc.function.name}", flush=True)
-        print(f"\n[answer] {''.join(text).strip()}\n[tiny-agents] 도구 호출 {calls}회 · {time.perf_counter() - t0:.1f}s")
+        print(
+            f"\n[answer] {''.join(text).strip()}\n[tiny-agents] 도구 호출 {calls}회 · {time.perf_counter() - t0:.1f}s"
+        )
 
 
 if __name__ == "__main__":
-    asyncio.run(main(sys.argv[1] if len(sys.argv) > 1 else "현재 상태가 '지연'인 주문은 총 몇 건이야?", sys.argv[2] if len(sys.argv) > 2 else "enterprise"))
+    asyncio.run(
+        main(
+            sys.argv[1] if len(sys.argv) > 1 else "현재 상태가 '지연'인 주문은 총 몇 건이야?",
+            sys.argv[2] if len(sys.argv) > 2 else "enterprise",
+        )
+    )

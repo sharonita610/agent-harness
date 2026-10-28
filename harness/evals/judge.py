@@ -3,6 +3,7 @@
 규칙 채점(runner.score) 은 문자열 일치라 "맞는 말을 다르게 쓴 답" 을 놓치고, 판정자는 그 반대로 관대할 수 있다.
 그래서 둘을 사람 채점과 대조해 일치율을 본다(agreement.py).
 """
+
 from __future__ import annotations
 
 import json
@@ -40,9 +41,12 @@ def build_judge_prompt(task: dict[str, Any], run: dict[str, Any]) -> str:
     if task.get("note"):
         crit.append(f"비고: {task['note']}")
     tools = [f"{t['name']}({t.get('status', 'ok')})" for t in run.get("tool_calls", [])]
-    return (f"[질문 유형] {task['type']}\n[질문] {run.get('question') or task['question']}\n[채점 기준]\n- " + "\n- ".join(crit or ["없음"]) +
-            f"\n[비서가 한 일] 도구 호출: {', '.join(tools) or '없음'} / 승인 요청: {run.get('approvals') or '없음'} / 종료: {run.get('stopped')}"
-            f"\n[답변]\n{(run.get('answer') or '').strip()[:2500]}\n\nJSON 으로 판정하세요.")
+    return (
+        f"[질문 유형] {task['type']}\n[질문] {run.get('question') or task['question']}\n[채점 기준]\n- "
+        + "\n- ".join(crit or ["없음"])
+        + f"\n[비서가 한 일] 도구 호출: {', '.join(tools) or '없음'} / 승인 요청: {run.get('approvals') or '없음'} / 종료: {run.get('stopped')}"
+        f"\n[답변]\n{(run.get('answer') or '').strip()[:2500]}\n\nJSON 으로 판정하세요."
+    )
 
 
 def parse_verdict(text: str) -> dict[str, Any]:
@@ -57,7 +61,9 @@ def parse_verdict(text: str) -> dict[str, Any]:
 
 
 def judge_run(provider, task: dict[str, Any], run: dict[str, Any]) -> dict[str, Any]:
-    resp = provider.complete([{"role": "system", "content": JUDGE_SYSTEM}, {"role": "user", "content": build_judge_prompt(task, run)}], None)
+    resp = provider.complete(
+        [{"role": "system", "content": JUDGE_SYSTEM}, {"role": "user", "content": build_judge_prompt(task, run)}], None
+    )
     v = parse_verdict(resp.text or "")
     if v.get("parse_error") and not (resp.text or "").strip():
         v["reason"] = "판정자 본문이 비었음(추론 토큰 소진 가능)"
@@ -66,13 +72,21 @@ def judge_run(provider, task: dict[str, Any], run: dict[str, Any]) -> dict[str, 
     return v
 
 
-def judge_results(path: Path, provider_spec: str = "local", tasks_path: Path | None = None, limit: int | None = None, console=None) -> dict[str, Any]:
+def judge_results(
+    path: Path, provider_spec: str = "local", tasks_path: Path | None = None, limit: int | None = None, console=None
+) -> dict[str, Any]:
     """결과 JSON 의 모든 run 에 judge 필드를 채워 넣고 같은 파일에 저장한다."""
     import yaml
 
     from ..packs import load_pack
+
     data = json.loads(path.read_text(encoding="utf-8"))
-    tasks = {t["id"]: t for t in yaml.safe_load((tasks_path or load_pack(data["summary"].get("pack")).tasks_path).read_text(encoding="utf-8"))}
+    tasks = {
+        t["id"]: t
+        for t in yaml.safe_load(
+            (tasks_path or load_pack(data["summary"].get("pack")).tasks_path).read_text(encoding="utf-8")
+        )
+    }
     kw: dict[str, Any] = {"temperature": 0.0, "max_tokens": 1500}
     if not provider_spec.startswith("anthropic"):
         # gpt-oss 류는 reasoning 에 토큰을 쓰고 본문이 비는 경우가 있어 추론 노력을 낮추고 예산을 넉넉히 준다
@@ -89,11 +103,21 @@ def judge_results(path: Path, provider_spec: str = "local", tasks_path: Path | N
             if console:
                 mark = "[green]통과[/green]" if r["judge"]["pass"] else "[red]실패[/red]"
                 same = "" if r["judge"]["pass"] == r["pass"] else "  [yellow]← 규칙 채점과 다름[/yellow]"
-                console.print(f"{t['id']:4} run{r['run']} 판정 {mark} (규칙 {'통과' if r['pass'] else '실패'}){same}  {r['judge']['reason'][:70]}")
-    data["summary"]["judge"] = {"model": getattr(provider, "model", "?"), "judged": n, "agree_with_rules": round(agree / n, 3) if n else None,
-                                "pass_rate": round(sum(r["judge"]["pass"] for t in data["tasks"] for r in t["runs"] if "judge" in r) / n, 3) if n else None,
-                                "judged_at": datetime.now().isoformat(timespec="seconds")}
+                console.print(
+                    f"{t['id']:4} run{r['run']} 판정 {mark} (규칙 {'통과' if r['pass'] else '실패'}){same}  {r['judge']['reason'][:70]}"
+                )
+    data["summary"]["judge"] = {
+        "model": getattr(provider, "model", "?"),
+        "judged": n,
+        "agree_with_rules": round(agree / n, 3) if n else None,
+        "pass_rate": round(sum(r["judge"]["pass"] for t in data["tasks"] for r in t["runs"] if "judge" in r) / n, 3)
+        if n
+        else None,
+        "judged_at": datetime.now().isoformat(timespec="seconds"),
+    }
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     if console:
-        console.print(f"판정 {n}건 · 판정자 통과율 {data['summary']['judge']['pass_rate']:.0%} · 규칙 채점과 일치 {data['summary']['judge']['agree_with_rules']:.0%} · 저장 {path.name}")
+        console.print(
+            f"판정 {n}건 · 판정자 통과율 {data['summary']['judge']['pass_rate']:.0%} · 규칙 채점과 일치 {data['summary']['judge']['agree_with_rules']:.0%} · 저장 {path.name}"
+        )
     return data["summary"]["judge"]

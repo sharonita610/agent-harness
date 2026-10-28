@@ -1,4 +1,5 @@
 """에이전트 코어가 주고받는 자료형."""
+
 from __future__ import annotations
 
 from typing import Any, Literal
@@ -30,8 +31,19 @@ class LLMResponse(BaseModel):
 
 
 EventKind = Literal[
-    "step", "llm", "delta", "nudge", "tool_call", "tool_result", "tool_error", "progress",
-    "approval_request", "approval_result", "denied", "final", "stopped",
+    "step",
+    "llm",
+    "delta",
+    "nudge",
+    "tool_call",
+    "tool_result",
+    "tool_error",
+    "progress",
+    "approval_request",
+    "approval_result",
+    "denied",
+    "final",
+    "stopped",
 ]
 
 

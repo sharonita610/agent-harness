@@ -3,7 +3,9 @@ from harness.evals.runner import normalize, score
 
 
 def _res(answer, tools=("search_docs",)):
-    return AgentResult(answer=answer, steps=2, stopped_reason="final", tool_calls=[{"name": t, "status": "ok"} for t in tools])
+    return AgentResult(
+        answer=answer, steps=2, stopped_reason="final", tool_calls=[{"name": t, "status": "ok"} for t in tools]
+    )
 
 
 def test_normalize_special_spaces_and_percent():

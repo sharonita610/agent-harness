@@ -1,4 +1,5 @@
 """서비스 저장소(SQLite): 세션·메시지·실행(run)·이벤트·승인. 스레드 안전(RLock), WAL."""
+
 from __future__ import annotations
 
 import json
@@ -68,7 +69,9 @@ class Store:
         return s
 
     def add_message(self, sid: str, role: str, content: str) -> None:
-        self._q("INSERT INTO messages(session_id, role, content, created_at) VALUES (?,?,?,?)", (sid, role, content, now()))
+        self._q(
+            "INSERT INTO messages(session_id, role, content, created_at) VALUES (?,?,?,?)", (sid, role, content, now())
+        )
 
     def history(self, sid: str, limit: int = 10) -> list[dict[str, str]]:
         rows = self._q("SELECT role, content FROM messages WHERE session_id=? ORDER BY id DESC LIMIT ?", (sid, limit))
@@ -77,7 +80,10 @@ class Store:
     # ---- runs
     def create_run(self, sid: str, kind: str, question: str) -> str:
         rid = new_id("run")
-        self._q("INSERT INTO runs(id, session_id, kind, question, status, created_at) VALUES (?,?,?,?,?,?)", (rid, sid, kind, question, "queued", now()))
+        self._q(
+            "INSERT INTO runs(id, session_id, kind, question, status, created_at) VALUES (?,?,?,?,?,?)",
+            (rid, sid, kind, question, "queued", now()),
+        )
         return rid
 
     def start_run(self, rid: str) -> None:
@@ -85,16 +91,34 @@ class Store:
 
     def finish_run(self, rid: str, status: str, result=None, error: str | None = None) -> None:
         if result is not None:
-            self._q("UPDATE runs SET status=?, answer=?, stopped_reason=?, steps=?, latency_s=?, prompt_tokens=?, completion_tokens=?, error=?, finished_at=? WHERE id=?",
-                    (status, result.answer, result.stopped_reason, result.steps, result.latency_s, result.usage.prompt_tokens, result.usage.completion_tokens, error, now(), rid))
+            self._q(
+                "UPDATE runs SET status=?, answer=?, stopped_reason=?, steps=?, latency_s=?, prompt_tokens=?, completion_tokens=?, error=?, finished_at=? WHERE id=?",
+                (
+                    status,
+                    result.answer,
+                    result.stopped_reason,
+                    result.steps,
+                    result.latency_s,
+                    result.usage.prompt_tokens,
+                    result.usage.completion_tokens,
+                    error,
+                    now(),
+                    rid,
+                ),
+            )
         else:
             self._q("UPDATE runs SET status=?, error=?, finished_at=? WHERE id=?", (status, error, now(), rid))
 
     def fail_stale(self, reason: str = "서버 재시작으로 중단됨") -> int:
         """프로세스가 죽을 때 running/queued 로 남은 실행과 pending 결재를 정리한다(시작 시 호출)."""
         n = len(self._q("SELECT id FROM runs WHERE status IN ('running','queued')"))
-        self._q("UPDATE runs SET status='failed', error=?, finished_at=? WHERE status IN ('running','queued')", (reason, now()))
-        self._q("UPDATE approvals SET status='expired', decided_at=?, decided_by='restart' WHERE status='pending'", (now(),))
+        self._q(
+            "UPDATE runs SET status='failed', error=?, finished_at=? WHERE status IN ('running','queued')",
+            (reason, now()),
+        )
+        self._q(
+            "UPDATE approvals SET status='expired', decided_at=?, decided_by='restart' WHERE status='pending'", (now(),)
+        )
         return n
 
     def get_run(self, rid: str) -> dict[str, Any] | None:
@@ -107,19 +131,33 @@ class Store:
         return self._q("SELECT * FROM runs ORDER BY created_at DESC LIMIT ?", (limit,))
 
     def add_event(self, rid: str, seq: int, kind: str, step: int | None, data: dict[str, Any]) -> None:
-        self._q("INSERT INTO run_events(run_id, seq, kind, step, data, ts) VALUES (?,?,?,?,?,?)",
-                (rid, seq, kind, step, json.dumps(data, ensure_ascii=False, default=str), now()))
+        self._q(
+            "INSERT INTO run_events(run_id, seq, kind, step, data, ts) VALUES (?,?,?,?,?,?)",
+            (rid, seq, kind, step, json.dumps(data, ensure_ascii=False, default=str), now()),
+        )
 
     def events(self, rid: str, after_seq: int = 0) -> list[dict[str, Any]]:
-        rows = self._q("SELECT seq, kind, step, data, ts FROM run_events WHERE run_id=? AND seq>? ORDER BY seq", (rid, after_seq))
+        rows = self._q(
+            "SELECT seq, kind, step, data, ts FROM run_events WHERE run_id=? AND seq>? ORDER BY seq", (rid, after_seq)
+        )
         for r in rows:
             r["data"] = json.loads(r["data"])
         return rows
 
     # ---- audit
-    def add_audit(self, user: str, role: str, action: str, target: str, detail: dict[str, Any] | None = None, ip: str | None = None) -> None:
-        self._q("INSERT INTO audit(ts, user, role, action, target, detail, ip) VALUES (?,?,?,?,?,?,?)",
-                (now(), user, role, action, target, json.dumps(detail or {}, ensure_ascii=False, default=str), ip))
+    def add_audit(
+        self,
+        user: str,
+        role: str,
+        action: str,
+        target: str,
+        detail: dict[str, Any] | None = None,
+        ip: str | None = None,
+    ) -> None:
+        self._q(
+            "INSERT INTO audit(ts, user, role, action, target, detail, ip) VALUES (?,?,?,?,?,?,?)",
+            (now(), user, role, action, target, json.dumps(detail or {}, ensure_ascii=False, default=str), ip),
+        )
 
     def list_audit(self, limit: int = 100, user: str | None = None) -> list[dict[str, Any]]:
         rows = self._q("SELECT * FROM audit WHERE (? IS NULL OR user=?) ORDER BY id DESC LIMIT ?", (user, user, limit))
@@ -130,8 +168,10 @@ class Store:
     # ---- approvals
     def create_approval(self, rid: str, tool: str, args: dict[str, Any], tier: str) -> str:
         aid = new_id("apr")
-        self._q("INSERT INTO approvals(id, run_id, tool, args, tier, status, created_at) VALUES (?,?,?,?,?,?,?)",
-                (aid, rid, tool, json.dumps(args, ensure_ascii=False, default=str), tier, "pending", now()))
+        self._q(
+            "INSERT INTO approvals(id, run_id, tool, args, tier, status, created_at) VALUES (?,?,?,?,?,?,?)",
+            (aid, rid, tool, json.dumps(args, ensure_ascii=False, default=str), tier, "pending", now()),
+        )
         return aid
 
     def decide_approval(self, aid: str, status: str, by: str) -> None:
@@ -146,7 +186,10 @@ class Store:
         return a
 
     def list_approvals(self, status: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
-        rows = self._q("SELECT * FROM approvals WHERE (? IS NULL OR status=?) ORDER BY created_at DESC LIMIT ?", (status, status, limit))
+        rows = self._q(
+            "SELECT * FROM approvals WHERE (? IS NULL OR status=?) ORDER BY created_at DESC LIMIT ?",
+            (status, status, limit),
+        )
         for r in rows:
             r["args"] = json.loads(r["args"])
         return rows

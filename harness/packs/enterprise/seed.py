@@ -3,12 +3,13 @@
 사용: uv run harness seed   또는   uv run python -m harness.packs.enterprise.seed
 기준일(REFERENCE_DATE)을 고정해 "지난달" 같은 상대 표현이 평가에서 흔들리지 않게 한다.
 """
+
 from __future__ import annotations
 
 import hashlib
 import random
 import sqlite3
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 
 from faker import Faker
@@ -53,7 +54,18 @@ def build(db_path: Path = DEFAULT_DB) -> dict:
     for i in range(1, 51):
         grade = rng.choices(["A", "B", "C"], weights=[20, 35, 45])[0]
         created = REFERENCE_DATE - timedelta(days=rng.randint(200, 1500))
-        customers.append((i, fake.company(), grade, rng.choice(REGIONS), fake.name(), fake.phone_number(), PAYMENT_TERMS[grade], _d(created)))
+        customers.append(
+            (
+                i,
+                fake.company(),
+                grade,
+                rng.choice(REGIONS),
+                fake.name(),
+                fake.phone_number(),
+                PAYMENT_TERMS[grade],
+                _d(created),
+            )
+        )
     cur.executemany("INSERT INTO customers VALUES (?,?,?,?,?,?,?,?)", customers)
 
     # 상품 200
@@ -119,7 +131,17 @@ def build(db_path: Path = DEFAULT_DB) -> dict:
             else:
                 shipped = planned + timedelta(days=rng.choice([0, 0, 0, 1]))
                 delivered = shipped + timedelta(days=rng.randint(1, 3)) if status in ("완료",) else None
-            ships.append((ship_id, oid, wid, rng.choice(CARRIERS), _d(planned), _d(shipped) if shipped else None, _d(delivered) if delivered else None))
+            ships.append(
+                (
+                    ship_id,
+                    oid,
+                    wid,
+                    rng.choice(CARRIERS),
+                    _d(planned),
+                    _d(shipped) if shipped else None,
+                    _d(delivered) if delivered else None,
+                )
+            )
             ship_id += 1
             if status != "지연" or shipped:
                 hist.append((hist_id, oid, "접수", "출고", None, "system", _d(shipped or planned)))
@@ -128,7 +150,17 @@ def build(db_path: Path = DEFAULT_DB) -> dict:
                 hist.append((hist_id, oid, "접수", "지연", delay_reason, "system", _d(planned + timedelta(days=1))))
                 hist_id += 1
         if status == "취소":
-            hist.append((hist_id, oid, "접수", "취소", rng.choice(["고객 요청", "결제 실패"]), "cs_team", _d(odate + timedelta(days=rng.randint(0, 3)))))
+            hist.append(
+                (
+                    hist_id,
+                    oid,
+                    "접수",
+                    "취소",
+                    rng.choice(["고객 요청", "결제 실패"]),
+                    "cs_team",
+                    _d(odate + timedelta(days=rng.randint(0, 3))),
+                )
+            )
             hist_id += 1
     cur.executemany("INSERT INTO orders VALUES (?,?,?,?,?,?,?)", orders)
     cur.executemany("INSERT INTO order_items VALUES (?,?,?,?,?)", items)
@@ -138,11 +170,32 @@ def build(db_path: Path = DEFAULT_DB) -> dict:
     # 메모 몇 개
     notes = []
     for nid, oid in enumerate(rng.sample(range(1, 3001), 120), start=1):
-        notes.append((nid, oid, rng.choice(["cs_kim", "sales_park", "wh_lee"]), rng.choice(["고객 재확인 요청", "분할 출고 안내 완료", "대체품 제안 수락", "연락 불가, 재시도 예정"]), _d(REFERENCE_DATE - timedelta(days=rng.randint(0, 60)))))
+        notes.append(
+            (
+                nid,
+                oid,
+                rng.choice(["cs_kim", "sales_park", "wh_lee"]),
+                rng.choice(["고객 재확인 요청", "분할 출고 안내 완료", "대체품 제안 수락", "연락 불가, 재시도 예정"]),
+                _d(REFERENCE_DATE - timedelta(days=rng.randint(0, 60))),
+            )
+        )
     cur.executemany("INSERT INTO order_notes VALUES (?,?,?,?,?)", notes)
     conn.commit()
 
-    counts = {t: cur.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in ["customers", "products", "warehouses", "inventory", "orders", "order_items", "shipments", "order_notes", "order_status_history"]}
+    counts = {
+        t: cur.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+        for t in [
+            "customers",
+            "products",
+            "warehouses",
+            "inventory",
+            "orders",
+            "order_items",
+            "shipments",
+            "order_notes",
+            "order_status_history",
+        ]
+    }
     digest = hashlib.sha256("\n".join(line for line in conn.iterdump()).encode()).hexdigest()[:16]
     conn.close()
     return {"db": str(db_path), "counts": counts, "sha256_16": digest, "reference_date": _d(REFERENCE_DATE)}

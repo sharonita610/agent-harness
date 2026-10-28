@@ -7,16 +7,19 @@
 from pydantic import BaseModel, Field
 from ...tools.registry import Tier, Tool
 
+
 class LookupArgs(BaseModel):
     query: str = Field(description="모델이 읽는 설명. 예시를 넣으면 소형 모델이 덜 틀린다")
 
+
 def build_tools(index=None, scope=None, **_) -> list[Tool]:
     def lookup(a: LookupArgs):
-        return {"rows": [...]}                       # dict/list 를 돌려주면 루프가 JSON 으로 모델에 준다
+        return {"rows": [...]}  # dict/list 를 돌려주면 루프가 JSON 으로 모델에 준다
+
     return [
-        Tool("lookup", "무엇을 언제 쓰는지 한 문장. '…질문에 쓴다'", LookupArgs, lookup),            # read: 자유 실행
-        Tool("update_x", "…사람 승인이 필요한 변경 작업이다.", UpdateArgs, update_x, Tier.WRITE),   # write: 결재
-        Tool("delete_x", "…되돌릴 수 없어 차단된다.", DeleteArgs, delete_x, Tier.DESTRUCTIVE),   # destructive: 차단
+        Tool("lookup", "무엇을 언제 쓰는지 한 문장. '…질문에 쓴다'", LookupArgs, lookup),  # read: 자유 실행
+        Tool("update_x", "…사람 승인이 필요한 변경 작업이다.", UpdateArgs, update_x, Tier.WRITE),  # write: 결재
+        Tool("delete_x", "…되돌릴 수 없어 차단된다.", DeleteArgs, delete_x, Tier.DESTRUCTIVE),  # destructive: 차단
     ]
 ```
 - 인자는 pydantic 모델. 설명(description)은 모델이 읽는 프롬프트다.
@@ -30,15 +33,26 @@ def build_tools(index=None, scope=None, **_) -> list[Tool]:
 ## 3. 등록 (`pack.py`)
 ```python
 from .. import Pack
+
 PACK = Pack(
-    name="mypack", title="화면 머리말", description="한 줄",
-    build_tools=build_tools, system_prompts=SYSTEM_PROMPTS,
-    parse_scope=lambda spec: None, scope_note=lambda scope: "",     # 사용자별 범위가 있으면 enterprise/scope.py 처럼
-    shared_kwargs=lambda: {"index": make_index()},                  # 서비스가 한 번 만들어 공유하는 자원
+    name="mypack",
+    title="화면 머리말",
+    description="한 줄",
+    build_tools=build_tools,
+    system_prompts=SYSTEM_PROMPTS,
+    parse_scope=lambda spec: None,
+    scope_note=lambda scope: "",  # 사용자별 범위가 있으면 enterprise/scope.py 처럼
+    shared_kwargs=lambda: {"index": make_index()},  # 서비스가 한 번 만들어 공유하는 자원
     tasks_path=Path(__file__).parents[2] / "evals" / "tasks_mypack.yaml",
     docs_dir=Path(__file__).parent / "docs",
-    tool_labels={"lookup": "조회"}, files={}, seed=None,
-    mcp_name="mypack", mcp_instructions="…", welcome="…", examples=[["라벨", "질문"]], empty_hint="…",
+    tool_labels={"lookup": "조회"},
+    files={},
+    seed=None,
+    mcp_name="mypack",
+    mcp_instructions="…",
+    welcome="…",
+    examples=[["라벨", "질문"]],
+    empty_hint="…",
 )
 ```
 그리고 `harness/packs/__init__.py` 의 `PACK_NAMES` 에 이름을 추가한다. 선택은 `HARNESS_PACK=mypack` 또는 `--pack mypack`.

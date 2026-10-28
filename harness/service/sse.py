@@ -1,4 +1,5 @@
 """Server-Sent Events 포맷."""
+
 from __future__ import annotations
 
 import json

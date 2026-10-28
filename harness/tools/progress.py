@@ -3,6 +3,7 @@
 에이전트 루프가 도구를 실행하는 동안 `progress_scope(cb)` 로 수신자를 걸어 두면(contextvar, 스레드별) 그 안의 report 가
 cb 로 간다. 수신자가 없으면 아무 일도 하지 않으므로 CLI·MCP·테스트에서 도구를 그냥 불러도 안전하다.
 """
+
 from __future__ import annotations
 
 from contextlib import contextmanager

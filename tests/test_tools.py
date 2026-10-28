@@ -29,6 +29,7 @@ def test_get_order_and_customer(reg):
 def test_update_status_rules(reg, seeded_db):
     db, _ = seeded_db
     import sqlite3
+
     conn = sqlite3.connect(db)
     done = conn.execute("SELECT id FROM orders WHERE status='완료' LIMIT 1").fetchone()[0]
     pending = conn.execute("SELECT id FROM orders WHERE status='접수' LIMIT 1").fetchone()[0]

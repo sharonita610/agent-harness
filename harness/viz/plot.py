@@ -1,4 +1,5 @@
 """파형·스윕 결과를 SVG 로 그린다. 외부 그래프 라이브러리 없이(의존성 0) 화면·README 에 바로 넣을 수 있는 벡터 그림."""
+
 from __future__ import annotations
 
 import math
@@ -24,6 +25,7 @@ class Series:
 @dataclass
 class Marker:
     """측정값 표시: x 세로선 또는 y 가로선과 라벨."""
+
     label: str
     x: float | None = None
     y: float | None = None
@@ -61,8 +63,8 @@ def _nice_ticks(lo: float, hi: float, n: int = 6) -> list[float]:
 
 def _log_ticks(lo: float, hi: float) -> tuple[list[float], list[float]]:
     a, b = math.floor(math.log10(lo)), math.ceil(math.log10(hi))
-    major = [10.0 ** e for e in range(a, b + 1) if lo <= 10.0 ** e <= hi]
-    minor = [m * 10.0 ** e for e in range(a, b + 1) for m in (2, 5) if lo <= m * 10.0 ** e <= hi]
+    major = [10.0**e for e in range(a, b + 1) if lo <= 10.0**e <= hi]
+    minor = [m * 10.0**e for e in range(a, b + 1) for m in (2, 5) if lo <= m * 10.0**e <= hi]
     return major, minor
 
 
@@ -104,46 +106,81 @@ def render_svg(fig: Figure) -> str:
         sx = lambda x: left + (x - xlo) / (xhi - xlo) * pw  # noqa: E731
     sy = lambda y: top + (yhi - y) / (yhi - ylo) * ph  # noqa: E731
 
-    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" font-family="{FONT}" font-size="12">']
+    out = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" font-family="{FONT}" font-size="12">'
+    ]
     if fig.title:
         out.append(f'<text x="{left}" y="24" fill="{INK}" font-size="14" font-weight="600">{escape(fig.title)}</text>')
     # 격자·축
     if fig.x_log:
         major, minor = _log_ticks(xlo, xhi)
         for x in minor:
-            out.append(f'<line x1="{sx(x):.1f}" y1="{top}" x2="{sx(x):.1f}" y2="{top + ph}" stroke="{GRID}" stroke-width="0.5" stroke-dasharray="2 3"/>')
+            out.append(
+                f'<line x1="{sx(x):.1f}" y1="{top}" x2="{sx(x):.1f}" y2="{top + ph}" stroke="{GRID}" stroke-width="0.5" stroke-dasharray="2 3"/>'
+            )
         xticks = major
     else:
         xticks = _nice_ticks(xlo, xhi)
     for x in xticks:
-        out.append(f'<line x1="{sx(x):.1f}" y1="{top}" x2="{sx(x):.1f}" y2="{top + ph}" stroke="{GRID}" stroke-width="1"/>')
-        out.append(f'<text x="{sx(x):.1f}" y="{top + ph + 18}" fill="{INK_SOFT}" text-anchor="middle">{escape(_fmt(x, fig.x_unit))}</text>')
+        out.append(
+            f'<line x1="{sx(x):.1f}" y1="{top}" x2="{sx(x):.1f}" y2="{top + ph}" stroke="{GRID}" stroke-width="1"/>'
+        )
+        out.append(
+            f'<text x="{sx(x):.1f}" y="{top + ph + 18}" fill="{INK_SOFT}" text-anchor="middle">{escape(_fmt(x, fig.x_unit))}</text>'
+        )
     for y in _nice_ticks(ylo, yhi):
-        out.append(f'<line x1="{left}" y1="{sy(y):.1f}" x2="{left + pw}" y2="{sy(y):.1f}" stroke="{GRID}" stroke-width="1"/>')
-        out.append(f'<text x="{left - 8}" y="{sy(y) + 4:.1f}" fill="{INK_SOFT}" text-anchor="end">{escape(_fmt(y, fig.y_unit))}</text>')
-    out.append(f'<rect x="{left}" y="{top}" width="{pw}" height="{ph}" fill="none" stroke="{INK_SOFT}" stroke-width="1"/>')
+        out.append(
+            f'<line x1="{left}" y1="{sy(y):.1f}" x2="{left + pw}" y2="{sy(y):.1f}" stroke="{GRID}" stroke-width="1"/>'
+        )
+        out.append(
+            f'<text x="{left - 8}" y="{sy(y) + 4:.1f}" fill="{INK_SOFT}" text-anchor="end">{escape(_fmt(y, fig.y_unit))}</text>'
+        )
+    out.append(
+        f'<rect x="{left}" y="{top}" width="{pw}" height="{ph}" fill="none" stroke="{INK_SOFT}" stroke-width="1"/>'
+    )
     if fig.x_label:
-        out.append(f'<text x="{left + pw / 2:.1f}" y="{H - 10}" fill="{INK}" text-anchor="middle">{escape(fig.x_label)}</text>')
+        out.append(
+            f'<text x="{left + pw / 2:.1f}" y="{H - 10}" fill="{INK}" text-anchor="middle">{escape(fig.x_label)}</text>'
+        )
     if fig.y_label:
-        out.append(f'<text transform="translate(14 {top + ph / 2:.1f}) rotate(-90)" fill="{INK}" text-anchor="middle">{escape(fig.y_label)}</text>')
+        out.append(
+            f'<text transform="translate(14 {top + ph / 2:.1f}) rotate(-90)" fill="{INK}" text-anchor="middle">{escape(fig.y_label)}</text>'
+        )
     # 선
     for i, s in enumerate(fig.series):
-        pts = [(sx(x), sy(y)) for x, y in zip(s.x, s.y) if math.isfinite(x) and math.isfinite(y) and (not fig.x_log or x > 0)]
+        pts = [
+            (sx(x), sy(y))
+            for x, y in zip(s.x, s.y)
+            if math.isfinite(x) and math.isfinite(y) and (not fig.x_log or x > 0)
+        ]
         if not pts:
             continue
         d = "M" + " L".join(f"{x:.1f} {y:.1f}" for x, y in pts)
         color = SERIES[i % len(SERIES)]
-        out.append(f'<path d="{d}" fill="none" stroke="{color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>')
+        out.append(
+            f'<path d="{d}" fill="none" stroke="{color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+        )
         if len(pts) <= 24:  # 점이 적은 스윕은 표식도 찍는다
-            out.extend(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.5" fill="{color}" stroke="#fff" stroke-width="1.5"/>' for x, y in pts)
+            out.extend(
+                f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.5" fill="{color}" stroke="#fff" stroke-width="1.5"/>'
+                for x, y in pts
+            )
     # 측정 표시
     for m in fig.markers:
         if m.x is not None and (not fig.x_log or m.x > 0) and xlo <= m.x <= xhi:
-            out.append(f'<line x1="{sx(m.x):.1f}" y1="{top}" x2="{sx(m.x):.1f}" y2="{top + ph}" stroke="{SERIES[1]}" stroke-width="1.2" stroke-dasharray="4 3"/>')
-            out.append(f'<text x="{sx(m.x) + 5:.1f}" y="{top + 14}" fill="{SERIES[1]}" font-size="11">{escape(m.label)}</text>')
+            out.append(
+                f'<line x1="{sx(m.x):.1f}" y1="{top}" x2="{sx(m.x):.1f}" y2="{top + ph}" stroke="{SERIES[1]}" stroke-width="1.2" stroke-dasharray="4 3"/>'
+            )
+            out.append(
+                f'<text x="{sx(m.x) + 5:.1f}" y="{top + 14}" fill="{SERIES[1]}" font-size="11">{escape(m.label)}</text>'
+            )
         if m.y is not None:
-            out.append(f'<line x1="{left}" y1="{sy(m.y):.1f}" x2="{left + pw}" y2="{sy(m.y):.1f}" stroke="{SERIES[1]}" stroke-width="1.2" stroke-dasharray="4 3"/>')
-            out.append(f'<text x="{left + pw - 4}" y="{sy(m.y) - 5:.1f}" fill="{SERIES[1]}" font-size="11" text-anchor="end">{escape(m.label)}</text>')
+            out.append(
+                f'<line x1="{left}" y1="{sy(m.y):.1f}" x2="{left + pw}" y2="{sy(m.y):.1f}" stroke="{SERIES[1]}" stroke-width="1.2" stroke-dasharray="4 3"/>'
+            )
+            out.append(
+                f'<text x="{left + pw - 4}" y="{sy(m.y) - 5:.1f}" fill="{SERIES[1]}" font-size="11" text-anchor="end">{escape(m.label)}</text>'
+            )
     # 범례: 그림 영역 위 오른쪽에 가로로
     if len(fig.series) > 1:
         x = left + pw
@@ -152,18 +189,32 @@ def render_svg(fig: Figure) -> str:
             color = SERIES[i % len(SERIES)]
             w = 7 * len(s.label) + 30
             x -= w
-            out.append(f'<line x1="{x}" y1="{ly - 4}" x2="{x + 18}" y2="{ly - 4}" stroke="{color}" stroke-width="2.5"/>')
+            out.append(
+                f'<line x1="{x}" y1="{ly - 4}" x2="{x + 18}" y2="{ly - 4}" stroke="{color}" stroke-width="2.5"/>'
+            )
             out.append(f'<text x="{x + 24}" y="{ly}" fill="{INK}" font-size="12">{escape(s.label)}</text>')
     out.append("</svg>")
     return "\n".join(out)
 
 
-_X_UNITS = {"frequency": ("주파수", "Hz"), "time": ("시간", "s"), "v-sweep": ("전압", "V"), "i-sweep": ("전류", "A"), "temp-sweep": ("온도", "°C")}
+_X_UNITS = {
+    "frequency": ("주파수", "Hz"),
+    "time": ("시간", "s"),
+    "v-sweep": ("전압", "V"),
+    "i-sweep": ("전류", "A"),
+    "temp-sweep": ("온도", "°C"),
+}
 _Y_UNITS = {"vdb": ("이득", "dB"), "vp": ("위상", "°"), "v": ("전압", "V"), "i": ("전류", "A")}
 
 
-def figure_from_columns(cols: list[str], rows: list[list[float]], wanted: Sequence[str] | None = None, title: str = "",
-                        x_log: bool | None = None, markers: Sequence[Marker] = ()) -> Figure:
+def figure_from_columns(
+    cols: list[str],
+    rows: list[list[float]],
+    wanted: Sequence[str] | None = None,
+    title: str = "",
+    x_log: bool | None = None,
+    markers: Sequence[Marker] = (),
+) -> Figure:
     """wrdata 열(첫 열이 스케일) → Figure. wanted 로 그릴 열을 고른다(없으면 전부)."""
     if not cols or not rows:
         raise ValueError("데이터가 없습니다.")
@@ -180,5 +231,13 @@ def figure_from_columns(cols: list[str], rows: list[list[float]], wanted: Sequen
     series = [Series(p, [r[0] for r in rows], [r[idx[p]] for r in rows]) for p in picks]
     if x_log is None:
         x_log = xcol.lower() == "frequency" and all(r[0] > 0 for r in rows)
-    return Figure(series, title=title, x_label=f"{xname}" + (f" ({xunit})" if xunit else ""), y_label=f"{yname}" + (f" ({yunit})" if yunit else ""),
-                  x_unit=xunit, y_unit=yunit, x_log=x_log, markers=list(markers))
+    return Figure(
+        series,
+        title=title,
+        x_label=f"{xname}" + (f" ({xunit})" if xunit else ""),
+        y_label=f"{yname}" + (f" ({yunit})" if yunit else ""),
+        x_unit=xunit,
+        y_unit=yunit,
+        x_log=x_log,
+        markers=list(markers),
+    )

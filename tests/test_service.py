@@ -1,4 +1,5 @@
 """FastAPI 서비스 테스트: 가짜 프로바이더로 SSE 스트림·승인·잡 큐를 결정적으로 검증한다."""
+
 import json
 import threading
 import time
@@ -50,8 +51,13 @@ def make_client(tmp_path, seeded_db):
 
     def _make(scripts, approval_timeout_s=5.0, delay=0.0):
         it = iter(scripts)
-        app = create_app(db_path=tmp_path / "svc.db", provider_factory=lambda spec: ScriptProvider(next(it), delay),
-                         registry=registry, system_prompt=SYSTEM_PROMPT, approval_timeout_s=approval_timeout_s)
+        app = create_app(
+            db_path=tmp_path / "svc.db",
+            provider_factory=lambda spec: ScriptProvider(next(it), delay),
+            registry=registry,
+            system_prompt=SYSTEM_PROMPT,
+            approval_timeout_s=approval_timeout_s,
+        )
         return TestClient(app)
 
     return _make
@@ -66,8 +72,10 @@ def test_health_and_tools(make_client):
 
 
 def test_chat_streams_events_and_persists_run(make_client):
-    script = [LLMResponse(tool_calls=[tc("run_sql", sql="SELECT COUNT(*) AS n FROM orders WHERE status='지연'", limit=1)]),
-              LLMResponse(text="지연 주문은 255건입니다.")]
+    script = [
+        LLMResponse(tool_calls=[tc("run_sql", sql="SELECT COUNT(*) AS n FROM orders WHERE status='지연'", limit=1)]),
+        LLMResponse(text="지연 주문은 255건입니다."),
+    ]
     with make_client([script]) as c:
         with c.stream("POST", "/chat", json={"message": "지연 주문 몇 건?"}) as r:
             assert r.status_code == 200 and r.headers["content-type"].startswith("text/event-stream")
@@ -87,7 +95,10 @@ def test_chat_streams_events_and_persists_run(make_client):
 
 
 def test_approval_flow_over_http(make_client, seeded_db):
-    script = [LLMResponse(tool_calls=[tc("create_note", order_id=1, note="서비스 테스트 메모")]), LLMResponse(text="메모를 남겼습니다.")]
+    script = [
+        LLMResponse(tool_calls=[tc("create_note", order_id=1, note="서비스 테스트 메모")]),
+        LLMResponse(text="메모를 남겼습니다."),
+    ]
     with make_client([script]) as c:
         decided = {}
 
@@ -124,7 +135,10 @@ def test_approval_flow_over_http(make_client, seeded_db):
 
 
 def test_approval_expires_without_decision(make_client):
-    script = [LLMResponse(tool_calls=[tc("update_order_status", order_id=2, new_status="출고", reason="테스트")]), LLMResponse(text="승인이 없어 변경하지 않았습니다.")]
+    script = [
+        LLMResponse(tool_calls=[tc("update_order_status", order_id=2, new_status="출고", reason="테스트")]),
+        LLMResponse(text="승인이 없어 변경하지 않았습니다."),
+    ]
     with make_client([script], approval_timeout_s=0.5) as c:
         with c.stream("POST", "/chat", json={"message": "주문 2번 출고로"}) as r:
             events = dict(parse_sse(r.iter_lines()))
@@ -173,10 +187,12 @@ def test_run_trace_endpoint(make_client):
 
 def test_stale_runs_are_failed_on_startup(tmp_path, seeded_db):
     from harness.service.store import Store
+
     db = tmp_path / "stale.db"
     s = Store(db)
     sid = s.create_session("fake")["id"]
-    r1 = s.create_run(sid, "chat", "q"); s.start_run(r1)
+    r1 = s.create_run(sid, "chat", "q")
+    s.start_run(r1)
     r2 = s.create_run(sid, "job", "q2")
     aid = s.create_approval(r1, "create_note", {"order_id": 1}, "write")
     assert s.fail_stale() == 2
@@ -188,21 +204,34 @@ def test_stale_runs_are_failed_on_startup(tmp_path, seeded_db):
 def test_health_reports_model_server_status(tmp_path, seeded_db):
     db, _ = seeded_db
     from harness.service.auth import UserStore
+
     state = {"ok": False}
-    app = create_app(db_path=tmp_path / "svc.db", registry=ToolRegistry(build_tools(db)), system_prompt=SYSTEM_PROMPT,
-                     users=UserStore(path=tmp_path / "none.json"), model_probe=lambda: state["ok"], default_provider="local")
+    app = create_app(
+        db_path=tmp_path / "svc.db",
+        registry=ToolRegistry(build_tools(db)),
+        system_prompt=SYSTEM_PROMPT,
+        users=UserStore(path=tmp_path / "none.json"),
+        model_probe=lambda: state["ok"],
+        default_provider="local",
+    )
     with TestClient(app) as c:
         m = c.get("/health").json()["model"]
         assert m == {"provider": "local", "reachable": False, "hosted": False}
 
 
 def test_chat_stream_forwards_deltas_but_does_not_store_them(tmp_path, seeded_db):
-    from tests.test_streaming import StreamingFake
     from harness.service.auth import UserStore
+    from tests.test_streaming import StreamingFake
+
     db, _ = seeded_db
     script = [LLMResponse(text="지연 |주문은 |255건")]
-    app = create_app(db_path=tmp_path / "svc.db", provider_factory=lambda spec: StreamingFake(script), registry=ToolRegistry(build_tools(db)),
-                     system_prompt=SYSTEM_PROMPT, users=UserStore(path=tmp_path / "none.json"))
+    app = create_app(
+        db_path=tmp_path / "svc.db",
+        provider_factory=lambda spec: StreamingFake(script),
+        registry=ToolRegistry(build_tools(db)),
+        system_prompt=SYSTEM_PROMPT,
+        users=UserStore(path=tmp_path / "none.json"),
+    )
     with TestClient(app) as c:
         with c.stream("POST", "/chat", json={"message": "지연?"}) as r:
             events = parse_sse(r.iter_lines())
@@ -214,14 +243,19 @@ def test_chat_stream_forwards_deltas_but_does_not_store_them(tmp_path, seeded_db
 
 
 def test_grading_page_and_save(tmp_path, seeded_db, monkeypatch):
-    import harness.service.app as appmod
     from harness.service.auth import UserStore
+
     db, _ = seeded_db
-    res_dir = tmp_path / "results"; (res_dir / "grading").mkdir(parents=True)
+    res_dir = tmp_path / "results"
+    (res_dir / "grading").mkdir(parents=True)
     (res_dir / "grading" / "r1.html").write_text("<html>채점</html>", encoding="utf-8")
-    app = create_app(db_path=tmp_path / "svc.db", registry=ToolRegistry(build_tools(db)), system_prompt=SYSTEM_PROMPT, users=UserStore(path=tmp_path / "none.json"))
+    app = create_app(
+        db_path=tmp_path / "svc.db",
+        registry=ToolRegistry(build_tools(db)),
+        system_prompt=SYSTEM_PROMPT,
+        users=UserStore(path=tmp_path / "none.json"),
+    )
     # 결과 폴더를 임시 폴더로: 라우트 클로저의 RESULTS_DIR 는 모듈 경로 기반이라 monkeypatch 로 바꾼다
-    import inspect
     with TestClient(app) as c:
         assert c.get("/grading/missing").status_code == 404
         assert c.get("/grading/../x").status_code in (400, 404)
@@ -231,11 +265,25 @@ def test_workspace_and_cors_and_result_payload(seeded_db, tmp_path, monkeypatch)
     """/workspace 는 자기 자신 + 환경변수의 비서들(닿지 않으면 ok=False), CORS 헤더, tool_result 에 result 원본."""
     db, _ = seeded_db
     monkeypatch.setenv("HARNESS_WORKSPACE", "http://127.0.0.1:1")
-    script = [LLMResponse(tool_calls=[ToolCall(id="c1", name="run_sql", arguments={"sql": "SELECT COUNT(*) AS n FROM orders"})]), LLMResponse(text="끝")]
-    app = create_app(db_path=tmp_path / "svc.db", provider_factory=lambda spec: ScriptProvider(list(script)), registry=ToolRegistry(build_tools(db)), system_prompt=SYSTEM_PROMPT)
+    script = [
+        LLMResponse(
+            tool_calls=[ToolCall(id="c1", name="run_sql", arguments={"sql": "SELECT COUNT(*) AS n FROM orders"})]
+        ),
+        LLMResponse(text="끝"),
+    ]
+    app = create_app(
+        db_path=tmp_path / "svc.db",
+        provider_factory=lambda spec: ScriptProvider(list(script)),
+        registry=ToolRegistry(build_tools(db)),
+        system_prompt=SYSTEM_PROMPT,
+    )
     with TestClient(app) as c:
         ws = c.get("/workspace", headers={"Origin": "http://localhost:9999"})
-        assert ws.json()["self"]["pack"] == "enterprise" and ws.json()["agents"][0]["ok"] is False and ws.headers.get("access-control-allow-origin") == "*"
+        assert (
+            ws.json()["self"]["pack"] == "enterprise"
+            and ws.json()["agents"][0]["ok"] is False
+            and ws.headers.get("access-control-allow-origin") == "*"
+        )
         sid = c.post("/sessions", json={}).json()["id"]
         events = []
         with c.stream("POST", "/chat", json={"message": "몇 건?", "session_id": sid}) as r:

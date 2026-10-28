@@ -1,4 +1,5 @@
 """실행기: 에이전트(동기)를 스레드에서 돌리고 이벤트를 큐로 흘려 SSE 로 내보낸다. 승인은 브로커를 통해 사람을 기다린다."""
+
 from __future__ import annotations
 
 import asyncio
@@ -17,16 +18,41 @@ def build_agent(state, provider, run_id: str, sink: Sink, user=None) -> Agent:
 
     def approval_handler(tool, args) -> bool:
         aid = broker.request(run_id, tool.name, args.model_dump(), str(tool.tier))
-        sink({"kind": "approval_pending", "step": None,
-              "data": {"approval_id": aid, "tool": tool.name, "arguments": args.model_dump(), "tier": str(tool.tier), "timeout_s": broker.timeout_s}})
+        sink(
+            {
+                "kind": "approval_pending",
+                "step": None,
+                "data": {
+                    "approval_id": aid,
+                    "tool": tool.name,
+                    "arguments": args.model_dump(),
+                    "tier": str(tool.tier),
+                    "timeout_s": broker.timeout_s,
+                },
+            }
+        )
         return broker.wait(aid)
 
-    return Agent(provider, state.registry_for(user), state.system_prompt_for(user), approval_handler=approval_handler,
-                 max_steps=state.max_steps, on_event=lambda ev: sink(ev.model_dump()))
+    return Agent(
+        provider,
+        state.registry_for(user),
+        state.system_prompt_for(user),
+        approval_handler=approval_handler,
+        max_steps=state.max_steps,
+        on_event=lambda ev: sink(ev.model_dump()),
+    )
 
 
-def execute_run(state, run_id: str, session_id: str, question: str, provider_spec: str | None,
-                sink: Sink, should_cancel: Callable[[], bool] | None = None, user=None) -> AgentResult:
+def execute_run(
+    state,
+    run_id: str,
+    session_id: str,
+    question: str,
+    provider_spec: str | None,
+    sink: Sink,
+    should_cancel: Callable[[], bool] | None = None,
+    user=None,
+) -> AgentResult:
     """스레드(또는 워커)에서 동기 실행. 저장소에 결과를 남긴다."""
     store = state.store
     store.start_run(run_id)
@@ -47,12 +73,18 @@ def execute_run(state, run_id: str, session_id: str, question: str, provider_spe
 def _export_trace(store, run_id: str, question: str) -> None:
     """HARNESS_OTLP_ENDPOINT 가 있으면 저장된 이벤트로 스팬을 만들어 내보낸다(실패해도 실행 결과엔 영향 없음)."""
     import os
+
     if not os.getenv("HARNESS_OTLP_ENDPOINT"):
         return
     try:
         from ..observability.tracer import maybe_export, spans_from_events
+
         r = store.get_run(run_id) or {}
-        maybe_export(spans_from_events(run_id, question, store.events(run_id), created_at=r.get("started_at") or r.get("created_at")))
+        maybe_export(
+            spans_from_events(
+                run_id, question, store.events(run_id), created_at=r.get("started_at") or r.get("created_at")
+            )
+        )
     except Exception:
         pass
 
@@ -76,7 +108,9 @@ def make_sink(store, run_id: str, forward: Callable[[dict[str, Any]], None] | No
     return sink
 
 
-async def stream_chat(state, session_id: str, question: str, provider_spec: str | None, user=None) -> AsyncIterator[str]:
+async def stream_chat(
+    state, session_id: str, question: str, provider_spec: str | None, user=None
+) -> AsyncIterator[str]:
     """POST /chat 의 본문. 이벤트를 SSE 로 흘리고 마지막에 done 을 보낸다."""
     store = state.store
     run_id = store.create_run(session_id, "chat", question)
@@ -84,7 +118,9 @@ async def stream_chat(state, session_id: str, question: str, provider_spec: str 
     q: asyncio.Queue = asyncio.Queue()
     cancel = threading.Event()
     sink = make_sink(store, run_id, forward=lambda ev: loop.call_soon_threadsafe(q.put_nowait, ev))
-    fut = loop.run_in_executor(None, execute_run, state, run_id, session_id, question, provider_spec, sink, cancel.is_set, user)
+    fut = loop.run_in_executor(
+        None, execute_run, state, run_id, session_id, question, provider_spec, sink, cancel.is_set, user
+    )
     _END = object()
     fut.add_done_callback(lambda f: q.put_nowait(_END))  # 스레드 종료를 큐로 알려 15초 ping 대기를 피한다
     yield sse("run", {"run_id": run_id, "session_id": session_id})
@@ -99,8 +135,18 @@ async def stream_chat(state, session_id: str, question: str, provider_spec: str 
                 break
             yield sse(ev["kind"], {"seq": ev.get("seq"), "step": ev.get("step"), **ev.get("data", {})})
         res = fut.result()
-        yield sse("done", {"run_id": run_id, "answer": res.answer, "steps": res.steps, "stopped_reason": res.stopped_reason,
-                           "latency_s": res.latency_s, "usage": res.usage.model_dump(), "approvals": res.approvals})
+        yield sse(
+            "done",
+            {
+                "run_id": run_id,
+                "answer": res.answer,
+                "steps": res.steps,
+                "stopped_reason": res.stopped_reason,
+                "latency_s": res.latency_s,
+                "usage": res.usage.model_dump(),
+                "approvals": res.approvals,
+            },
+        )
     except asyncio.CancelledError:  # 클라이언트가 끊음 → 에이전트에 취소 신호
         cancel.set()
         raise

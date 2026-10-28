@@ -1,4 +1,5 @@
 """컨텍스트 예산: 토큰 추정, 긴 툴 결과 자르기, 오래된 툴 결과 압축."""
+
 from __future__ import annotations
 
 import json
@@ -28,7 +29,10 @@ def truncate_result(result: Any, max_chars: int = 4000) -> str:
     text = to_text(result)
     if len(text) <= max_chars:
         return text
-    return text[:max_chars] + f"\n... [잘림: 전체 {len(text)}자 중 {max_chars}자만 표시. 조건이나 LIMIT 을 좁혀 다시 조회하세요]"
+    return (
+        text[:max_chars]
+        + f"\n... [잘림: 전체 {len(text)}자 중 {max_chars}자만 표시. 조건이나 LIMIT 을 좁혀 다시 조회하세요]"
+    )
 
 
 def compact(messages: list[dict[str, Any]], budget_tokens: int, keep_last: int = 6) -> list[dict[str, Any]]:

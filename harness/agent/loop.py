@@ -1,4 +1,5 @@
 """에이전트 루프: 계획 → 도구 호출 → 결과 검증 → 답변. 프레임워크 없이 직접 구현."""
+
 from __future__ import annotations
 
 import json
@@ -8,8 +9,8 @@ from typing import Any, Callable
 
 from pydantic import ValidationError
 
-from ..tools.progress import progress_scope
 from ..tools.permissions import ApprovalHandler, Decision, Policy, auto_deny
+from ..tools.progress import progress_scope
 from ..tools.registry import ToolRegistry, format_validation_error
 from .context import compact, truncate_result
 from .providers import Provider, salvage_text_tool_calls
@@ -54,8 +55,12 @@ class Agent:
         self._text_tool_pattern = re.compile(rf"\b(?:{names})\s*\(|\bSELECT\b[\s\S]{{0,400}}\bFROM\b", re.I)
 
     # ------------------------------------------------------------------
-    def run(self, user_message: str, history: list[dict[str, Any]] | None = None,
-            should_cancel: Callable[[], bool] | None = None) -> AgentResult:
+    def run(
+        self,
+        user_message: str,
+        history: list[dict[str, Any]] | None = None,
+        should_cancel: Callable[[], bool] | None = None,
+    ) -> AgentResult:
         t0 = time.perf_counter()
         events: list[AgentEvent] = []
         tool_log: list[dict[str, Any]] = []
@@ -90,16 +95,27 @@ class Agent:
             t_call = time.perf_counter()
             try:
                 if getattr(self.provider, "supports_stream", False):
-                    resp = self.provider.complete(messages, schemas, on_delta=lambda piece, _s=step: emit("delta", _s, text=piece))
+                    resp = self.provider.complete(
+                        messages, schemas, on_delta=lambda piece, _s=step: emit("delta", _s, text=piece)
+                    )
                 else:
                     resp = self.provider.complete(messages, schemas)
             except Exception as e:  # 네트워크/프로바이더 오류
                 emit("stopped", step, reason="provider_error", error=str(e))
-                return self._result(f"모델 호출 오류: {e}", step, "provider_error", tool_log, approvals, events, usage, t0, messages)
+                return self._result(
+                    f"모델 호출 오류: {e}", step, "provider_error", tool_log, approvals, events, usage, t0, messages
+                )
             usage.add(resp.usage)
-            emit("llm", step, text=resp.text, tool_calls=[tc.model_dump() for tc in resp.tool_calls], finish=resp.finish_reason,
-                 prompt_tokens=resp.usage.prompt_tokens, completion_tokens=resp.usage.completion_tokens,
-                 latency_s=round(time.perf_counter() - t_call, 2))
+            emit(
+                "llm",
+                step,
+                text=resp.text,
+                tool_calls=[tc.model_dump() for tc in resp.tool_calls],
+                finish=resp.finish_reason,
+                prompt_tokens=resp.usage.prompt_tokens,
+                completion_tokens=resp.usage.completion_tokens,
+                latency_s=round(time.perf_counter() - t_call, 2),
+            )
 
             calls = resp.tool_calls or salvage_text_tool_calls(resp.text)
             calls = self._drop_garbage_calls(calls, step, emit)
@@ -109,14 +125,24 @@ class Agent:
                 if not text and resp.finish_reason == "length" and truncations < self.max_truncation_retries:
                     # 추론(reasoning) 토큰이 출력 예산을 다 써서 본문이 빈 경우(gpt-oss 류): 짧게 가라고 한 번 되묻는다
                     truncations += 1
-                    messages.append({"role": "user", "content": "출력이 길이 제한에 걸려 답이 비었습니다. 길게 생각하지 말고, 필요한 도구를 바로 함수 호출로 실행하거나 짧게 답하세요."})
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": "출력이 길이 제한에 걸려 답이 비었습니다. 길게 생각하지 말고, 필요한 도구를 바로 함수 호출로 실행하거나 짧게 답하세요.",
+                        }
+                    )
                     emit("nudge", step, reason="truncated_empty", completion_tokens=resp.usage.completion_tokens)
                     continue
                 if nudges < self.max_nudges and self._text_tool_pattern.search(text):
                     # 도구를 글로만 쓴 경우: 한 번 되묻어 실제 호출을 유도한다
                     nudges += 1
                     messages.append({"role": "assistant", "content": text})
-                    messages.append({"role": "user", "content": "SQL 이나 함수 호출을 글로 적지 말고, 제공된 도구를 실제 함수 호출(tool call)로 실행해서 결과를 확인한 뒤 답하세요."})
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": "SQL 이나 함수 호출을 글로 적지 말고, 제공된 도구를 실제 함수 호출(tool call)로 실행해서 결과를 확인한 뒤 답하세요.",
+                        }
+                    )
                     emit("nudge", step, reason="text_tool_pattern", text_head=text[:200])
                     continue
                 answer = text
@@ -139,7 +165,12 @@ class Agent:
                 break
         else:
             # 스텝 소진: 도구 없이 마무리 답변 한 번
-            messages.append({"role": "user", "content": "지금까지 확인한 내용만으로 최종 답변을 간결하게 정리해 주세요. 도구는 더 쓰지 마세요."})
+            messages.append(
+                {
+                    "role": "user",
+                    "content": "지금까지 확인한 내용만으로 최종 답변을 간결하게 정리해 주세요. 도구는 더 쓰지 마세요.",
+                }
+            )
             try:
                 resp = self.provider.complete(messages, None)
                 usage.add(resp.usage)
@@ -180,8 +211,10 @@ class Agent:
         if decision == Decision.DENY:
             entry["status"] = "denied"
             emit("denied", step, name=call.name, tier=str(tool.tier))
-            return (f"차단됨: '{tool.name}' 은(는) {tool.tier} 등급 도구로 이 에이전트에서는 실행할 수 없습니다. "
-                    "사용자에게 담당자가 직접 처리해야 한다고 안내하세요."), True
+            return (
+                f"차단됨: '{tool.name}' 은(는) {tool.tier} 등급 도구로 이 에이전트에서는 실행할 수 없습니다. "
+                "사용자에게 담당자가 직접 처리해야 한다고 안내하세요."
+            ), True
         if decision == Decision.REQUIRE_APPROVAL:
             emit("approval_request", step, name=call.name, arguments=args.model_dump(), tier=str(tool.tier))
             approved = bool(self.approval_handler(tool, args))
@@ -189,8 +222,10 @@ class Agent:
             emit("approval_result", step, name=call.name, approved=approved)
             if not approved:
                 entry["status"] = "not_approved"
-                return ("승인되지 않음: 사용자가 이 변경을 승인하지 않았습니다. 변경을 실행하지 말고, "
-                        "승인이 필요하다는 사실과 대안을 안내하세요."), True
+                return (
+                    "승인되지 않음: 사용자가 이 변경을 승인하지 않았습니다. 변경을 실행하지 말고, "
+                    "승인이 필요하다는 사실과 대안을 안내하세요."
+                ), True
         last = {"t": 0.0}
 
         def _progress(done: int, total: int, label: str) -> None:
@@ -212,7 +247,9 @@ class Agent:
         entry["result_preview"] = content[:300]
         extra = {"url": result["url"]} if isinstance(result, dict) and isinstance(result.get("url"), str) else {}
         if isinstance(result, (dict, list)) and len(content) <= self.result_max_chars:
-            extra["result"] = result  # 화면이 표·수치·출처 카드로 그릴 수 있게 원본 구조를 함께 보낸다(모델에게 가는 내용과 같은 범위)
+            extra["result"] = (
+                result  # 화면이 표·수치·출처 카드로 그릴 수 있게 원본 구조를 함께 보낸다(모델에게 가는 내용과 같은 범위)
+            )
         emit("tool_result", step, name=call.name, preview=content[:300], chars=len(content), **extra)
         return content, True
 
@@ -233,9 +270,17 @@ class Agent:
         unique = unique[: self.max_calls_per_step]
         note = None
         if dup or over:
-            emit("tool_error", step, name="(batch)", error=f"중복 호출 {dup}개 제거, 초과 호출 {over}개 제외 (스텝당 최대 {self.max_calls_per_step})")
-            note = (f"[시스템] 같은 도구 호출이 {dup}번 반복되어 한 번만 실행했습니다. " if dup else "") + \
-                   (f"[시스템] 한 스텝에 도구 호출은 최대 {self.max_calls_per_step}개입니다. {over}개는 실행하지 않았으니 필요하면 다음 스텝에서 호출하세요." if over else "")
+            emit(
+                "tool_error",
+                step,
+                name="(batch)",
+                error=f"중복 호출 {dup}개 제거, 초과 호출 {over}개 제외 (스텝당 최대 {self.max_calls_per_step})",
+            )
+            note = (f"[시스템] 같은 도구 호출이 {dup}번 반복되어 한 번만 실행했습니다. " if dup else "") + (
+                f"[시스템] 한 스텝에 도구 호출은 최대 {self.max_calls_per_step}개입니다. {over}개는 실행하지 않았으니 필요하면 다음 스텝에서 호출하세요."
+                if over
+                else ""
+            )
         return unique, note
 
     @staticmethod
@@ -255,12 +300,25 @@ class Agent:
             "role": "assistant",
             "content": text,
             "tool_calls": [
-                {"id": c.id, "type": "function", "function": {"name": c.name, "arguments": json.dumps(c.arguments, ensure_ascii=False)}}
+                {
+                    "id": c.id,
+                    "type": "function",
+                    "function": {"name": c.name, "arguments": json.dumps(c.arguments, ensure_ascii=False)},
+                }
                 for c in calls
             ],
         }
 
     @staticmethod
     def _result(answer, steps, stopped, tool_log, approvals, events, usage, t0, messages) -> AgentResult:
-        return AgentResult(answer=answer, steps=steps, stopped_reason=stopped, tool_calls=tool_log, approvals=approvals,
-                           events=events, usage=usage, latency_s=round(time.perf_counter() - t0, 2), messages=messages)
+        return AgentResult(
+            answer=answer,
+            steps=steps,
+            stopped_reason=stopped,
+            tool_calls=tool_log,
+            approvals=approvals,
+            events=events,
+            usage=usage,
+            latency_s=round(time.perf_counter() - t0, 2),
+            messages=messages,
+        )

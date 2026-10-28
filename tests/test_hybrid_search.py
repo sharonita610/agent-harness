@@ -1,9 +1,10 @@
 """하이브리드 검색: 가짜 임베더로 RRF 융합과 폴백을 결정적으로 검증."""
+
 import re
 
+from harness.packs.enterprise.embeddings import EmbeddingCache, cosine
 from harness.packs.enterprise.search import DocIndex
 from harness.packs.enterprise.tools import DOCS_DIR
-from harness.packs.enterprise.embeddings import EmbeddingCache, cosine
 
 
 def bag_embedder(texts):
@@ -13,7 +14,7 @@ def bag_embedder(texts):
         v = [0.0] * 256
         s = re.sub(r"\s+", "", t)
         for i in range(len(s) - 1):
-            v[hash(s[i:i + 2]) % 256] += 1.0
+            v[hash(s[i : i + 2]) % 256] += 1.0
         out.append(v)
     return out
 

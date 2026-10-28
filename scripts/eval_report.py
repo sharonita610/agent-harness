@@ -1,6 +1,7 @@
 """평가 결과 JSON 들을 하나의 HTML 리포트로 만든다 (외부 의존 없음).
 사용: uv run python scripts/eval_report.py  → harness/evals/results/report.html
 """
+
 import html
 import json
 from pathlib import Path
@@ -14,8 +15,26 @@ for p in jsons:
     label = p.stem.split("_", 2)[-1] if p.stem.count("_") >= 2 else p.stem
     by_pack.setdefault(d["summary"].get("pack") or "enterprise", []).append((label, d))
 
-PACK_KO = {"enterprise": "회사 데이터 비서 (enterprise)", "spice": "회로 시뮬레이션 비서 (spice)", "factory": "공정 NG 분석 비서 (factory)", "supervisor": "총괄 비서 (supervisor, A2A)"}
-TYPE_KO = {"query": "조회", "mixed": "복합", "doc": "규정", "write": "변경→승인", "trap": "함정", "sim": "해석", "sweep": "스윕", "history": "기록", "spike": "급증·원인", "route": "라우팅", "compound": "복합", "approval": "결재 대기"}
+PACK_KO = {
+    "enterprise": "회사 데이터 비서 (enterprise)",
+    "spice": "회로 시뮬레이션 비서 (spice)",
+    "factory": "공정 NG 분석 비서 (factory)",
+    "supervisor": "총괄 비서 (supervisor, A2A)",
+}
+TYPE_KO = {
+    "query": "조회",
+    "mixed": "복합",
+    "doc": "규정",
+    "write": "변경→승인",
+    "trap": "함정",
+    "sim": "해석",
+    "sweep": "스윕",
+    "history": "기록",
+    "spike": "급증·원인",
+    "route": "라우팅",
+    "compound": "복합",
+    "approval": "결재 대기",
+}
 
 
 def esc(x):
@@ -50,20 +69,46 @@ for pack, runs in by_pack.items():
         for k in d["summary"]["by_type"]:
             if k not in types:
                 types.append(k)
-    parts.append(f"<h1 style=\"margin-top:28px\">{esc(PACK_KO.get(pack, pack))}</h1><h2>모델 비교</h2><table><tr><th>모델</th><th>n</th><th class=num>통과율(규칙)</th><th class=num>판정자</th>" + "".join(f"<th class=num>{TYPE_KO.get(t, t)}</th>" for t in types) + "<th class=num>평균 스텝</th><th class=num>지연 p50</th><th class=num>지연 p95</th><th class=num>실행당 토큰</th><th class=num>비용</th><th>실행 시각</th></tr>")
+    parts.append(
+        f'<h1 style="margin-top:28px">{esc(PACK_KO.get(pack, pack))}</h1><h2>모델 비교</h2><table><tr><th>모델</th><th>n</th><th class=num>통과율(규칙)</th><th class=num>판정자</th>'
+        + "".join(f"<th class=num>{TYPE_KO.get(t, t)}</th>" for t in types)
+        + "<th class=num>평균 스텝</th><th class=num>지연 p50</th><th class=num>지연 p95</th><th class=num>실행당 토큰</th><th class=num>비용</th><th>실행 시각</th></tr>"
+    )
     for label, d in runs:
         s = d["summary"]
         j = s.get("judge") or {}
-        judge = pct(j["pass_rate"]) + f"<br><small>규칙과 일치 {pct(j['agree_with_rules'])}</small>" if j.get("pass_rate") is not None else "-"
-        cost = "-" if s.get("cost_usd") is None else (f"$0<br><small>호스팅이면 ${s['cost_usd_if_hosted']:.3f}</small>" if s.get("cost_usd") == 0 else f"${s['cost_usd']:.3f}")
-        pv = f" <span class=pill>프롬프트 {esc(s['prompt_version'])}</span>" if s.get("prompt_version") and s["prompt_version"] != "v1" else ""
-        parts.append(f"<tr><td><b>{esc(label)}</b>{pv}<br><span class=pill>{esc(s.get('model', '?'))}</span></td><td class=num>{s.get('n', 1)}</td><td class=num><b>{pct(s['pass_rate'])}</b></td><td class=num>{judge}</td>" +
-                     "".join(f"<td class=num>{pct(s['by_type'].get(t, 0))}</td>" for t in types) +
-                     f"<td class=num>{s['avg_steps']}</td><td class=num>{s['p50_latency_s']}s</td><td class=num>{s['p95_latency_s']}s</td><td class=num>{s['tokens_per_run']:,}</td><td class=num>{cost}</td><td>{esc(s.get('generated_at', ''))[:16]}</td></tr>")
+        judge = (
+            pct(j["pass_rate"]) + f"<br><small>규칙과 일치 {pct(j['agree_with_rules'])}</small>"
+            if j.get("pass_rate") is not None
+            else "-"
+        )
+        cost = (
+            "-"
+            if s.get("cost_usd") is None
+            else (
+                f"$0<br><small>호스팅이면 ${s['cost_usd_if_hosted']:.3f}</small>"
+                if s.get("cost_usd") == 0
+                else f"${s['cost_usd']:.3f}"
+            )
+        )
+        pv = (
+            f" <span class=pill>프롬프트 {esc(s['prompt_version'])}</span>"
+            if s.get("prompt_version") and s["prompt_version"] != "v1"
+            else ""
+        )
+        parts.append(
+            f"<tr><td><b>{esc(label)}</b>{pv}<br><span class=pill>{esc(s.get('model', '?'))}</span></td><td class=num>{s.get('n', 1)}</td><td class=num><b>{pct(s['pass_rate'])}</b></td><td class=num>{judge}</td>"
+            + "".join(f"<td class=num>{pct(s['by_type'].get(t, 0))}</td>" for t in types)
+            + f"<td class=num>{s['avg_steps']}</td><td class=num>{s['p50_latency_s']}s</td><td class=num>{s['p95_latency_s']}s</td><td class=num>{s['tokens_per_run']:,}</td><td class=num>{cost}</td><td>{esc(s.get('generated_at', ''))[:16]}</td></tr>"
+        )
     parts.append("</table>")
 
     ids = [t["id"] for t in runs[0][1]["tasks"]] if runs else []
-    parts.append("<h2>태스크별 통과율</h2><table><tr><th>태스크</th><th>유형</th><th>질문</th>" + "".join(f"<th class=num>{esc(l)}</th>" for l, _ in runs) + "</tr>")
+    parts.append(
+        "<h2>태스크별 통과율</h2><table><tr><th>태스크</th><th>유형</th><th>질문</th>"
+        + "".join(f"<th class=num>{esc(l)}</th>" for l, _ in runs)
+        + "</tr>"
+    )
     for i in ids:
         base = next(t for t in runs[0][1]["tasks"] if t["id"] == i)
         cells = []
@@ -72,24 +117,45 @@ for pack, runs in by_pack.items():
             if t is None:
                 cells.append("<td class=num>-</td>")
             else:
-                n = len(t["runs"]); k = sum(r["pass"] for r in t["runs"])
+                n = len(t["runs"])
+                k = sum(r["pass"] for r in t["runs"])
                 cls = "ok" if k == n else "bad"
                 failed = sorted({c for r in t["runs"] for c, v in r["checks"].items() if not v})
-                cells.append(f"<td class=num><span class={cls}>{k}/{n}</span>" + (f"<br><small>{esc(','.join(failed))}</small>" if failed else "") + "</td>")
-        parts.append(f"<tr><td>{esc(i)}</td><td>{TYPE_KO.get(base['type'], base['type'])}</td><td>{esc(base['question'])}</td>{''.join(cells)}</tr>")
+                cells.append(
+                    f"<td class=num><span class={cls}>{k}/{n}</span>"
+                    + (f"<br><small>{esc(','.join(failed))}</small>" if failed else "")
+                    + "</td>"
+                )
+        parts.append(
+            f"<tr><td>{esc(i)}</td><td>{TYPE_KO.get(base['type'], base['type'])}</td><td>{esc(base['question'])}</td>{''.join(cells)}</tr>"
+        )
     parts.append("</table>")
 
     parts.append("<h2>답변 원문 (펼쳐 보기)</h2>")
     for label, d in runs:
-        parts.append(f"<details><summary><b>{esc(label)}</b> · {d['summary'].get('model', '')} · 통과율 {pct(d['summary']['pass_rate'])}</summary>")
+        parts.append(
+            f"<details><summary><b>{esc(label)}</b> · {d['summary'].get('model', '')} · 통과율 {pct(d['summary']['pass_rate'])}</summary>"
+        )
         for t in d["tasks"]:
             for r in t["runs"]:
                 cls = "ok" if r["pass"] else "bad"
                 failed = [c for c, v in r["checks"].items() if not v]
                 tools = " → ".join(r.get("executed_tools", [])) or "(도구 호출 없음)"
                 jd = r.get("judge")
-                jtxt = (f"<span class=pill>판정자: {'통과' if jd['pass'] else '실패'} · {esc(jd.get('reason', ''))[:80]}</span>" if jd else "")
-                parts.append(f"<details><summary><span class={cls}>{'PASS' if r['pass'] else 'FAIL'}</span> {esc(t['id'])} run{r['run']} · {r['steps']}스텝 · {r['latency_s']}s" + (f" · 실패: {esc(','.join(failed))}" if failed else "") + (" · <span class=bad>판정자와 불일치</span>" if jd and jd['pass'] != r['pass'] else "") + f"</summary><div><span class=pill>{esc(tools)}</span>" + (f"<span class=pill>정답: {esc(r['truth'])}</span>" if r.get('truth') else "") + jtxt + f"</div><pre>{esc(r['answer'])}</pre></details>")
+                jtxt = (
+                    f"<span class=pill>판정자: {'통과' if jd['pass'] else '실패'} · {esc(jd.get('reason', ''))[:80]}</span>"
+                    if jd
+                    else ""
+                )
+                parts.append(
+                    f"<details><summary><span class={cls}>{'PASS' if r['pass'] else 'FAIL'}</span> {esc(t['id'])} run{r['run']} · {r['steps']}스텝 · {r['latency_s']}s"
+                    + (f" · 실패: {esc(','.join(failed))}" if failed else "")
+                    + (" · <span class=bad>판정자와 불일치</span>" if jd and jd["pass"] != r["pass"] else "")
+                    + f"</summary><div><span class=pill>{esc(tools)}</span>"
+                    + (f"<span class=pill>정답: {esc(r['truth'])}</span>" if r.get("truth") else "")
+                    + jtxt
+                    + f"</div><pre>{esc(r['answer'])}</pre></details>"
+                )
         parts.append("</details>")
 parts.append("</main></body></html>")
 out = res_dir / "report.html"

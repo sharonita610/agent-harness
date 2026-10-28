@@ -1,4 +1,5 @@
 """FastAPI 앱. uv run uvicorn harness.service.app:app --port 8787"""
+
 from __future__ import annotations
 
 import os
@@ -62,11 +63,19 @@ class AppState:
         return self.system_prompt + (self.pack.scope_note(scope) if self.pack else "")
 
 
-def create_app(db_path: str | Path | None = None, provider_factory: Callable[[str], Any] | None = None,
-               registry: ToolRegistry | None = None, system_prompt: str | None = None,
-               approval_timeout_s: float = 600, default_provider: str | None = None, job_concurrency: int = 1,
-               users: UserStore | None = None, model_probe: Callable[[], bool] | None = None,
-               kwargs_registry_factory: Callable[[Any], ToolRegistry] | None = None, pack: str | Pack | None = None) -> FastAPI:
+def create_app(
+    db_path: str | Path | None = None,
+    provider_factory: Callable[[str], Any] | None = None,
+    registry: ToolRegistry | None = None,
+    system_prompt: str | None = None,
+    approval_timeout_s: float = 600,
+    default_provider: str | None = None,
+    job_concurrency: int = 1,
+    users: UserStore | None = None,
+    model_probe: Callable[[], bool] | None = None,
+    kwargs_registry_factory: Callable[[Any], ToolRegistry] | None = None,
+    pack: str | Pack | None = None,
+) -> FastAPI:
     pk = pack if isinstance(pack, Pack) else load_pack(pack)
     registry_factory = None
     if registry is None or system_prompt is None:
@@ -75,9 +84,14 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         system_prompt = system_prompt or pk.system_prompt
         registry_factory = lambda scope: ToolRegistry(pk.build_tools(scope=scope, **shared))
     store = Store(db_path or os.getenv("HARNESS_SERVICE_DB", str(DEFAULT_DB)))
-    state = AppState(store=store, broker=ApprovalBroker(store, approval_timeout_s), registry=registry, system_prompt=system_prompt,
-                     provider_factory=provider_factory or make_provider,
-                     default_provider=default_provider or os.getenv("HARNESS_PROVIDER", "local"))
+    state = AppState(
+        store=store,
+        broker=ApprovalBroker(store, approval_timeout_s),
+        registry=registry,
+        system_prompt=system_prompt,
+        provider_factory=provider_factory or make_provider,
+        default_provider=default_provider or os.getenv("HARNESS_PROVIDER", "local"),
+    )
     state.pack = pk
     state.jobs = JobQueue(state, concurrency=job_concurrency)
     state.registry_factory = registry_factory or kwargs_registry_factory
@@ -95,6 +109,7 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
             return True
         import json as _json
         import urllib.request
+
         try:
             with urllib.request.urlopen(base.rstrip("/").removesuffix("/v1") + "/health", timeout=1) as r:
                 return _json.load(r).get("status") == "ok"
@@ -122,8 +137,11 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
     app.state.harness = state
     policy = Policy()
     from fastapi.middleware.cors import CORSMiddleware
+
     origins = [o.strip() for o in os.getenv("HARNESS_CORS_ORIGINS", "*").split(",") if o.strip()]
-    app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=False, allow_methods=["*"], allow_headers=["*"])  # 한 화면에서 여러 비서 서비스를 부른다
+    app.add_middleware(
+        CORSMiddleware, allow_origins=origins, allow_credentials=False, allow_methods=["*"], allow_headers=["*"]
+    )  # 한 화면에서 여러 비서 서비스를 부른다
 
     workspace_cache: dict[str, Any] = {"at": 0.0, "agents": []}
 
@@ -134,14 +152,25 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
             return workspace_cache["agents"]
         import json as _json
         import urllib.request
+
         out = []
         for u in urls:
             try:
                 with urllib.request.urlopen(u + "/.well-known/agent-card.json", timeout=2) as r:
                     card = _json.load(r)
-                out.append({"url": u, "name": card.get("name"), "pack": card.get("metadata", {}).get("pack"), "description": card.get("description", ""), "ok": True})
+                out.append(
+                    {
+                        "url": u,
+                        "name": card.get("name"),
+                        "pack": card.get("metadata", {}).get("pack"),
+                        "description": card.get("description", ""),
+                        "ok": True,
+                    }
+                )
             except Exception as e:
-                out.append({"url": u, "name": u, "pack": None, "description": "", "ok": False, "error": type(e).__name__})
+                out.append(
+                    {"url": u, "name": u, "pack": None, "description": "", "ok": False, "error": type(e).__name__}
+                )
         workspace_cache.update({"at": time.monotonic(), "agents": out})
         return out
 
@@ -154,22 +183,47 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
 
     @app.get("/health")
     def health():
-        return {"status": "ok", "tools": len(registry), "provider": state.default_provider, "pending_approvals": len(state.broker.pending()),
-                "auth_required": state.users.required, "model": model_status(),
-                "pack": {"name": pk.name, "title": pk.title, "description": pk.description, "welcome": pk.welcome, "examples": pk.examples,
-                         "empty_hint": pk.empty_hint, "tool_labels": pk.tool_labels, "dashboard": pk.dashboard is not None}, "a2a": {"card": "/.well-known/agent-card.json", "rpc": "/a2a"}}
+        return {
+            "status": "ok",
+            "tools": len(registry),
+            "provider": state.default_provider,
+            "pending_approvals": len(state.broker.pending()),
+            "auth_required": state.users.required,
+            "model": model_status(),
+            "pack": {
+                "name": pk.name,
+                "title": pk.title,
+                "description": pk.description,
+                "welcome": pk.welcome,
+                "examples": pk.examples,
+                "empty_hint": pk.empty_hint,
+                "tool_labels": pk.tool_labels,
+                "dashboard": pk.dashboard is not None,
+            },
+            "a2a": {"card": "/.well-known/agent-card.json", "rpc": "/a2a"},
+        }
 
     @app.get("/workspace")
     def workspace():
         """한 화면에서 전환할 수 있는 비서 목록. 첫 항목은 이 서비스 자신."""
-        return {"self": {"pack": pk.name, "name": pk.title, "description": pk.description}, "agents": workspace_agents()}
+        return {
+            "self": {"pack": pk.name, "name": pk.title, "description": pk.description},
+            "agents": workspace_agents(),
+        }
 
     @app.get("/me")
     def me(user: User = Depends(current_user)):
         sc = state.scope_of(user)
-        return {"name": user.name, "role": user.role, "anonymous": user.anonymous, "auth_required": state.users.required, "pack": pk.name,
-                "scope": sc.to_dict() if sc else None, "scope_text": sc.describe() if sc else None,
-                "can": {"chat": user.has("operator"), "approve": user.has("approver"), "admin": user.has("admin")}}
+        return {
+            "name": user.name,
+            "role": user.role,
+            "anonymous": user.anonymous,
+            "auth_required": state.users.required,
+            "pack": pk.name,
+            "scope": sc.to_dict() if sc else None,
+            "scope_text": sc.describe() if sc else None,
+            "can": {"chat": user.has("operator"), "approve": user.has("approver"), "admin": user.has("admin")},
+        }
 
     @app.get("/dashboard")
     def dashboard(user: User = Depends(current_user)):
@@ -177,6 +231,7 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         if pk.dashboard is None:
             return []
         from ..packs import check_panels
+
         return check_panels(pk.dashboard(scope=state.scope_of(user)))
 
     @app.get("/audit")
@@ -202,8 +257,16 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
 
     @app.get("/tools")
     def tools(user: User = Depends(current_user)):
-        return [{"name": t.name, "tier": str(t.tier), "policy": describe(policy.decide(t)), "description": t.description,
-                 "label": pk.tool_labels.get(t.name, t.name)} for t in state.registry_for(user)]
+        return [
+            {
+                "name": t.name,
+                "tier": str(t.tier),
+                "policy": describe(policy.decide(t)),
+                "description": t.description,
+                "label": pk.tool_labels.get(t.name, t.name),
+            }
+            for t in state.registry_for(user)
+        ]
 
     @app.post("/sessions")
     def create_session(body: SessionCreate, user: User = Depends(require("operator"))):
@@ -219,9 +282,19 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
     @app.post("/chat")
     async def chat(body: ChatRequest, request: Request, user: User = Depends(require("operator"))):
         sid = _session(body.session_id, body.provider)
-        store.add_audit(user.name, user.role, "chat", sid, {"message": body.message[:200], "scope": user.scope}, request.client.host if request.client else None)
-        return StreamingResponse(stream_chat(state, sid, body.message, body.provider, user=user), media_type="text/event-stream",
-                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+        store.add_audit(
+            user.name,
+            user.role,
+            "chat",
+            sid,
+            {"message": body.message[:200], "scope": user.scope},
+            request.client.host if request.client else None,
+        )
+        return StreamingResponse(
+            stream_chat(state, sid, body.message, body.provider, user=user),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     @app.get("/approvals")
     def list_approvals(status: str | None = Query(default="pending"), user: User = Depends(current_user)):
@@ -234,15 +307,28 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
             raise HTTPException(404, "승인 요청 없음")
         if not state.broker.decide(aid, body.decision == "approve", user.name):
             raise HTTPException(409, f"이미 처리됨: {a['status']}")
-        store.add_audit(user.name, user.role, f"approval.{body.decision}", aid, {"tool": a["tool"], "args": a["args"], "run_id": a["run_id"]},
-                        request.client.host if request.client else None)
+        store.add_audit(
+            user.name,
+            user.role,
+            f"approval.{body.decision}",
+            aid,
+            {"tool": a["tool"], "args": a["args"], "run_id": a["run_id"]},
+            request.client.host if request.client else None,
+        )
         return store.get_approval(aid)
 
     @app.post("/jobs", status_code=202)
     def create_job(body: JobCreate, request: Request, user: User = Depends(require("operator"))):
         sid = _session(body.session_id, body.provider)
         run_id = state.jobs.submit(sid, body.question, body.provider, user=user)
-        store.add_audit(user.name, user.role, "job.submit", run_id, {"question": body.question[:200], "scope": user.scope}, request.client.host if request.client else None)
+        store.add_audit(
+            user.name,
+            user.role,
+            "job.submit",
+            run_id,
+            {"question": body.question[:200], "scope": user.scope},
+            request.client.host if request.client else None,
+        )
         return {"run_id": run_id, "session_id": sid, "status": "queued"}
 
     @app.get("/jobs")
@@ -280,10 +366,13 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
     def run_trace(run_id: str, user: User = Depends(current_user)):
         """저장된 이벤트로 스팬(run/llm/tool/approval)을 재구성한다."""
         from ..observability.tracer import spans_from_events
+
         r = store.get_run(run_id)
         if not r:
             raise HTTPException(404, "실행 없음")
-        c = spans_from_events(run_id, r["question"] or "", store.events(run_id), created_at=r.get("started_at") or r.get("created_at"))
+        c = spans_from_events(
+            run_id, r["question"] or "", store.events(run_id), created_at=r.get("started_at") or r.get("created_at")
+        )
         return {"summary": c.summary(), "spans": c.to_dicts()}
 
     RESULTS_DIR = Path(__file__).resolve().parents[1] / "evals" / "results"
@@ -308,7 +397,13 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         out = RESULTS_DIR / f"human-{name}.json"
         out.parent.mkdir(parents=True, exist_ok=True)
         import json as _json
-        out.write_text(_json.dumps({"results": name, "graded_at": body.get("graded_at"), "grades": grades}, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        out.write_text(
+            _json.dumps(
+                {"results": name, "graded_at": body.get("graded_at"), "grades": grades}, ensure_ascii=False, indent=2
+            ),
+            encoding="utf-8",
+        )
         return {"path": str(out.relative_to(RESULTS_DIR.parents[2])), "graded": graded}
 
     @app.get("/runs/{run_id}/events")
@@ -318,7 +413,10 @@ def create_app(db_path: str | Path | None = None, provider_factory: Callable[[st
         return store.events(run_id, after_seq)
 
     from .a2a import mount_a2a
-    mount_a2a(app, state, pk, current_user, require)  # A2A 에이전트 카드 + JSON-RPC(message/send·stream, tasks/get·cancel)
+
+    mount_a2a(
+        app, state, pk, current_user, require
+    )  # A2A 에이전트 카드 + JSON-RPC(message/send·stream, tasks/get·cancel)
 
     for key, folder in pk.files.items():  # 팩이 만든 파일(그래프 등). 결과 카드가 /files/<key>/... 로 연다
         Path(folder).mkdir(parents=True, exist_ok=True)

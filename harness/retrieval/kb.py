@@ -6,10 +6,10 @@ DocIndex(메모리, 문서 몇 개)와 같은 검색 인터페이스(search / li
 - 벡터 검색은 numpy 행렬 곱(수천 청크 × 768~1536 차원, 수 ms)
 PDF 청킹은 책갈피(TOC)의 절 번호를 본문 블록에서 찾아 경계로 쓴다. 머리글·쪽번호는 위치로 버린다.
 """
+
 from __future__ import annotations
 
 import hashlib
-import json
 import re
 import sqlite3
 import struct
@@ -22,7 +22,7 @@ from .embeddings import Embedder
 from .search import RRF_K, DocIndex, chunk_markdown
 
 MAX_CHUNK_CHARS = 1800
-HEADER_Y, FOOTER_Y = 42.0, 790.0   # 이 매뉴얼(A4, LaTeX)의 머리글·쪽번호 위치
+HEADER_Y, FOOTER_Y = 42.0, 790.0  # 이 매뉴얼(A4, LaTeX)의 머리글·쪽번호 위치
 _SECTION_NO = re.compile(r"^(\d+(?:\.\d+)*)\s+(.+)$")
 _CHAPTER = re.compile(r"^(\d+)\s+(.+)$")
 
@@ -30,12 +30,12 @@ _CHAPTER = re.compile(r"^(\d+)\s+(.+)$")
 @dataclass
 class KBChunk:
     doc: str
-    section_id: str      # "15.4.3" 또는 마크다운이면 ""
-    section: str         # 절 제목
-    title_path: str      # "2 Circuit Description > 2.1 … > 2.1.1 …"
+    section_id: str  # "15.4.3" 또는 마크다운이면 ""
+    section: str  # 절 제목
+    title_path: str  # "2 Circuit Description > 2.1 … > 2.1.1 …"
     page_start: int
     page_end: int
-    part: int            # 긴 절을 나눈 조각 번호(0부터)
+    part: int  # 긴 절을 나눈 조각 번호(0부터)
     text: str
 
     @property
@@ -46,7 +46,9 @@ class KBChunk:
 
     @property
     def hash(self) -> str:
-        return hashlib.sha1(f"{self.doc}|{self.section_id}|{self.section}|{self.part}|{self.text}".encode("utf-8")).hexdigest()
+        return hashlib.sha1(
+            f"{self.doc}|{self.section_id}|{self.section}|{self.part}|{self.text}".encode("utf-8")
+        ).hexdigest()
 
 
 # ----------------------------------------------------------------------------- 수집
@@ -60,18 +62,22 @@ def _split_long(text: str, max_chars: int) -> list[str]:
         if len(para) > max_chars:
             for line in para.split("\n"):
                 if len(buf) + len(line) + 1 > max_chars and buf:
-                    parts.append(buf.strip()); buf = ""
+                    parts.append(buf.strip())
+                    buf = ""
                 buf += line + "\n"
             continue
         if len(buf) + len(para) + 2 > max_chars and buf:
-            parts.append(buf.strip()); buf = ""
+            parts.append(buf.strip())
+            buf = ""
         buf += para + "\n\n"
     if buf.strip():
         parts.append(buf.strip())
     return parts
 
 
-def ingest_pdf(pdf_path: Path, doc_name: str = "ngspice manual", max_chars: int = MAX_CHUNK_CHARS, min_level: int = 2) -> list[KBChunk]:
+def ingest_pdf(
+    pdf_path: Path, doc_name: str = "ngspice manual", max_chars: int = MAX_CHUNK_CHARS, min_level: int = 2
+) -> list[KBChunk]:
     """책갈피(TOC) 절 번호로 본문을 절 단위로 자른다. 레벨 1(부, Part)은 건너뛴다."""
     import pymupdf
 
@@ -110,24 +116,36 @@ def ingest_pdf(pdf_path: Path, doc_name: str = "ngspice manual", max_chars: int 
             first_line = text.split("\n", 1)[0].strip()
             started = None
             for e in pending:
-                if first_line == e["no"] or first_line.lower() == f"{e['no']} {e['title']}".lower()[:len(first_line)] and first_line.startswith(e["no"] + " "):
+                if (
+                    first_line == e["no"]
+                    or first_line.lower() == f"{e['no']} {e['title']}".lower()[: len(first_line)]
+                    and first_line.startswith(e["no"] + " ")
+                ):
                     started = e
                     break
             if started is None and pending and re.fullmatch(r"Chapter \d+", first_line):
-                started = next((e for e in pending if e["level"] == min_level and e["no"] == first_line.split()[1]), None)
+                started = next(
+                    (e for e in pending if e["level"] == min_level and e["no"] == first_line.split()[1]), None
+                )
                 if started:
                     text = ""  # "Chapter 2" / 제목 블록은 본문이 아니다
             if started is not None:
                 pending.remove(started)
                 current = {**started, "page_end": pno, "blocks": []}
                 sections.append(current)
-                rest = text.split("\n", 1)[1].strip() if "\n" in text and first_line in (started["no"], f"{started['no']} {started['title']}") else text
+                rest = (
+                    text.split("\n", 1)[1].strip()
+                    if "\n" in text and first_line in (started["no"], f"{started['no']} {started['title']}")
+                    else text
+                )
                 if rest and rest.lower() != started["title"].lower():
                     current["blocks"].append(rest)
                 continue
             if current is None:
                 continue
-            if not text or (current["level"] == min_level and current["page"] == pno and text.lower() == current["title"].lower()):
+            if not text or (
+                current["level"] == min_level and current["page"] == pno and text.lower() == current["title"].lower()
+            ):
                 continue
             current["blocks"].append(text)
             current["page_end"] = pno
@@ -193,27 +211,38 @@ class KnowledgeBase:
                 self.conn.execute("DELETE FROM chunks WHERE doc=?", (d,))
             self.conn.executemany(
                 "INSERT INTO chunks(doc, section_id, section, title_path, page_start, page_end, part, text, hash) VALUES (?,?,?,?,?,?,?,?,?)",
-                [(c.doc, c.section_id, c.section, c.title_path, c.page_start, c.page_end, c.part, c.text, c.hash) for c in chunks])
+                [
+                    (c.doc, c.section_id, c.section, c.title_path, c.page_start, c.page_end, c.part, c.text, c.hash)
+                    for c in chunks
+                ],
+            )
             for d in docs:
                 n = self.conn.execute("SELECT COUNT(*) FROM chunks WHERE doc=?", (d,)).fetchone()[0]
-                self.conn.execute("INSERT OR REPLACE INTO docs(name, kind, path, chunks, built_at) VALUES (?,?,?,?,?)",
-                                  (d, kind, path, n, datetime.now().isoformat(timespec="seconds")))
+                self.conn.execute(
+                    "INSERT OR REPLACE INTO docs(name, kind, path, chunks, built_at) VALUES (?,?,?,?,?)",
+                    (d, kind, path, n, datetime.now().isoformat(timespec="seconds")),
+                )
             self.conn.execute("INSERT INTO chunks_fts(chunks_fts) VALUES('rebuild')")
         self._matrix.clear()
         return {d: self.conn.execute("SELECT COUNT(*) FROM chunks WHERE doc=?", (d,)).fetchone()[0] for d in docs}
 
-    def embed(self, model: str, embedder: Embedder, batch: int = 32, on_progress: Callable[[int, int], None] | None = None) -> int:
+    def embed(
+        self, model: str, embedder: Embedder, batch: int = 32, on_progress: Callable[[int, int], None] | None = None
+    ) -> int:
         """model 로 아직 임베딩이 없는 청크만 계산해 저장한다(증분). 계산한 개수를 돌려준다."""
         rows = self.conn.execute(
             "SELECT DISTINCT c.hash, c.title_path, c.text FROM chunks c LEFT JOIN embeddings e ON e.hash=c.hash AND e.model=? WHERE e.hash IS NULL",
-            (model,)).fetchall()
+            (model,),
+        ).fetchall()
         done = 0
         for i in range(0, len(rows), batch):
-            part = rows[i:i + batch]
+            part = rows[i : i + batch]
             vecs = embedder([f"{r['title_path']}\n{r['text']}" for r in part])
             with self.conn:
-                self.conn.executemany("INSERT OR REPLACE INTO embeddings(hash, model, dim, vec) VALUES (?,?,?,?)",
-                                      [(r["hash"], model, len(v), _pack(v)) for r, v in zip(part, vecs)])
+                self.conn.executemany(
+                    "INSERT OR REPLACE INTO embeddings(hash, model, dim, vec) VALUES (?,?,?,?)",
+                    [(r["hash"], model, len(v), _pack(v)) for r, v in zip(part, vecs)],
+                )
             done += len(part)
             if on_progress:
                 on_progress(done, len(rows))
@@ -226,13 +255,23 @@ class KnowledgeBase:
         total = self.conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
         if not total:
             return 0.0
-        have = self.conn.execute("SELECT COUNT(*) FROM chunks c JOIN embeddings e ON e.hash=c.hash AND e.model=?", (model,)).fetchone()[0]
+        have = self.conn.execute(
+            "SELECT COUNT(*) FROM chunks c JOIN embeddings e ON e.hash=c.hash AND e.model=?", (model,)
+        ).fetchone()[0]
         return have / total
 
     def stats(self) -> dict[str, Any]:
         docs = [dict(r) for r in self.conn.execute("SELECT name, kind, chunks, built_at FROM docs ORDER BY name")]
-        models = [{"model": r[0], "chunks": r[1], "dim": r[2]} for r in self.conn.execute("SELECT model, COUNT(*), MAX(dim) FROM embeddings GROUP BY model")]
-        return {"path": str(self.path), "chunks": self.conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0], "docs": docs, "embeddings": models}
+        models = [
+            {"model": r[0], "chunks": r[1], "dim": r[2]}
+            for r in self.conn.execute("SELECT model, COUNT(*), MAX(dim) FROM embeddings GROUP BY model")
+        ]
+        return {
+            "path": str(self.path),
+            "chunks": self.conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0],
+            "docs": docs,
+            "embeddings": models,
+        }
 
     # ---- 검색
     @property
@@ -245,20 +284,31 @@ class KnowledgeBase:
         if fts != '""':
             rows = self.conn.execute(
                 "SELECT rowid, bm25(chunks_fts, 1.0, 0.5, 0.5) AS score, snippet(chunks_fts, 0, '[', ']', '…', 40) AS snip "
-                "FROM chunks_fts WHERE chunks_fts MATCH ? ORDER BY score LIMIT ?", (fts, limit)).fetchall()
+                "FROM chunks_fts WHERE chunks_fts MATCH ? ORDER BY score LIMIT ?",
+                (fts, limit),
+            ).fetchall()
         if not rows:
             like = f"%{query.strip()}%"
-            rows = self.conn.execute("SELECT id, 0.0, substr(text, 1, 160) FROM chunks WHERE text LIKE ? OR section LIKE ? LIMIT ?",
-                                     (like, like, limit)).fetchall()
+            rows = self.conn.execute(
+                "SELECT id, 0.0, substr(text, 1, 160) FROM chunks WHERE text LIKE ? OR section LIKE ? LIMIT ?",
+                (like, like, limit),
+            ).fetchall()
         return [(int(r[0]), float(r[1]), r[2]) for r in rows]
 
     def _load_matrix(self, model: str):
         import numpy as np
 
         if model not in self._matrix:
-            rows = self.conn.execute("SELECT c.id, e.vec, e.dim FROM chunks c JOIN embeddings e ON e.hash=c.hash AND e.model=? ORDER BY c.id", (model,)).fetchall()
+            rows = self.conn.execute(
+                "SELECT c.id, e.vec, e.dim FROM chunks c JOIN embeddings e ON e.hash=c.hash AND e.model=? ORDER BY c.id",
+                (model,),
+            ).fetchall()
             ids = [int(r[0]) for r in rows]
-            mat = np.array([struct.unpack(f"{r[2]}f", r[1]) for r in rows], dtype=np.float32) if rows else np.zeros((0, 1), dtype=np.float32)
+            mat = (
+                np.array([struct.unpack(f"{r[2]}f", r[1]) for r in rows], dtype=np.float32)
+                if rows
+                else np.zeros((0, 1), dtype=np.float32)
+            )
             norms = np.linalg.norm(mat, axis=1, keepdims=True)
             norms[norms == 0] = 1
             self._matrix[model] = (ids, mat / norms)
@@ -302,9 +352,30 @@ class KnowledgeBase:
             r = self.conn.execute("SELECT * FROM chunks WHERE id=?", (i,)).fetchone()
             if r is None:
                 continue
-            c = KBChunk(r["doc"], r["section_id"], r["section"], r["title_path"], r["page_start"], r["page_end"], r["part"], r["text"])
-            out.append({"doc": c.doc, "section": c.section, "section_id": c.section_id, "page": c.page_start or None, "part": c.part,
-                        "snippet": snippets.get(i) or c.text[:160], "text": c.text, "score": round(float(score), 4), "source": c.source, "mode": how})
+            c = KBChunk(
+                r["doc"],
+                r["section_id"],
+                r["section"],
+                r["title_path"],
+                r["page_start"],
+                r["page_end"],
+                r["part"],
+                r["text"],
+            )
+            out.append(
+                {
+                    "doc": c.doc,
+                    "section": c.section,
+                    "section_id": c.section_id,
+                    "page": c.page_start or None,
+                    "part": c.part,
+                    "snippet": snippets.get(i) or c.text[:160],
+                    "text": c.text,
+                    "score": round(float(score), 4),
+                    "source": c.source,
+                    "mode": how,
+                }
+            )
         return out
 
     def get_section(self, ref: str, max_chars: int = 4000) -> dict | None:
@@ -313,16 +384,37 @@ class KnowledgeBase:
         rows = self.conn.execute("SELECT * FROM chunks WHERE section_id=? ORDER BY part", (ref,)).fetchall()
         if not rows:
             like = f"%{ref.split('>')[-1].strip()}%"
-            rows = self.conn.execute("SELECT * FROM chunks WHERE section LIKE ? OR title_path LIKE ? ORDER BY doc, section_id, part LIMIT 6", (like, like)).fetchall()
+            rows = self.conn.execute(
+                "SELECT * FROM chunks WHERE section LIKE ? OR title_path LIKE ? ORDER BY doc, section_id, part LIMIT 6",
+                (like, like),
+            ).fetchall()
             if rows:
                 key = (rows[0]["doc"], rows[0]["section_id"], rows[0]["section"])
                 rows = [r for r in rows if (r["doc"], r["section_id"], r["section"]) == key]
         if not rows:
             return None
         text = "\n\n".join(r["text"] for r in rows)
-        c = KBChunk(rows[0]["doc"], rows[0]["section_id"], rows[0]["section"], rows[0]["title_path"], rows[0]["page_start"], rows[-1]["page_end"], 0, text)
-        return {"source": c.source, "title_path": c.title_path, "page_start": c.page_start, "page_end": c.page_end,
-                "text": text[:max_chars] + ("\n…(잘림)" if len(text) > max_chars else ""), "chars": len(text)}
+        c = KBChunk(
+            rows[0]["doc"],
+            rows[0]["section_id"],
+            rows[0]["section"],
+            rows[0]["title_path"],
+            rows[0]["page_start"],
+            rows[-1]["page_end"],
+            0,
+            text,
+        )
+        return {
+            "source": c.source,
+            "title_path": c.title_path,
+            "page_start": c.page_start,
+            "page_end": c.page_end,
+            "text": text[:max_chars] + ("\n…(잘림)" if len(text) > max_chars else ""),
+            "chars": len(text),
+        }
 
     def list_docs(self) -> list[dict]:
-        return [{"doc": r["name"], "kind": r["kind"], "chunks": r["chunks"]} for r in self.conn.execute("SELECT * FROM docs ORDER BY name")]
+        return [
+            {"doc": r["name"], "kind": r["kind"], "chunks": r["chunks"]}
+            for r in self.conn.execute("SELECT * FROM docs ORDER BY name")
+        ]

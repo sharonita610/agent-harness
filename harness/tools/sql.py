@@ -2,6 +2,7 @@
 
 두 겹 방어: ① guard_select 가 SELECT/WITH 단일 문장만 통과시키고 LIMIT 을 강제, ② 연결 자체가 읽기 전용 + authorizer 로 변경을 거부.
 """
+
 from __future__ import annotations
 
 import re
@@ -9,12 +10,26 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Callable
 
-_FORBIDDEN = re.compile(r"\b(insert|update|delete|drop|alter|create|attach|detach|pragma|replace|vacuum|reindex|begin|commit|rollback)\b", re.I)
+_FORBIDDEN = re.compile(
+    r"\b(insert|update|delete|drop|alter|create|attach|detach|pragma|replace|vacuum|reindex|begin|commit|rollback)\b",
+    re.I,
+)
 _HAS_LIMIT = re.compile(r"\blimit\b\s+\d+", re.I)
-_ALLOWED_AUTH = {sqlite3.SQLITE_SELECT, sqlite3.SQLITE_READ, sqlite3.SQLITE_FUNCTION, getattr(sqlite3, "SQLITE_RECURSIVE", 33)}
+_ALLOWED_AUTH = {
+    sqlite3.SQLITE_SELECT,
+    sqlite3.SQLITE_READ,
+    sqlite3.SQLITE_FUNCTION,
+    getattr(sqlite3, "SQLITE_RECURSIVE", 33),
+}
 
 
-def guard_select(sql: str, default_limit: int = 200, max_limit: int = 500, scoped: bool = False, write_hint: str = "변경은 전용 도구를 쓰세요.") -> str:
+def guard_select(
+    sql: str,
+    default_limit: int = 200,
+    max_limit: int = 500,
+    scoped: bool = False,
+    write_hint: str = "변경은 전용 도구를 쓰세요.",
+) -> str:
     """SELECT/WITH 단일 문장만 허용. 금지 키워드 차단. LIMIT 강제. scoped 면 main./temp. 스키마 명시도 차단."""
     s = sql.strip().rstrip(";").strip()
     if scoped and re.search(r"\b(main|temp)\s*\.", s, re.I):
@@ -49,7 +64,9 @@ def connect_readonly(db_path: Path, setup: Callable[[sqlite3.Connection], None] 
     return conn
 
 
-def rows(cur: sqlite3.Cursor, limit: int | None = None, mask: dict[str, Callable[[Any], Any]] | None = None) -> dict[str, Any]:
+def rows(
+    cur: sqlite3.Cursor, limit: int | None = None, mask: dict[str, Callable[[Any], Any]] | None = None
+) -> dict[str, Any]:
     cols = [d[0] for d in cur.description] if cur.description else []
     fetched = cur.fetchall() if limit is None else cur.fetchmany(limit + 1)
     truncated = limit is not None and len(fetched) > limit

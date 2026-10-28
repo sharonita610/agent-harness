@@ -12,6 +12,10 @@ jobs:
           python-version: "3.12"
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ngspice   # spice 팩 테스트용
       - run: uv sync --all-groups
+      - name: format and lint (ruff)
+        run: |
+          uv run ruff format --check .
+          uv run ruff check .
       - name: seed determinism
         run: |
           uv run harness seed | grep -q "sha256_16: 92d0c19eb4f1cd2a"
@@ -37,6 +41,7 @@ jobs:
           cache: npm
           cache-dependency-path: ui/package-lock.json
       - run: npm ci
+      - run: npm run format:check
       - run: npm test
       - run: npm run build
 

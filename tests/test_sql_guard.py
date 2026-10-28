@@ -5,15 +5,18 @@ import pytest
 from harness.packs.enterprise.tools import connect_ro, guard_select
 
 
-@pytest.mark.parametrize("sql", [
-    "UPDATE orders SET status='취소'",
-    "DELETE FROM orders",
-    "SELECT 1; DROP TABLE orders",
-    "PRAGMA table_info(orders)",
-    "INSERT INTO orders VALUES (1)",
-    "ATTACH DATABASE 'x' AS y",
-    "select * from orders; update orders set status='x'",
-])
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "UPDATE orders SET status='취소'",
+        "DELETE FROM orders",
+        "SELECT 1; DROP TABLE orders",
+        "PRAGMA table_info(orders)",
+        "INSERT INTO orders VALUES (1)",
+        "ATTACH DATABASE 'x' AS y",
+        "select * from orders; update orders set status='x'",
+    ],
+)
 def test_guard_blocks_writes(sql):
     with pytest.raises(ValueError):
         guard_select(sql)

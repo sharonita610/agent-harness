@@ -1,4 +1,5 @@
 """권한 정책과 승인 핸들러. 등급(read/write/destructive) → 허용 / 승인 필요 / 거부."""
+
 from __future__ import annotations
 
 from enum import StrEnum
@@ -25,7 +26,9 @@ ApprovalHandler = Callable[[Tool, BaseModel], bool]
 
 
 class Policy:
-    def __init__(self, tier_policy: dict[Tier, Decision] | None = None, tool_overrides: dict[str, Decision] | None = None):
+    def __init__(
+        self, tier_policy: dict[Tier, Decision] | None = None, tool_overrides: dict[str, Decision] | None = None
+    ):
         self.tier_policy = {**DEFAULT_TIER_POLICY, **(tier_policy or {})}
         self.tool_overrides = tool_overrides or {}
 

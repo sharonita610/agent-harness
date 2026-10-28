@@ -10,10 +10,15 @@ os.environ.pop("HARNESS_AUTH", None)
 # 회로 팩 테스트는 요약 문서 색인만 쓴다. 매뉴얼 지식 베이스는 test_kb 가 작은 PDF 로 따로 검증한다.
 os.environ.setdefault("HARNESS_SPICE_KB", "/nonexistent/harness-test-kb.sqlite")
 import tempfile as _tempfile
-os.environ.setdefault("HARNESS_SPICE_GRAPH", os.path.join(_tempfile.mkdtemp(prefix="harness-graph-"), "experiments.sqlite"))  # 실험 그래프도 이 머신 기록과 분리
+
+os.environ.setdefault(
+    "HARNESS_SPICE_GRAPH", os.path.join(_tempfile.mkdtemp(prefix="harness-graph-"), "experiments.sqlite")
+)  # 실험 그래프도 이 머신 기록과 분리
 
 _factory_tmp = _tempfile.mkdtemp(prefix="harness-factory-")
-os.environ.setdefault("HARNESS_FACTORY_DB", os.path.join(_factory_tmp, "factory.db"))   # 공정 팩 DB 도 이 머신 데이터와 분리
+os.environ.setdefault(
+    "HARNESS_FACTORY_DB", os.path.join(_factory_tmp, "factory.db")
+)  # 공정 팩 DB 도 이 머신 데이터와 분리
 os.environ.setdefault("HARNESS_FACTORY_RUNS", os.path.join(_factory_tmp, "runs"))
 
 from harness.packs.enterprise.seed import build
@@ -28,6 +33,8 @@ def seeded_db(tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def factory_db():
-    from harness.packs.factory.seed import DEFAULT_DB, build as build_factory
+    from harness.packs.factory.seed import DEFAULT_DB
+    from harness.packs.factory.seed import build as build_factory
+
     info = build_factory(DEFAULT_DB)
     return DEFAULT_DB, info

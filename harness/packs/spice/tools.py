@@ -3,6 +3,7 @@
 enterprise 팩과 같은 인터페이스(build_tools / SYSTEM_PROMPTS / scope_note / make_index)를 구현해 플랫폼이 팩을 구분하지 않게 한다.
 전문 소프트웨어(ngspice) 위의 에이전트: 모델은 회로를 '글'로 쓰고, 실행·측정·그래프는 도구가 한다.
 """
+
 from __future__ import annotations
 
 import os
@@ -18,14 +19,26 @@ from ...tools.registry import Tier, Tool
 from .graph import GRAPH_PATH, ExperimentGraph
 from .netlist import NetlistError, format_si, parse_netlist
 from .plot import Marker, figure_from_columns, render_svg
-from .simulator import (MAX_SWEEP_POINTS, RUNS_DIR, SimulationError, estimate_points, load_data, ngspice_available, ngspice_version,
-                        run_meta, simulate, sweep, sweep_values)
+from .simulator import (
+    MAX_SWEEP_POINTS,
+    RUNS_DIR,
+    estimate_points,
+    load_data,
+    ngspice_available,
+    ngspice_version,
+    run_meta,
+    simulate,
+    sweep,
+    sweep_values,
+)
 
 PACK_DIR = Path(__file__).parent
 CIRCUITS_DIR = PACK_DIR / "circuits"
 DOCS_DIR = PACK_DIR / "docs"
 LIBRARY_DIR = Path(os.getenv("HARNESS_SPICE_LIBRARY", str(RUNS_DIR.parent / "spice_circuits")))
-KB_PATH = Path(os.getenv("HARNESS_SPICE_KB", str(RUNS_DIR.parent / "kb" / "ngspice-manual.sqlite")))   # harness kb build 로 만든 매뉴얼 지식 베이스
+KB_PATH = Path(
+    os.getenv("HARNESS_SPICE_KB", str(RUNS_DIR.parent / "kb" / "ngspice-manual.sqlite"))
+)  # harness kb build 로 만든 매뉴얼 지식 베이스
 _NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
 _RUN_ID = re.compile(r"^(sim|swp)_[0-9a-f]{8}$")
 
@@ -40,15 +53,24 @@ class CircuitNameArgs(BaseModel):
 
 
 class NetlistArgs(BaseModel):
-    netlist: str = Field(description="SPICE 넷리스트 전문. 첫 줄은 '* 제목', 접지 노드는 0, 해석 지시문(.ac/.dc/.tran/.op) 포함. .end 는 생략 가능")
+    netlist: str = Field(
+        description="SPICE 넷리스트 전문. 첫 줄은 '* 제목', 접지 노드는 0, 해석 지시문(.ac/.dc/.tran/.op) 포함. .end 는 생략 가능"
+    )
 
 
 class SimulateArgs(BaseModel):
     netlist: str = Field(description="SPICE 넷리스트 전문(해석 지시문 포함). 샘플은 get_circuit 으로 가져온다")
-    measurements: list[str] = Field(default_factory=list, description=(
-        "측정식 목록(각 항목은 '이름 형식 …'). 예: 'fc WHEN vdb(out)=-3' · 'g1k FIND vdb(out) AT=1000' · 'vmax MAX v(out)' · "
-        "'tau WHEN v(out)=0.632' · 'trise TRIG v(out) VAL=0.1 RISE=1 TARG v(out) VAL=0.9 RISE=1' · 'f0 MAX_AT vdb(out)'. .op 는 비워 둔다"))
-    save_vectors: list[str] = Field(default_factory=list, description="그래프용으로 저장할 벡터. 비우면 모든 노드 전압. 예: ['vdb(out)', 'vp(out)'] 또는 ['v(out)']")
+    measurements: list[str] = Field(
+        default_factory=list,
+        description=(
+            "측정식 목록(각 항목은 '이름 형식 …'). 예: 'fc WHEN vdb(out)=-3' · 'g1k FIND vdb(out) AT=1000' · 'vmax MAX v(out)' · "
+            "'tau WHEN v(out)=0.632' · 'trise TRIG v(out) VAL=0.1 RISE=1 TARG v(out) VAL=0.9 RISE=1' · 'f0 MAX_AT vdb(out)'. .op 는 비워 둔다"
+        ),
+    )
+    save_vectors: list[str] = Field(
+        default_factory=list,
+        description="그래프용으로 저장할 벡터. 비우면 모든 노드 전압. 예: ['vdb(out)', 'vp(out)'] 또는 ['v(out)']",
+    )
 
 
 class WaveformArgs(BaseModel):
@@ -72,7 +94,9 @@ class SweepArgs(BaseModel):
     netlist: str = Field(description="SPICE 넷리스트 전문(해석 지시문 포함)")
     component: str = Field(description="값을 바꿀 소자 이름(R/L/C 또는 DC 전원). 예: 'R1'")
     measurement: str = Field(description="각 점에서 잴 측정식 하나. 예: 'fc WHEN vdb(out)=-3'")
-    values: list[float] = Field(default_factory=list, description="직접 지정한 값 목록(SI 단위 숫자). 비우면 start/stop/points 사용")
+    values: list[float] = Field(
+        default_factory=list, description="직접 지정한 값 목록(SI 단위 숫자). 비우면 start/stop/points 사용"
+    )
     start: float | None = Field(None, description="시작값")
     stop: float | None = Field(None, description="끝값")
     points: int | None = Field(None, ge=2, le=MAX_SWEEP_POINTS, description=f"점 수(최대 {MAX_SWEEP_POINTS})")
@@ -105,7 +129,9 @@ class RunIdArgs(BaseModel):
 
 
 class SearchArgs(BaseModel):
-    query: str = Field(description="검색어. 매뉴얼은 영어라 명령 이름·키워드는 영어로(예: 'meas TRIG TARG rise time'), 설명은 한국어도 된다")
+    query: str = Field(
+        description="검색어. 매뉴얼은 영어라 명령 이름·키워드는 영어로(예: 'meas TRIG TARG rise time'), 설명은 한국어도 된다"
+    )
     k: int = Field(5, ge=1, le=10)
 
 
@@ -114,7 +140,9 @@ class ReadSectionArgs(BaseModel):
 
 
 # ----------------------------------------------------------------------------- 인덱스
-def make_index(docs_dir: Path = DOCS_DIR, hybrid: bool | None = None, kb_path: Path | None = None) -> DocIndex | KnowledgeBase:
+def make_index(
+    docs_dir: Path = DOCS_DIR, hybrid: bool | None = None, kb_path: Path | None = None
+) -> DocIndex | KnowledgeBase:
     """매뉴얼 지식 베이스(data/kb/ngspice-manual.sqlite, `harness kb build`)가 있으면 그것을, 없으면 요약 문서 6개의 메모리 색인을 쓴다.
     임베딩은 enterprise 와 같은 규칙: 임베딩 서버가 있으면 하이브리드, HARNESS_HYBRID=0 이면 BM25 만."""
     if hybrid is None:
@@ -125,7 +153,9 @@ def make_index(docs_dir: Path = DOCS_DIR, hybrid: bool | None = None, kb_path: P
         return KnowledgeBase(kb_path, embedder=emb, embed_model=emb.model if emb else None)
     if emb is None:
         return DocIndex(docs_dir)
-    return DocIndex(docs_dir, embedder=emb, embed_model=emb.model, cache_path=RUNS_DIR.parent / "spice_doc_embeddings.json")
+    return DocIndex(
+        docs_dir, embedder=emb, embed_model=emb.model, cache_path=RUNS_DIR.parent / "spice_doc_embeddings.json"
+    )
 
 
 def _circuit_meta(path: Path, source: str) -> dict[str, Any]:
@@ -141,15 +171,36 @@ def _circuit_meta(path: Path, source: str) -> dict[str, Any]:
         analyses, n = nl.analyses, len(nl.components)
     except NetlistError:
         analyses, n = [], 0
-    return {"name": path.stem, "title": title, "description": desc, "source": source, "analyses": analyses, "components": n}
+    return {
+        "name": path.stem,
+        "title": title,
+        "description": desc,
+        "source": source,
+        "analyses": analyses,
+        "components": n,
+    }
 
 
 # ----------------------------------------------------------------------------- 도구
-def build_tools(circuits_dir: Path = CIRCUITS_DIR, docs_dir: Path = DOCS_DIR, runs_dir: Path = RUNS_DIR, library_dir: Path = LIBRARY_DIR,
-                index: DocIndex | None = None, scope: Any = None, timeout_s: float = 20.0, graph: ExperimentGraph | None = None,
-                graph_path: Path | None = None, **_: Any) -> list[Tool]:
+def build_tools(
+    circuits_dir: Path = CIRCUITS_DIR,
+    docs_dir: Path = DOCS_DIR,
+    runs_dir: Path = RUNS_DIR,
+    library_dir: Path = LIBRARY_DIR,
+    index: DocIndex | None = None,
+    scope: Any = None,
+    timeout_s: float = 20.0,
+    graph: ExperimentGraph | None = None,
+    graph_path: Path | None = None,
+    **_: Any,
+) -> list[Tool]:
     """scope 는 이 팩에서 쓰지 않지만(회로는 사용자별 범위가 없다) 플랫폼 인터페이스를 맞추기 위해 받는다."""
-    circuits_dir, docs_dir, runs_dir, library_dir = Path(circuits_dir), Path(docs_dir), Path(runs_dir), Path(library_dir)
+    circuits_dir, docs_dir, runs_dir, library_dir = (
+        Path(circuits_dir),
+        Path(docs_dir),
+        Path(runs_dir),
+        Path(library_dir),
+    )
     index = index or make_index(docs_dir)
     graph = graph or ExperimentGraph(graph_path or GRAPH_PATH)
 
@@ -185,25 +236,47 @@ def build_tools(circuits_dir: Path = CIRCUITS_DIR, docs_dir: Path = DOCS_DIR, ru
     def check_netlist(a: NetlistArgs) -> Any:
         nl = parse_netlist(a.netlist)
         est = estimate_points(nl.analyses[0]) if nl.analyses else None
-        return {**nl.summary(), "estimated_points": est, "ok": not any("없습니다" in w for w in nl.warnings) and bool(nl.analyses),
-                "note": "" if nl.analyses else "해석 지시문(.ac/.dc/.tran/.op)이 없어 run_simulation 이 실패합니다."}
+        return {
+            **nl.summary(),
+            "estimated_points": est,
+            "ok": not any("없습니다" in w for w in nl.warnings) and bool(nl.analyses),
+            "note": "" if nl.analyses else "해석 지시문(.ac/.dc/.tran/.op)이 없어 run_simulation 이 실패합니다.",
+        }
 
     def run_simulation(a: SimulateArgs) -> Any:
         if not ngspice_available():
             raise RuntimeError("ngspice 가 설치되어 있지 않습니다(brew install ngspice).")
         r = simulate(a.netlist, a.measurements, a.save_vectors, runs_dir=runs_dir, timeout_s=timeout_s)
-        pretty = {k: (format_si(v, _unit_for(k, r["analysis_kind"])) if isinstance(v, float) else v) for k, v in r["measurements"].items()}
+        pretty = {
+            k: (format_si(v, _unit_for(k, r["analysis_kind"])) if isinstance(v, float) else v)
+            for k, v in r["measurements"].items()
+        }
         rec = graph.record_simulation(parse_netlist(a.netlist), r)
-        history = {"circuit_id": rec["circuit_id"], "variants_of_same_topology": len(rec["variants"]),
-                   "note": "같은 회로의 과거 실행은 circuit_family(run_id), 특정 값·측정 조건은 query_history 로 찾는다." if rec["variants"] else "이 토폴로지의 첫 기록"}
-        return {**r, "measurements_readable": pretty, "history": history, "next": "그래프가 필요하면 plot_waveform(run_id), 데이터를 직접 보려면 get_waveform(run_id)"}
+        history = {
+            "circuit_id": rec["circuit_id"],
+            "variants_of_same_topology": len(rec["variants"]),
+            "note": "같은 회로의 과거 실행은 circuit_family(run_id), 특정 값·측정 조건은 query_history 로 찾는다."
+            if rec["variants"]
+            else "이 토폴로지의 첫 기록",
+        }
+        return {
+            **r,
+            "measurements_readable": pretty,
+            "history": history,
+            "next": "그래프가 필요하면 plot_waveform(run_id), 데이터를 직접 보려면 get_waveform(run_id)",
+        }
 
     def get_waveform(a: WaveformArgs) -> Any:
         d = _run_dir(a.run_id)
         meta = run_meta(d)
         if meta.get("analysis_kind") == "op":
-            return {"run_id": a.run_id, "note": "동작점(.op) 해석은 파형이 없습니다. 아래가 모든 노드 전압과 전원 전류이며 이것이 최종 결과입니다.",
-                    "values": meta.get("measurements", {}), "columns": [], "rows": []}
+            return {
+                "run_id": a.run_id,
+                "note": "동작점(.op) 해석은 파형이 없습니다. 아래가 모든 노드 전압과 전원 전류이며 이것이 최종 결과입니다.",
+                "values": meta.get("measurements", {}),
+                "columns": [],
+                "rows": [],
+            }
         cols, rows = load_data(d, max_points=a.max_points)
         if a.vectors:
             keep = [0] + [i for i, c in enumerate(cols) if c.lower() in {v.lower() for v in a.vectors}]
@@ -212,7 +285,13 @@ def build_tools(circuits_dir: Path = CIRCUITS_DIR, docs_dir: Path = DOCS_DIR, ru
             cols = [cols[i] for i in keep]
             rows = [[r[i] for i in keep] for r in rows]
         total = sum(1 for ln in (d / "data.txt").read_text(encoding="utf-8").splitlines() if ln.strip()) - 1
-        return {"run_id": a.run_id, "columns": cols, "rows": [[float(f"{v:.6g}") for v in r] for r in rows], "returned": len(rows), "total_points": total}
+        return {
+            "run_id": a.run_id,
+            "columns": cols,
+            "rows": [[float(f"{v:.6g}") for v in r] for r in rows],
+            "returned": len(rows),
+            "total_points": total,
+        }
 
     def plot_waveform(a: PlotArgs) -> Any:
         d = _run_dir(a.run_id)
@@ -226,7 +305,9 @@ def build_tools(circuits_dir: Path = CIRCUITS_DIR, docs_dir: Path = DOCS_DIR, ru
         wanted = a.vectors
         if not wanted and meta.get("analysis_kind") == "ac" and meta.get("kind") != "sweep":
             wanted = [c for c in cols[1:] if c.lower().startswith("vdb(")] or []
-        fig = figure_from_columns(cols, rows, wanted, title=a.title or meta.get("title", "").lstrip("* "), x_log=a.x_log, markers=markers)
+        fig = figure_from_columns(
+            cols, rows, wanted, title=a.title or meta.get("title", "").lstrip("* "), x_log=a.x_log, markers=markers
+        )
         if meta.get("kind") == "sweep":
             comp, m = meta.get("component", cols[0]), meta.get("measurement", cols[1] if len(cols) > 1 else "")
             xu = {"R": "Ω", "C": "F", "L": "H", "V": "V", "I": "A"}.get(comp[:1].upper(), "")
@@ -234,26 +315,49 @@ def build_tools(circuits_dir: Path = CIRCUITS_DIR, docs_dir: Path = DOCS_DIR, ru
             fig.x_label, fig.x_unit = f"{comp} ({xu})" if xu else comp, xu
             fig.y_label, fig.y_unit = f"{m} ({yu})" if yu else m, yu
             if a.x_log is None:
-                fig.x_log = all(r[0] > 0 for r in rows) and (max(r[0] for r in rows) / max(1e-30, min(r[0] for r in rows)) > 30)
+                fig.x_log = all(r[0] > 0 for r in rows) and (
+                    max(r[0] for r in rows) / max(1e-30, min(r[0] for r in rows)) > 30
+                )
         svg = render_svg(fig)
         out = d / "plot.svg"
         out.write_text(svg, encoding="utf-8")
-        return {"run_id": a.run_id, "svg_path": str(out), "url": f"/files/spice/{a.run_id}/plot.svg", "series": [s.label for s in fig.series],
-                "points": len(rows), "note": "그래프는 화면의 결과 카드에 자동으로 표시된다. 답변에는 핵심 수치(측정값·범위)를 적고 '그래프를 첨부했다' 고 덧붙인다. 그림을 글로 그리지 않는다."}
+        return {
+            "run_id": a.run_id,
+            "svg_path": str(out),
+            "url": f"/files/spice/{a.run_id}/plot.svg",
+            "series": [s.label for s in fig.series],
+            "points": len(rows),
+            "note": "그래프는 화면의 결과 카드에 자동으로 표시된다. 답변에는 핵심 수치(측정값·범위)를 적고 '그래프를 첨부했다' 고 덧붙인다. 그림을 글로 그리지 않는다.",
+        }
 
     def run_sweep(a: SweepArgs) -> Any:
         if not ngspice_available():
             raise RuntimeError("ngspice 가 설치되어 있지 않습니다(brew install ngspice).")
         values = sweep_values(a.start, a.stop, a.points, a.log, a.values)
-        r = sweep(a.netlist, a.component, values, a.measurement, runs_dir=runs_dir, timeout_s_total=max(timeout_s * 3, 60))
+        r = sweep(
+            a.netlist, a.component, values, a.measurement, runs_dir=runs_dir, timeout_s_total=max(timeout_s * 3, 60)
+        )
         graph.record_sweep(parse_netlist(a.netlist), r)
         return {**r, "next": "표가 길면 plot_waveform(run_id) 로 그래프를 만든다"}
 
     # ---- 실험 추적 그래프
     def query_history(a: HistoryArgs) -> Any:
-        rows = graph.query_runs(component=a.component, value=a.value, measurement=a.measurement, value_min=a.value_min, value_max=a.value_max,
-                                title_contains=a.title_contains, limit=a.limit)
-        return {"count": len(rows), "runs": rows, "note": "" if rows else "조건에 맞는 기록이 없습니다. 조건을 넓히거나(소자 값 ±1%) 먼저 시뮬레이션을 실행하세요."}
+        rows = graph.query_runs(
+            component=a.component,
+            value=a.value,
+            measurement=a.measurement,
+            value_min=a.value_min,
+            value_max=a.value_max,
+            title_contains=a.title_contains,
+            limit=a.limit,
+        )
+        return {
+            "count": len(rows),
+            "runs": rows,
+            "note": ""
+            if rows
+            else "조건에 맞는 기록이 없습니다. 조건을 넓히거나(소자 값 ±1%) 먼저 시뮬레이션을 실행하세요.",
+        }
 
     def compare_runs(a: CompareArgs) -> Any:
         return graph.compare_runs(a.run_a, a.run_b)
@@ -265,7 +369,10 @@ def build_tools(circuits_dir: Path = CIRCUITS_DIR, docs_dir: Path = DOCS_DIR, ru
         hits = index.search(a.query, k=a.k)
         out = []
         for h in hits:  # 매뉴얼 청크는 길어서 앞부분만. 전체는 read_manual 로
-            out.append({k: v for k, v in h.items() if k != "text"} | {"text": (h.get("text") or "")[:600] + ("…" if len(h.get("text") or "") > 600 else "")})
+            out.append(
+                {k: v for k, v in h.items() if k != "text"}
+                | {"text": (h.get("text") or "")[:600] + ("…" if len(h.get("text") or "") > 600 else "")}
+            )
         return out
 
     def read_manual(a: ReadSectionArgs) -> Any:
@@ -295,7 +402,9 @@ def build_tools(circuits_dir: Path = CIRCUITS_DIR, docs_dir: Path = DOCS_DIR, ru
         if p.exists():
             raise ValueError(f"이미 있는 이름: {a.name}. 다른 이름을 쓰세요.")
         lines = [ln for ln in nl.lines if not ln.lower().startswith("* desc:")] if a.description.strip() else nl.lines
-        body = [nl.title] + ([f"* desc: {a.description.strip()}"] if a.description.strip() else []) + lines + [".end", ""]
+        body = (
+            [nl.title] + ([f"* desc: {a.description.strip()}"] if a.description.strip() else []) + lines + [".end", ""]
+        )
         p.write_text("\n".join(body), encoding="utf-8")
         return {"saved": a.name, "path": str(p), "components": len(nl.components), "analyses": nl.analyses}
 
@@ -308,22 +417,94 @@ def build_tools(circuits_dir: Path = CIRCUITS_DIR, docs_dir: Path = DOCS_DIR, ru
         return {"deleted": a.name}
 
     return [
-        Tool("list_circuits", "샘플 회로와 저장된 회로 목록을 본다. 회로를 새로 쓰기 전에 먼저 호출해 비슷한 샘플이 있는지 확인한다.", NoArgs, list_circuits),
-        Tool("get_circuit", "회로 1개의 넷리스트 전문과 구조 요약을 가져온다. 샘플을 고쳐 쓸 때 출발점으로 쓴다.", CircuitNameArgs, get_circuit),
-        Tool("check_netlist", "넷리스트를 실행하지 않고 검사한다: 소자·노드·해석·경고(접지 없음, 떠 있는 노드, M/meg 혼동). 직접 쓴 회로는 실행 전에 확인한다.", NetlistArgs, check_netlist),
-        Tool("run_simulation", "ngspice 로 회로를 1회 해석하고 측정값을 돌려준다. 차단 주파수·이득·시정수·상승 시간 같은 숫자는 반드시 이 도구로 잰다. "
-             "measurements 는 '이름 형식 …' 문자열 목록이다.", SimulateArgs, run_simulation),
-        Tool("get_waveform", "저장된 파형 데이터(표)를 본다. 측정이 실패했을 때 어디서 값이 지나는지 직접 확인하거나 몇 점을 인용할 때 쓴다.", WaveformArgs, get_waveform),
-        Tool("plot_waveform", "실행 결과를 SVG 그래프로 그린다(주파수 응답, 시간 파형, 스윕 곡선). 측정값은 mark_x/mark_y 로 점선 표시한다.", PlotArgs, plot_waveform),
-        Tool("run_sweep", f"소자 값을 바꿔 가며 같은 측정을 반복한다(최대 {MAX_SWEEP_POINTS}점). '저항을 바꾸면 fc 가 어떻게 변하나' 같은 질문에 쓴다. 오래 걸릴 수 있다.", SweepArgs, run_sweep),
-        Tool("query_history", "기록된 실행을 조건(소자 값, 측정값 범위, 회로 제목의 일부)으로 찾는다. '지난번', '이전에 돌린', '기록에서' 같은 질문에 쓴다. 제목 필터는 샘플 파일 이름이 아니라 회로 제목 글자(예: 'RC')로 준다. 실행마다 소자 값·측정값이 함께 나온다.", HistoryArgs, query_history),
-        Tool("compare_runs", "실행 두 개를 비교한다: 같은 토폴로지인지, 어떤 소자 값이 다른지, 측정값이 몇 배 차이 나는지.", CompareArgs, compare_runs),
-        Tool("circuit_family", "이 실행의 회로와 같은 토폴로지인(소자 값만 다른) 회로들과 그 실행·측정값을 모아 본다. '같은 회로로 돌린 실행 전부' 질문에 쓴다.", RunIdArgs, circuit_family),
-        Tool("search_manual", "ngspice 문법·해석·측정식·공식·오류 해결 문서를 검색한다. 문법이 확실하지 않거나 오류가 났을 때, 이론 공식이 필요할 때 쓴다. 답에 출처를 적는다.", SearchArgs, search_manual),
-        Tool("read_manual", "search_manual 로 찾은 절 하나를 전체 읽는다(section_id 또는 source). 명령 문법이나 파라미터 표가 잘려 보일 때 쓴다.", ReadSectionArgs, read_manual),
+        Tool(
+            "list_circuits",
+            "샘플 회로와 저장된 회로 목록을 본다. 회로를 새로 쓰기 전에 먼저 호출해 비슷한 샘플이 있는지 확인한다.",
+            NoArgs,
+            list_circuits,
+        ),
+        Tool(
+            "get_circuit",
+            "회로 1개의 넷리스트 전문과 구조 요약을 가져온다. 샘플을 고쳐 쓸 때 출발점으로 쓴다.",
+            CircuitNameArgs,
+            get_circuit,
+        ),
+        Tool(
+            "check_netlist",
+            "넷리스트를 실행하지 않고 검사한다: 소자·노드·해석·경고(접지 없음, 떠 있는 노드, M/meg 혼동). 직접 쓴 회로는 실행 전에 확인한다.",
+            NetlistArgs,
+            check_netlist,
+        ),
+        Tool(
+            "run_simulation",
+            "ngspice 로 회로를 1회 해석하고 측정값을 돌려준다. 차단 주파수·이득·시정수·상승 시간 같은 숫자는 반드시 이 도구로 잰다. "
+            "measurements 는 '이름 형식 …' 문자열 목록이다.",
+            SimulateArgs,
+            run_simulation,
+        ),
+        Tool(
+            "get_waveform",
+            "저장된 파형 데이터(표)를 본다. 측정이 실패했을 때 어디서 값이 지나는지 직접 확인하거나 몇 점을 인용할 때 쓴다.",
+            WaveformArgs,
+            get_waveform,
+        ),
+        Tool(
+            "plot_waveform",
+            "실행 결과를 SVG 그래프로 그린다(주파수 응답, 시간 파형, 스윕 곡선). 측정값은 mark_x/mark_y 로 점선 표시한다.",
+            PlotArgs,
+            plot_waveform,
+        ),
+        Tool(
+            "run_sweep",
+            f"소자 값을 바꿔 가며 같은 측정을 반복한다(최대 {MAX_SWEEP_POINTS}점). '저항을 바꾸면 fc 가 어떻게 변하나' 같은 질문에 쓴다. 오래 걸릴 수 있다.",
+            SweepArgs,
+            run_sweep,
+        ),
+        Tool(
+            "query_history",
+            "기록된 실행을 조건(소자 값, 측정값 범위, 회로 제목의 일부)으로 찾는다. '지난번', '이전에 돌린', '기록에서' 같은 질문에 쓴다. 제목 필터는 샘플 파일 이름이 아니라 회로 제목 글자(예: 'RC')로 준다. 실행마다 소자 값·측정값이 함께 나온다.",
+            HistoryArgs,
+            query_history,
+        ),
+        Tool(
+            "compare_runs",
+            "실행 두 개를 비교한다: 같은 토폴로지인지, 어떤 소자 값이 다른지, 측정값이 몇 배 차이 나는지.",
+            CompareArgs,
+            compare_runs,
+        ),
+        Tool(
+            "circuit_family",
+            "이 실행의 회로와 같은 토폴로지인(소자 값만 다른) 회로들과 그 실행·측정값을 모아 본다. '같은 회로로 돌린 실행 전부' 질문에 쓴다.",
+            RunIdArgs,
+            circuit_family,
+        ),
+        Tool(
+            "search_manual",
+            "ngspice 문법·해석·측정식·공식·오류 해결 문서를 검색한다. 문법이 확실하지 않거나 오류가 났을 때, 이론 공식이 필요할 때 쓴다. 답에 출처를 적는다.",
+            SearchArgs,
+            search_manual,
+        ),
+        Tool(
+            "read_manual",
+            "search_manual 로 찾은 절 하나를 전체 읽는다(section_id 또는 source). 명령 문법이나 파라미터 표가 잘려 보일 때 쓴다.",
+            ReadSectionArgs,
+            read_manual,
+        ),
         Tool("list_manual", "참고 문서 목록을 본다.", NoArgs, list_manual),
-        Tool("save_circuit", "넷리스트를 이름을 붙여 저장한다. 사람 승인이 필요한 변경 작업이다.", SaveCircuitArgs, save_circuit, Tier.WRITE),
-        Tool("delete_circuit", "저장된 회로를 삭제한다. 되돌릴 수 없는 작업으로 이 에이전트에서는 차단된다.", CircuitNameArgs, delete_circuit, Tier.DESTRUCTIVE),
+        Tool(
+            "save_circuit",
+            "넷리스트를 이름을 붙여 저장한다. 사람 승인이 필요한 변경 작업이다.",
+            SaveCircuitArgs,
+            save_circuit,
+            Tier.WRITE,
+        ),
+        Tool(
+            "delete_circuit",
+            "저장된 회로를 삭제한다. 되돌릴 수 없는 작업으로 이 에이전트에서는 차단된다.",
+            CircuitNameArgs,
+            delete_circuit,
+            Tier.DESTRUCTIVE,
+        ),
     ]
 
 
@@ -370,15 +551,27 @@ SYSTEM_PROMPT = """당신은 회로 시뮬레이션 비서입니다. ngspice 를
 # v2: n=1 평가에서 d01("1M 은 메가야 밀리야?")에 모델이 자기 지식(틀림)으로 답하고 매뉴얼을 안 찾았다 → 규칙 3을 "확실하지 않으면" 에서 "항상" 으로.
 SYSTEM_PROMPT_V2 = SYSTEM_PROMPT.replace(
     "3. 문법·측정식·오류·공식이 확실하지 않으면 search_manual 로 찾고, 답에 출처(문서 > 절)를 적습니다.",
-    "3. 넷리스트 문법·접미사(k/m/meg)·측정식·오류 메시지·공식을 묻는 질문은 자기 지식으로 답하지 말고 반드시 search_manual 로 먼저 확인한 뒤, 답에 출처(문서 > 절)를 적습니다.")
+    "3. 넷리스트 문법·접미사(k/m/meg)·측정식·오류 메시지·공식을 묻는 질문은 자기 지식으로 답하지 말고 반드시 search_manual 로 먼저 확인한 뒤, 답에 출처(문서 > 절)를 적습니다.",
+)
 assert SYSTEM_PROMPT_V2 != SYSTEM_PROMPT
 SYSTEM_PROMPTS = {"v1": SYSTEM_PROMPT, "v2": SYSTEM_PROMPT_V2}
 
 TOOL_LABELS = {
-    "list_circuits": "회로 목록 확인", "get_circuit": "회로 가져오기", "check_netlist": "넷리스트 검사", "run_simulation": "시뮬레이션 실행",
-    "get_waveform": "파형 데이터 보기", "plot_waveform": "그래프 그리기", "run_sweep": "파라미터 스윕", "search_manual": "매뉴얼 검색",
-    "read_manual": "매뉴얼 절 읽기", "list_manual": "문서 목록 확인", "save_circuit": "회로 저장", "delete_circuit": "회로 삭제",
-    "query_history": "실행 기록 찾기", "compare_runs": "실행 비교", "circuit_family": "같은 회로 실행 모아 보기",
+    "list_circuits": "회로 목록 확인",
+    "get_circuit": "회로 가져오기",
+    "check_netlist": "넷리스트 검사",
+    "run_simulation": "시뮬레이션 실행",
+    "get_waveform": "파형 데이터 보기",
+    "plot_waveform": "그래프 그리기",
+    "run_sweep": "파라미터 스윕",
+    "search_manual": "매뉴얼 검색",
+    "read_manual": "매뉴얼 절 읽기",
+    "list_manual": "문서 목록 확인",
+    "save_circuit": "회로 저장",
+    "delete_circuit": "회로 삭제",
+    "query_history": "실행 기록 찾기",
+    "compare_runs": "실행 비교",
+    "circuit_family": "같은 회로 실행 모아 보기",
 }
 
 
