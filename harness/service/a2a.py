@@ -3,7 +3,7 @@
 구현 범위(A2A 0.2/0.3 의 핵심 부분집합):
 - Agent Card: GET /.well-known/agent-card.json (0.3) · /.well-known/agent.json (0.2 호환)
 - JSON-RPC 2.0: POST /a2a — message/send(blocking 지원) · message/stream(SSE) · tasks/get · tasks/cancel
-- 태스크 = 우리 실행(run), contextId = 세션. 상태 매핑: queued→submitted, running→working, 결재 대기→input-required,
+- 태스크 = 우리 실행(run, kind=a2a, 태스크마다 스레드), contextId = 세션. 상태 매핑: queued→submitted, running→working, 결재 대기→input-required,
   done→completed, failed→failed, cancelled→canceled. 답변은 text 아티팩트, 도구가 만든 그림(url)은 file 아티팩트.
 사람 결재는 A2A 로 넘기지 않는다: 하위 비서의 결재는 그 비서 화면에서 사람이 하고, 상위 에이전트는 input-required 를 보고 기다린다.
 """
@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import threading
 import time
 import uuid
 from datetime import datetime, timezone
@@ -19,6 +20,7 @@ from typing import Any
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from .runner import execute_run, make_sink
 from .sse import ping
 
 PROTOCOL_VERSION = "0.3.0"
@@ -46,6 +48,26 @@ class A2AFacade:
         self.state = state
         self.pack = pack
         self.base_url = base_url
+        self._cancel: dict[str, threading.Event] = {}
+
+    def _start_run(self, session_id: str, text: str, user) -> str:
+        """태스크마다 스레드 하나. 잡 큐(워커 1개)를 쓰면 결재를 기다리는 태스크 하나가 뒤의 태스크를 전부 막는다(ADR-017)."""
+        store = self.state.store
+        run_id = store.create_run(session_id, "a2a", text)
+        flag = threading.Event()
+        self._cancel[run_id] = flag
+        sink = make_sink(store, run_id)
+
+        def go():
+            try:
+                execute_run(self.state, run_id, session_id, text, None, sink, flag.is_set, user)
+            except Exception:
+                pass  # execute_run 이 failed 로 기록한다
+            finally:
+                self._cancel.pop(run_id, None)
+
+        threading.Thread(target=go, name=f"a2a-{run_id}", daemon=True).start()
+        return run_id
 
     # ---------------------------------------------------------------- agent card
     def card(self, request_base: str) -> dict[str, Any]:
@@ -112,7 +134,7 @@ class A2AFacade:
         sid = msg.get("contextId")
         if not sid or not store.get_session(sid):
             sid = store.create_session(self.state.default_provider, title="a2a")["id"]
-        run_id = self.state.jobs.submit(sid, text, None, user=user)
+        run_id = self._start_run(sid, text, user)
         store.add_audit(getattr(user, "name", "a2a"), getattr(user, "role", "?"), "a2a.send", run_id, {"question": text[:200]})
         cfg = params.get("configuration") or {}
         if cfg.get("blocking"):
@@ -134,8 +156,10 @@ class A2AFacade:
         run = self.state.store.get_run(rid)
         if not run:
             return None
-        if not self.state.jobs.cancel(rid):
+        flag = self._cancel.get(rid)
+        if flag is None or run["status"] in ("done", "failed", "cancelled"):
             raise PermissionError("취소할 수 없는 상태")
+        flag.set()  # 협조적 취소: 루프가 다음 스텝에서 멈춘다
         return self._task(self.state.store.get_run(rid), request_base)
 
     async def stream(self, rpc_id: Any, params: dict[str, Any], user, request_base: str):

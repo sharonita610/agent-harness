@@ -140,3 +140,15 @@ def test_expect_calls_scoring():
     assert score(task, ok, [])["pass"] and not score(task, bad, [])["pass"]
     by_args = {"id": "r", "type": "route", "question": "q", "expect_calls": [{"name": "delegate", "args_contains": {"agent": "회로"}}]}
     assert score(by_args, ok, [])["pass"]
+
+
+def test_pending_approval_does_not_block_other_tasks(app):
+    """잡 큐 워커 1개로 돌리면 결재 대기 중인 태스크가 뒤를 막는다. A2A 는 태스크마다 스레드라 두 번째가 바로 끝난다."""
+    with TestClient(app) as c:
+        waiting = _send(c, "주문 1번에 메모 남겨줘")["result"]
+        assert waiting["status"]["state"] == "input-required"
+        t0 = time.time()
+        done = _send(c, "현재 상태가 '지연'인 주문은 총 몇 건이야?")["result"]
+        assert done["status"]["state"] == "completed" and time.time() - t0 < 5
+        cancelled = c.post("/a2a", json={"jsonrpc": "2.0", "id": 11, "method": "tasks/cancel", "params": {"id": waiting["id"]}}).json()
+        assert "result" in cancelled and cancelled["result"]["id"] == waiting["id"]
