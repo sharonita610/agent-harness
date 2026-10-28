@@ -1,4 +1,5 @@
 import type { UiEvent } from "../types";
+import { fileUrl } from "../api";
 import ResultCard from "./ResultCard";
 
 /** 도구 이름 → 사람 말. 기본값은 회사 데이터 팩이고, 서버의 /health 가 주는 팩 라벨로 덮어쓴다. */
@@ -188,8 +189,8 @@ export default function Timeline({
           ) : (
             <>
               {e.image && (
-                <a href={e.image} target="_blank" rel="noreferrer">
-                  <img className="plot" src={e.image} alt="그래프" />
+                <a href={fileUrl(e.image)} target="_blank" rel="noreferrer">
+                  <img className="plot" src={fileUrl(e.image)} alt="그래프" />
                 </a>
               )}
               {(e.kind === "tool_result" || e.kind === "tool_error" || e.kind === "tool_call") &&

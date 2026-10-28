@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
@@ -93,7 +94,7 @@ def mount_mcp(app, state, pack: Pack, policy: Policy | None = None, path: str = 
 
     def mcp_session() -> str:
         if "id" not in session_box:
-            session_box["id"] = store.create_session(state.default_provider, title="MCP 호출")["id"]
+            session_box["id"] = store.create_session(state.default_provider, title="MCP 호출", user=None)["id"]
         return session_box["id"]
 
     def make_call(read_only: bool):
@@ -112,7 +113,10 @@ def mount_mcp(app, state, pack: Pack, policy: Policy | None = None, path: str = 
             # 변경 도구: 결재함을 거친다. 웹 채팅의 결재와 같은 브로커·저장소라 결재함에 그대로 뜬다
             t0 = time.perf_counter()
             rid = store.create_run(
-                mcp_session(), "mcp", f"[MCP · {user.name}] {name} {json.dumps(kwargs, ensure_ascii=False)[:120]}"
+                mcp_session(),
+                "mcp",
+                f"[MCP · {user.name}] {name} {json.dumps(kwargs, ensure_ascii=False)[:120]}",
+                user=user.name,
             )
             store.start_run(rid)
             seq = 0
@@ -135,7 +139,16 @@ def mount_mcp(app, state, pack: Pack, policy: Policy | None = None, path: str = 
                 },
             )
             store.add_audit(user.name, user.role, "mcp_approval_requested", name, {"approval_id": aid, "run_id": rid})
-            approved = await anyio.to_thread.run_sync(state.broker.wait, aid)
+            gone = threading.Event()
+            try:
+                approved = await anyio.to_thread.run_sync(state.broker.wait, aid, gone.is_set, abandon_on_cancel=True)
+            except anyio.get_cancelled_exc_class():
+                # 클라이언트가 기다리다 끊었다: 전표를 닫고 실행을 취소로 남긴다(승인돼도 실행되지 않게)
+                gone.set()
+                state.broker.cancel_pending(rid, by="disconnected")
+                ev("stopped", {"reason": "cancelled", "error": "MCP 클라이언트 연결 끊김"})
+                store.finish_run(rid, "cancelled", error="MCP 클라이언트가 결재를 기다리다 끊음")
+                raise
             ev("approval_result", {"name": name, "approved": approved})
             usage = SimpleNamespace(prompt_tokens=0, completion_tokens=0)
             if not approved:

@@ -319,7 +319,15 @@ def simulate(
         meas_lines.append(line)
         if warn:
             warnings.append(warn)
-    requested = [s for s in save_vectors if s and s.strip()]
+    requested = []
+    for s in save_vectors:
+        s = (s or "").strip()
+        if not s:
+            continue
+        # 제어 블록(wrdata …)에 그대로 들어가므로 "v(out)" 꼴만 허용. 줄바꿈·공백·세미콜론이 섞이면 ngspice 명령 주입이 된다
+        if not re.fullmatch(r"[A-Za-z]{1,3}\([\w#.:+\-]+(?:,[\w#.:+\-]+)?\)", s):
+            raise NetlistError(f"저장 벡터 형식 오류: {s!r}. 예: v(out), i(v1), vdb(out)")
+        requested.append(s)
     missing = _check_refs([*meas_lines, *requested], nl)
     if missing:
         raise NetlistError("참조 오류: " + " / ".join(missing))

@@ -82,7 +82,30 @@ export default function Desk({
     const message = (text ?? q).trim();
     if (!message || busy || !canChat) return;
     const myBase = base;
-    const sid = await ensureSession(myBase);
+    let sid: string;
+    try {
+      sid = await ensureSession(myBase);
+    } catch (e) {
+      setSheets((ss) => [
+        {
+          id: nextId.current++,
+          base: myBase,
+          agent: agentName,
+          question: message,
+          events: [],
+          pending: [],
+          decided: {},
+          answer: "",
+          draft: "",
+          meta: "",
+          error: `세션을 만들지 못했습니다: ${(e as Error).message}`,
+          runId: null,
+          at: new Date().toISOString(),
+        },
+        ...ss,
+      ]);
+      return;
+    }
     const id = nextId.current++;
     let seq = 0;
     let runId: string | null = null;
@@ -107,7 +130,7 @@ export default function Desk({
       ...ss,
     ]);
     try {
-      await streamChat({ message, session_id: sid }, (event, d) => {
+      await streamChat(myBase, { message, session_id: sid }, (event, d) => {
         if (event === "run") {
           runId = String(d.run_id);
           patch(id, (t) => ({ ...t, runId }));

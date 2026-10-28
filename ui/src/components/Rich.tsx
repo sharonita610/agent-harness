@@ -26,6 +26,19 @@ export default function Rich({ text }: { text: string }) {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
+    if (/^\s*```/.test(line)) {
+      // 코드 펜스: 닫힐 때까지 그대로 <pre>
+      const buf: string[] = [];
+      i++;
+      while (i < lines.length && !/^\s*```/.test(lines[i])) buf.push(lines[i++]);
+      i++;
+      out.push(
+        <pre className="md" key={`f${i}`}>
+          {buf.join("\n")}
+        </pre>,
+      );
+      continue;
+    }
     if (line.trim().startsWith("|") && i + 1 < lines.length && isSeparatorRow(lines[i + 1])) {
       const head = splitCells(line);
       const rows: string[][] = [];

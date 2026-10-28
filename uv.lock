@@ -444,6 +444,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
+    { name = "anyio" },
     { name = "faker" },
     { name = "fastapi" },
     { name = "mcp" },
@@ -470,6 +471,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", specifier = ">=0.40" },
+    { name = "anyio", specifier = ">=4" },
     { name = "faker", specifier = ">=30" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "mcp", specifier = ">=1.10" },

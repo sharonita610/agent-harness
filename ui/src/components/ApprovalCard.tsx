@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toolLabel } from "./EventList";
 
 export interface PendingApproval {
@@ -48,6 +48,7 @@ export default function ApprovalSlip({
 }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<"approve" | "deny" | null>(decided ?? null);
+  useEffect(() => setDone(decided ?? null), [decided]); // 결재함에서 처리돼도 작업지 전표에 도장이 찍히고 버튼이 사라진다
   const [err, setErr] = useState<string | null>(null);
   const decide = async (d: "approve" | "deny") => {
     setBusy(true);

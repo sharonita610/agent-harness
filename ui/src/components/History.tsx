@@ -98,7 +98,16 @@ export default function History({
             </thead>
             <tbody>
               {shown.map((r) => (
-                <tr key={r.id} className="rowbtn" onClick={() => onOpen(r.id)} title={r.id}>
+                <tr
+                  key={r.id}
+                  className="rowbtn"
+                  tabIndex={0}
+                  onClick={() => onOpen(r.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") onOpen(r.id);
+                  }}
+                  title={r.id}
+                >
                   <td>{r.created_at.slice(5, 16).replace("T", " ")}</td>
                   <td className="wrap">{r.question}</td>
                   <td>{KIND_KO[r.kind] ?? r.kind}</td>

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import threading
-from typing import Any
+import time
+from typing import Any, Callable
 
 from .store import Store
 
@@ -22,18 +23,43 @@ class ApprovalBroker:
             self._events[aid] = threading.Event()
         return aid
 
-    def wait(self, aid: str) -> bool:
-        """에이전트 스레드에서 호출. 결정이 올 때까지(최대 timeout_s) 막는다."""
+    def wait(self, aid: str, should_cancel: Callable[[], bool] | None = None) -> bool:
+        """에이전트 스레드에서 호출. 결정이 올 때까지(최대 timeout_s) 막는다. should_cancel 이 참이 되면 전표를 취소로 닫고 False."""
         ev = self._events.get(aid)
         if ev is None:
             return False
-        if not ev.wait(self.timeout_s):
-            with self._lock:
-                if aid not in self._decisions:
-                    self.store.decide_approval(aid, "expired", "timeout")
-                    self._decisions[aid] = False
+        deadline = time.monotonic() + self.timeout_s
+        decided = False
+        while not decided:
+            decided = ev.wait(0.5)
+            if decided:
+                break
+            if should_cancel and should_cancel():
+                self._close(aid, "cancelled", "cancelled")
+                break
+            if time.monotonic() >= deadline:
+                self._close(aid, "expired", "timeout")
+                break
         with self._lock:
             return self._decisions.get(aid, False)
+
+    def _close(self, aid: str, status: str, by: str) -> None:
+        with self._lock:
+            if aid not in self._decisions:
+                self.store.decide_approval(aid, status, by)
+                self._decisions[aid] = False
+                ev = self._events.get(aid)
+                if ev:
+                    ev.set()
+
+    def cancel_pending(self, run_id: str, by: str = "cancelled") -> int:
+        """실행이 취소되면 그 실행의 대기 전표를 닫는다. 결재함에 남아 나중에 승인되는 일을 막는다."""
+        n = 0
+        for a in self.store.list_approvals("pending"):
+            if a["run_id"] == run_id:
+                self._close(a["id"], "cancelled", by)
+                n += 1
+        return n
 
     def decide(self, aid: str, approve: bool, by: str = "api") -> bool:
         with self._lock:

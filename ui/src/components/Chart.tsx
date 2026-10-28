@@ -28,9 +28,11 @@ export function yTicks(kind: "line" | "bar", values: number[]): number[] {
   const hi = Math.max(...values);
   const narrow = kind === "line" && lo > 0 && hi > 0 && (hi - lo) / hi < 0.6;
   const pad = narrow ? Math.max((hi - lo) * 0.25, hi * 0.02) : 0;
-  const step = niceStep((narrow ? hi - lo + 2 * pad : Math.max(hi, 0)) || 1);
-  const start = narrow ? Math.floor((lo - pad) / step) * step : 0;
-  const end = Math.ceil((Math.max(hi, narrow ? hi + pad : hi) + 1e-9) / step) * step || step;
+  const floor = narrow ? lo - pad : Math.min(lo, 0); // 음수 값이 있으면 축이 0 아래로 내려간다
+  const ceil = narrow ? hi + pad : Math.max(hi, 0);
+  const step = niceStep(ceil - floor || 1);
+  const start = Math.floor((floor + 1e-9) / step) * step; // 0 은 0 에 머문다(음수로 한 칸 내려가지 않게)
+  const end = Math.ceil((ceil + 1e-9) / step) * step || step;
   const out: number[] = [];
   for (let v = start; v <= end + 1e-9; v += step) out.push(+v.toFixed(6));
   return out.length > 1 ? out : [start, start + step];
@@ -52,7 +54,9 @@ export default function Chart({
   const height = heightProp ?? (kind === "line" && data.series.length >= 3 ? HEIGHT + 60 : HEIGHT);
   const series = data.series.slice(0, SERIES_COLORS.length);
   const unit = data.unit ?? "";
-  const vals = series.flatMap((s) => s.values).filter((v): v is number => typeof v === "number");
+  const vals = series
+    .flatMap((s) => s.values)
+    .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
   const yTickValues = yTicks(kind, vals);
   const yMin = yTickValues[0];
   const yMax = yTickValues[yTickValues.length - 1];
@@ -132,7 +136,7 @@ export default function Chart({
                 y1={yAt(v)}
                 y2={yAt(v)}
                 stroke="currentColor"
-                opacity={v === yMin ? 0.35 : 0.12}
+                opacity={v === 0 || (yMin > 0 && v === yMin) ? 0.35 : 0.12}
               />
               <text
                 x={PAD_LEFT - 6}
@@ -168,13 +172,13 @@ export default function Chart({
                 const gap = 2;
                 const w = Math.max(2, (barWidth - 8) / series.length - gap);
                 return s.values.map((v, i) =>
-                  v === null || v === undefined ? null : (
+                  v === null || v === undefined || !Number.isFinite(v) ? null : (
                     <rect
                       key={`${k}-${i}`}
                       x={PAD_LEFT + barWidth * i + 4 + k * (w + gap)}
-                      y={yAt(v)}
+                      y={Math.min(yAt(0), yAt(v))}
                       width={w}
-                      height={Math.max(0, yAt(yMin) - yAt(v))}
+                      height={Math.abs(yAt(0) - yAt(v))}
                       rx={2}
                       fill={SERIES_COLORS[k]}
                       opacity={hover === null || hover === i ? 1 : 0.45}
@@ -211,7 +215,7 @@ export default function Chart({
                       />
                     ))}
                     {s.values.map((v, i) =>
-                      v === null || v === undefined ? null : (
+                      v === null || v === undefined || !Number.isFinite(v) ? null : (
                         <circle
                           key={i}
                           cx={xAt(i)}

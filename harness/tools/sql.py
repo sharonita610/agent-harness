@@ -64,6 +64,19 @@ def connect_readonly(db_path: Path, setup: Callable[[sqlite3.Connection], None] 
     return conn
 
 
+def table_columns(db_path, table: str) -> list[dict[str, Any]]:
+    """테이블 구조(PRAGMA table_info). 도구용 읽기 전용 연결의 authorizer 는 PRAGMA 를 막으므로 별도의 짧은 연결로 읽는다.
+    열 이름만 보는 것이라 사용자 데이터 범위와 무관하다."""
+    conn = sqlite3.connect(f"file:{Path(db_path)}?mode=ro", uri=True)
+    try:
+        return [
+            {"name": r[1], "type": r[2], "notnull": bool(r[3]), "pk": bool(r[5])}
+            for r in conn.execute(f"PRAGMA table_info({table})")
+        ]
+    finally:
+        conn.close()
+
+
 def rows(
     cur: sqlite3.Cursor, limit: int | None = None, mask: dict[str, Callable[[Any], Any]] | None = None
 ) -> dict[str, Any]:

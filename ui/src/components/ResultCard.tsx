@@ -256,7 +256,12 @@ export default function ResultCard({ result, tool }: { result: unknown; tool?: s
     );
   }
   if (Array.isArray(r.columns) && Array.isArray(r.rows)) {
-    parts.push(<Table key="t" rows={r.rows as Row[]} />);
+    // rows 가 [[...]] 꼴(파형 등)이면 columns 와 짝지어 행 객체로
+    const cols = r.columns as string[];
+    const rowsObj = (r.rows as unknown[]).map((row) =>
+      Array.isArray(row) ? Object.fromEntries(cols.map((c, i) => [c, row[i]])) : (row as Row),
+    );
+    parts.push(<Table key="t" rows={rowsObj} />);
   } else {
     for (const [k, v] of Object.entries(r)) {
       if (Array.isArray(v) && v.length && v.every(isFlatRow) && !HIDDEN_KEYS.has(k) && k !== "warnings") {
@@ -292,7 +297,10 @@ export default function ResultCard({ result, tool }: { result: unknown; tool?: s
       }
     }
   }
-  parts.push(<KeyValues key="kv" obj={r} />);
+  const visibleKeys = Object.keys(r).filter(
+    (k) => !HIDDEN_KEYS.has(k) && isPrimitive(r[k]) && r[k] !== "" && r[k] !== null,
+  );
+  if (visibleKeys.length) parts.push(<KeyValues key="kv" obj={r} />);
   if (Array.isArray(r.warnings) && r.warnings.length)
     parts.push(
       <p key="w" className="warn small">
@@ -300,7 +308,7 @@ export default function ResultCard({ result, tool }: { result: unknown; tool?: s
       </p>,
     );
   // note 는 모델에게 주는 안내문이라 카드에는 싣지 않는다(확인 과정의 원문에는 남는다)
-  if (parts.every((p) => p === null))
+  if (parts.length === 0)
     return (
       <details className="raw">
         <summary>원문 보기</summary>

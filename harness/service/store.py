@@ -28,7 +28,9 @@ CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit(ts);
 
 
 def now() -> str:
-    return datetime.now().isoformat(timespec="milliseconds")
+    return (
+        datetime.now().astimezone().isoformat(timespec="milliseconds")
+    )  # 시간대 포함. 화면이 브라우저 시간대로 바르게 해석한다
 
 
 def new_id(prefix: str) -> str:
@@ -46,6 +48,12 @@ class Store:
         if self.path != ":memory:":
             self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.executescript(SCHEMA)
+        # 소유자 열(2026-10-29 추가): 기존 DB 에는 ALTER 로 붙인다
+        for table in ("sessions", "runs"):
+            cols = {r[1] for r in self._conn.execute(f"PRAGMA table_info({table})")}
+            if "user" not in cols:
+                self._conn.execute(f"ALTER TABLE {table} ADD COLUMN user TEXT")
+        self._conn.commit()
 
     def _query(self, sql: str, params: tuple = ()) -> list[dict[str, Any]]:
         with self._lock:
@@ -55,9 +63,12 @@ class Store:
             return rows
 
     # ---- sessions
-    def create_session(self, provider: str, title: str | None = None) -> dict[str, Any]:
+    def create_session(self, provider: str, title: str | None = None, user: str | None = None) -> dict[str, Any]:
         sid = new_id("sess")
-        self._query("INSERT INTO sessions VALUES (?,?,?,?)", (sid, now(), provider, title))
+        self._query(
+            "INSERT INTO sessions(id, created_at, provider, title, user) VALUES (?,?,?,?,?)",
+            (sid, now(), provider, title, user),
+        )
         return self.get_session(sid)  # type: ignore[return-value]
 
     def get_session(self, sid: str) -> dict[str, Any] | None:
@@ -82,11 +93,11 @@ class Store:
         return [{"role": r["role"], "content": r["content"]} for r in reversed(rows)]
 
     # ---- runs
-    def create_run(self, sid: str, kind: str, question: str) -> str:
+    def create_run(self, sid: str, kind: str, question: str, user: str | None = None) -> str:
         rid = new_id("run")
         self._query(
-            "INSERT INTO runs(id, session_id, kind, question, status, created_at) VALUES (?,?,?,?,?,?)",
-            (rid, sid, kind, question, "queued", now()),
+            "INSERT INTO runs(id, session_id, kind, question, status, created_at, user) VALUES (?,?,?,?,?,?,?)",
+            (rid, sid, kind, question, "queued", now(), user),
         )
         return rid
 
@@ -129,10 +140,21 @@ class Store:
         rows = self._query("SELECT * FROM runs WHERE id=?", (rid,))
         return rows[0] if rows else None
 
-    def list_runs(self, limit: int = 50, kind: str | None = None) -> list[dict[str, Any]]:
+    def list_runs(self, limit: int = 50, kind: str | None = None, user: str | None = None) -> list[dict[str, Any]]:
+        """user 를 주면 그 사용자의 실행(소유자 없는 옛 실행 포함)만. 결재자 이상은 None 으로 전부 본다."""
+        where, params = [], []
         if kind:
-            return self._query("SELECT * FROM runs WHERE kind=? ORDER BY created_at DESC LIMIT ?", (kind, limit))
-        return self._query("SELECT * FROM runs ORDER BY created_at DESC LIMIT ?", (limit,))
+            where.append("kind=?")
+            params.append(kind)
+        if user is not None:
+            where.append("(user=? OR user IS NULL)")
+            params.append(user)
+        sql = (
+            "SELECT * FROM runs"
+            + (" WHERE " + " AND ".join(where) if where else "")
+            + " ORDER BY created_at DESC LIMIT ?"
+        )
+        return self._query(sql, (*params, limit))
 
     def add_event(self, rid: str, seq: int, kind: str, step: int | None, data: dict[str, Any]) -> None:
         self._query(

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiAt } from "../api";
 import type { Approval, Run, RunEvent, Trace } from "../types";
 import TraceView from "./TraceView";
@@ -48,6 +48,13 @@ export default function Drawer({
       alive = false;
     };
   }, [base, runId, refreshKey]);
+  const closeBtn = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    // 열릴 때 닫기 버튼으로 포커스를 옮기고, 닫히면 원래 자리로 돌려준다(키보드 사용자)
+    const prev = document.activeElement as HTMLElement | null;
+    closeBtn.current?.focus();
+    return () => prev?.focus?.();
+  }, []);
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -58,7 +65,7 @@ export default function Drawer({
   return (
     <>
       <div className="scrim" onClick={onClose} aria-hidden="true" />
-      <section className="drawer" role="dialog" aria-label="실행 상세">
+      <section className="drawer" role="dialog" aria-modal="true" aria-label="실행 상세">
         <header>
           <h2>
             실행 상세{" "}
@@ -66,7 +73,7 @@ export default function Drawer({
               {runId}
             </span>
           </h2>
-          <button className="ghost small" onClick={onClose}>
+          <button ref={closeBtn} className="ghost small" onClick={onClose}>
             닫기
           </button>
         </header>

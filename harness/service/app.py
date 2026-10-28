@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from ..agent.providers import make_provider
 from ..packs import Pack, load_pack
+from ..packs.supervisor.tools import DEFAULT_AGENTS
 from ..tools.permissions import Policy, describe
 from ..tools.registry import ToolRegistry
 from .auth import User, UserStore, make_dependencies
@@ -148,7 +149,12 @@ def create_app(
 
     def workspace_agents() -> list[dict[str, Any]]:
         """HARNESS_WORKSPACE(쉼표 구분 URL)에 적힌 비서들의 agent card 를 30초 캐시로 모은다. 비어 있으면 자기 자신만."""
-        urls = [u.strip().rstrip("/") for u in os.getenv("HARNESS_WORKSPACE", "").split(",") if u.strip()]
+        spec = (
+            os.getenv("HARNESS_WORKSPACE")
+            or os.getenv("HARNESS_A2A_AGENTS")
+            or (DEFAULT_AGENTS if pk.name == "supervisor" else "")
+        )
+        urls = [u.strip().rstrip("/") for u in spec.split(",") if u.strip()]
         if time.monotonic() - workspace_cache["at"] < 30 and workspace_cache["agents"]:
             return workspace_cache["agents"]
         import json as _json
@@ -175,12 +181,36 @@ def create_app(
         workspace_cache.update({"at": time.monotonic(), "agents": out})
         return out
 
-    def _session(sid: str | None, provider: str | None) -> str:
+    def _provider_ok(spec: str | None) -> str | None:
+        """요청이 고른 provider 는 허용 목록 안에서만. 기본은 서비스 기본 provider 하나(같은 계열 별칭 포함).
+        compat:http://… 를 열어 두면 서버가 대화 내용을 임의 주소로 보내고 서버 키로 비용을 쓰게 되므로 명시 허용(HARNESS_ALLOWED_PROVIDERS)이 있을 때만."""
+        if not spec:
+            return None
+        allowed = [p.strip() for p in os.getenv("HARNESS_ALLOWED_PROVIDERS", "").split(",") if p.strip()] or [
+            state.default_provider
+        ]
+        if spec == state.default_provider or any(spec == a or spec.startswith(a.rstrip(":") + ":") for a in allowed):
+            return spec
+        raise HTTPException(
+            400, f"허용되지 않은 provider: {spec!r}. 허용: {allowed} (HARNESS_ALLOWED_PROVIDERS 로 넓힌다)"
+        )
+
+    def _owner(user: User) -> str | None:
+        """실행·세션 읽기 범위. 결재자 이상과 개발 모드는 전부, 그 외는 자기 것만."""
+        return None if user.anonymous or user.has_role("approver") else user.name
+
+    def _can_see(user: User, row: dict | None) -> bool:
+        return bool(row) and (_owner(user) is None or row.get("user") in (None, _owner(user)))
+
+    def _session(sid: str | None, provider: str | None, user: User | None = None) -> str:
         if sid:
-            if not store.get_session(sid):
+            s = store.get_session(sid)
+            if not s:
                 raise HTTPException(404, "세션 없음")
+            if user is not None and not _can_see(user, s):
+                raise HTTPException(403, "다른 사용자의 세션입니다")
             return sid
-        return store.create_session(provider or state.default_provider)["id"]
+        return store.create_session(provider or state.default_provider, user=user.name if user else None)["id"]
 
     @app.get("/health")
     def health():
@@ -276,10 +306,12 @@ def create_app(
 
     @app.post("/sessions")
     def create_session(body: SessionCreate, user: User = Depends(require("operator"))):
-        return store.create_session(body.provider or state.default_provider, body.title)
+        return store.create_session(_provider_ok(body.provider) or state.default_provider, body.title, user=user.name)
 
     @app.get("/sessions/{sid}")
     def get_session(sid: str, user: User = Depends(current_user)):
+        if not _can_see(user, store.get_session(sid)):
+            raise HTTPException(404, "세션 없음")
         s = store.get_session(sid)
         if not s:
             raise HTTPException(404, "세션 없음")
@@ -287,7 +319,7 @@ def create_app(
 
     @app.post("/chat")
     async def chat(body: ChatRequest, request: Request, user: User = Depends(require("operator"))):
-        sid = _session(body.session_id, body.provider)
+        sid = _session(body.session_id, _provider_ok(body.provider), user)
         store.add_audit(
             user.name,
             user.role,
@@ -297,7 +329,7 @@ def create_app(
             request.client.host if request.client else None,
         )
         return StreamingResponse(
-            stream_chat(state, sid, body.message, body.provider, user=user),
+            stream_chat(state, sid, body.message, _provider_ok(body.provider), user=user),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
@@ -325,8 +357,8 @@ def create_app(
 
     @app.post("/jobs", status_code=202)
     def create_job(body: JobCreate, request: Request, user: User = Depends(require("operator"))):
-        sid = _session(body.session_id, body.provider)
-        run_id = state.jobs.submit(sid, body.question, body.provider, user=user)
+        sid = _session(body.session_id, _provider_ok(body.provider), user)
+        run_id = state.jobs.submit(sid, body.question, _provider_ok(body.provider), user=user)
         store.add_audit(
             user.name,
             user.role,
@@ -339,12 +371,12 @@ def create_app(
 
     @app.get("/jobs")
     def list_jobs(limit: int = 50, user: User = Depends(current_user)):
-        return store.list_runs(limit, kind="job")
+        return store.list_runs(limit, kind="job", user=_owner(user))
 
     @app.get("/jobs/{run_id}")
     def get_job(run_id: str, user: User = Depends(current_user)):
         r = store.get_run(run_id)
-        if not r or r["kind"] != "job":
+        if not r or r["kind"] != "job" or not _can_see(user, r):
             raise HTTPException(404, "잡 없음")
         return r
 
@@ -357,12 +389,12 @@ def create_app(
 
     @app.get("/runs")
     def list_runs(limit: int = 50, kind: str | None = None, user: User = Depends(current_user)):
-        return store.list_runs(limit, kind)
+        return store.list_runs(limit, kind, user=_owner(user))
 
     @app.get("/runs/{run_id}")
     def get_run(run_id: str, user: User = Depends(current_user)):
         r = store.get_run(run_id)
-        if not r:
+        if not r or not _can_see(user, r):
             raise HTTPException(404, "실행 없음")
         r["events"] = store.events(run_id)
         r["approvals"] = [a for a in store.list_approvals(None, 200) if a["run_id"] == run_id]
@@ -374,7 +406,7 @@ def create_app(
         from ..observability.tracer import spans_from_events
 
         r = store.get_run(run_id)
-        if not r:
+        if not r or not _can_see(user, r):
             raise HTTPException(404, "실행 없음")
         c = spans_from_events(
             run_id, r["question"] or "", store.events(run_id), created_at=r.get("started_at") or r.get("created_at")
@@ -414,7 +446,7 @@ def create_app(
 
     @app.get("/runs/{run_id}/events")
     def run_events(run_id: str, after_seq: int = 0, user: User = Depends(current_user)):
-        if not store.get_run(run_id):
+        if not _can_see(user, store.get_run(run_id)):
             raise HTTPException(404, "실행 없음")
         return store.events(run_id, after_seq)
 

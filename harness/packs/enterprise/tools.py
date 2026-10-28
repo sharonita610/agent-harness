@@ -21,7 +21,7 @@ PACK_DIR = Path(__file__).parent
 DOCS_DIR = PACK_DIR / "docs"
 MASK_COLUMNS = {"phone"}
 
-from ...tools.sql import connect_readonly  # noqa: E402
+from ...tools.sql import connect_readonly, table_columns  # noqa: E402
 from ...tools.sql import guard_select as _guard_select_base
 
 
@@ -136,19 +136,26 @@ def build_tools(
             finally:
                 timer.cancel()
 
+    def locked_execute(sql: str, params: tuple = ()) -> list[tuple]:
+        """잠금·시간 제한 아래에서 실행하고 원시 튜플을 돌려준다(구조 조회용)."""
+        with lock:
+            timer = threading.Timer(sql_timeout_s, ro.interrupt)
+            timer.start()
+            try:
+                return ro.execute(sql, params).fetchall()
+            finally:
+                timer.cancel()
+
     # ---- read
     def list_tables(_: NoArgs) -> Any:
-        tables = [r[0] for r in ro.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")]
-        return [{"table": t, "rows": ro.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]} for t in tables]
+        tables = [r[0] for r in locked_execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")]
+        return [{"table": t, "rows": locked_execute(f"SELECT COUNT(*) FROM {t}")[0][0]} for t in tables]
 
     def describe_table(a: DescribeTableArgs) -> Any:
-        names = {r[0] for r in ro.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        names = {r[0] for r in locked_execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if a.table not in names:
             raise ValueError(f"테이블 없음: {a.table}. 가능한 테이블: {sorted(names)}")
-        cols = [
-            {"name": r[1], "type": r[2], "notnull": bool(r[3]), "pk": bool(r[5])}
-            for r in ro.execute(f"PRAGMA table_info({a.table})")
-        ]
+        cols = table_columns(db_path, a.table)
         sample = query(f"SELECT * FROM {a.table} LIMIT 3")
         return {"table": a.table, "columns": cols, "sample_rows": sample["rows"]}
 

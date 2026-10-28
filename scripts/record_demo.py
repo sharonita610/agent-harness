@@ -8,7 +8,7 @@
 전제: 총괄 비서(8790, HARNESS_WORKSPACE)·하위 비서 3개·모델 서버·평가 리포트(8765)가 켜져 있고 ffmpeg 가 있다.
 자막은 Pillow 로 프레임에 직접 그린다(brew ffmpeg 에는 libass 가 없다). 글꼴은 macOS 의 Apple SD Gothic Neo.
 목소리는 없다. 대본 멘트가 자막으로 들어가고, 모델 응답을 기다리는 구간은 앞 2.5초·뒤 1.5초만 남기고 잘라 "대기 생략" 표시를 넣는다.
-화면 변화가 있을 때만 프레임이 오므로(screencast) 정지 화면은 프레임 하나가 길게 이어진다.
+화면 변화가 있을 때만 프레임이 오므로(screencast) 정지 화면은 프레임 하나가 길게 이어진다. 기본은 2배 해상도(2560×1600) PNG 프레임, H.264 CRF 18.
 """
 
 from __future__ import annotations
@@ -73,7 +73,7 @@ class CDP:
                     waiter[0].set()
             elif msg.get("method") == "Page.screencastFrame":
                 p = msg["params"]
-                path = self.frames_dir / f"f{len(self.frames):05d}.jpg"
+                path = self.frames_dir / f"f{len(self.frames):05d}.png"
                 path.write_bytes(base64.b64decode(p["data"]))
                 self.frames.append((time.monotonic(), path))
                 self._send_raw("Page.screencastFrameAck", {"sessionId": p["sessionId"]}, wait=False)
@@ -205,26 +205,33 @@ def render_caption(src: Path, out: Path, caption: str | None, mark: str | None) 
     from PIL import Image, ImageDraw, ImageFont
 
     im = Image.open(src).convert("RGB")
+    k = im.width / 1280  # 프레임 배율에 맞춰 글자·상자 크기를 키운다
     if caption or mark:
         overlay = Image.new("RGBA", im.size, (0, 0, 0, 0))
         d = ImageDraw.Draw(overlay)
         if caption:
-            font = ImageFont.truetype(FONT, 26)
-            lines = wrap_text(d, caption, font, im.width - 200)
-            lh = 36
-            box_h = lh * len(lines) + 24
-            y0 = im.height - box_h - 22
-            d.rounded_rectangle((60, y0, im.width - 60, y0 + box_h), radius=10, fill=(0, 0, 0, 150))
+            font = ImageFont.truetype(FONT, round(26 * k))
+            lines = wrap_text(d, caption, font, im.width - round(200 * k))
+            lh = round(36 * k)
+            box_h = lh * len(lines) + round(24 * k)
+            y0 = im.height - box_h - round(22 * k)
+            d.rounded_rectangle(
+                (round(60 * k), y0, im.width - round(60 * k), y0 + box_h), radius=round(10 * k), fill=(0, 0, 0, 150)
+            )
             for i, line in enumerate(lines):
                 w = d.textlength(line, font=font)
-                d.text(((im.width - w) / 2, y0 + 12 + i * lh), line, font=font, fill=(255, 255, 255, 255))
+                d.text(((im.width - w) / 2, y0 + round(12 * k) + i * lh), line, font=font, fill=(255, 255, 255, 255))
         if mark:
-            font = ImageFont.truetype(FONT, 19)
+            font = ImageFont.truetype(FONT, round(19 * k))
             w = d.textlength(mark, font=font)
-            d.rounded_rectangle((im.width - w - 48, 16, im.width - 16, 52), radius=8, fill=(0, 0, 0, 150))
-            d.text((im.width - w - 32, 24), mark, font=font, fill=(255, 255, 255, 255))
+            d.rounded_rectangle(
+                (im.width - w - round(48 * k), round(16 * k), im.width - round(16 * k), round(52 * k)),
+                radius=round(8 * k),
+                fill=(0, 0, 0, 150),
+            )
+            d.text((im.width - w - round(32 * k), round(24 * k)), mark, font=font, fill=(255, 255, 255, 255))
         im = Image.alpha_composite(im.convert("RGBA"), overlay).convert("RGB")
-    im.save(out, quality=88)
+    im.save(out, compress_level=1)
 
 
 def assemble(keep: Path, out_dir: Path, _partial: bool = False) -> None:
@@ -273,7 +280,7 @@ def assemble(keep: Path, out_dir: Path, _partial: bool = False) -> None:
             cap, mark = active(cap_spans, t0), active(mark_spans, t0)
             key = (src, cap, mark)
             if key not in cache:
-                out = rendered / f"r{len(cache):05d}.jpg"
+                out = rendered / f"r{len(cache):05d}.png"
                 render_caption(src, out, cap, mark)
                 cache[key] = out
             f.write(f"file '{cache[key]}'\nduration {t1 - t0:.3f}\n")
@@ -301,16 +308,22 @@ def assemble(keep: Path, out_dir: Path, _partial: bool = False) -> None:
         "0",
         "-i",
         str(concat),
-        "-pix_fmt",
-        "yuv420p",
+        "-vf",
+        "format=yuv420p",
+        "-color_range",
+        "tv",
         "-r",
         "25",
         "-c:v",
         "libx264",
+        "-profile:v",
+        "high",
+        "-level",
+        "4.2",
         "-preset",
-        "medium",
+        "slow",
         "-crf",
-        "21",
+        "18",
         "-an",
         "-movflags",
         "+faststart",
@@ -343,6 +356,7 @@ def main() -> None:
     ap.add_argument("--no-spice", action="store_true")
     ap.add_argument("--no-data", action="store_true")
     ap.add_argument("--assemble-from", default=None, help="녹화 없이 work-last 폴더에서 다시 조립")
+    ap.add_argument("--scale", type=int, default=2, help="프레임 배율. 2 면 2560×1600 PNG 로 받아 글자가 또렷하다")
     a = ap.parse_args()
     if a.assemble_from:
         assemble(Path(a.assemble_from), Path(a.out), False)
@@ -376,7 +390,7 @@ def main() -> None:
             "--remote-allow-origins=*",
             "--force-color-profile=srgb",
             "--lang=ko-KR",
-            "--force-device-scale-factor=1",
+            f"--force-device-scale-factor={a.scale}",
             "about:blank",
         ],
         stdout=subprocess.DEVNULL,
@@ -397,9 +411,10 @@ def main() -> None:
         c = CDP(ws_url, frames_dir)
         c.send("Page.enable")
         c.send("Runtime.enable")
-        c.send("Emulation.setDeviceMetricsOverride", width=W, height=H, deviceScaleFactor=1, mobile=False)
+        c.send("Emulation.setDeviceMetricsOverride", width=W, height=H, deviceScaleFactor=a.scale, mobile=False)
         c.send("Emulation.setEmulatedMedia", features=[{"name": "prefers-color-scheme", "value": "light"}])
-        c.send("Page.startScreencast", format="jpeg", quality=80, maxWidth=W, maxHeight=H, everyNthFrame=1)
+        # PNG 는 무손실이라 글자가 또렷하다. 화면이 바뀔 때만 오므로 프레임 수는 수백 장 수준
+        c.send("Page.startScreencast", format="png", maxWidth=W * a.scale, maxHeight=H * a.scale, everyNthFrame=1)
         rec = Recorder(c)
         home = a.home.rstrip("/")
 

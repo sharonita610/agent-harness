@@ -145,11 +145,12 @@ export function parseSSEChunk(chunk: string): { event: string; data: Record<stri
 
 /** POST /chat 를 읽어 이벤트마다 콜백. 스트림이 끝나면 resolve. */
 export async function streamChat(
+  base: string,
   body: { message: string; session_id?: string },
   onEvent: (event: string, data: Record<string, unknown>) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  const r = await fetch(BASE + "/chat", {
+  const r = await fetch(base + "/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),

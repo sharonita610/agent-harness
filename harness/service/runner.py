@@ -13,7 +13,9 @@ from .sse import ping, sse
 Sink = Callable[[dict[str, Any]], None]
 
 
-def build_agent(state, provider, run_id: str, sink: Sink, user=None) -> Agent:
+def build_agent(
+    state, provider, run_id: str, sink: Sink, user=None, should_cancel: Callable[[], bool] | None = None
+) -> Agent:
     broker = state.broker
 
     def approval_handler(tool, args) -> bool:
@@ -31,7 +33,7 @@ def build_agent(state, provider, run_id: str, sink: Sink, user=None) -> Agent:
                 },
             }
         )
-        return broker.wait(aid)
+        return broker.wait(aid, should_cancel)
 
     return Agent(
         provider,
@@ -58,7 +60,7 @@ def execute_run(
     store.start_run(run_id)
     try:
         provider = state.provider_factory(provider_spec or state.default_provider)
-        agent = build_agent(state, provider, run_id, sink, user=user)
+        agent = build_agent(state, provider, run_id, sink, user=user, should_cancel=should_cancel)
         res = agent.run(question, history=store.history(session_id), should_cancel=should_cancel)
     except Exception as e:
         store.finish_run(run_id, "failed", error=f"{type(e).__name__}: {e}")
@@ -113,7 +115,7 @@ async def stream_chat(
 ) -> AsyncIterator[str]:
     """POST /chat 의 본문. 이벤트를 SSE 로 흘리고 마지막에 done 을 보낸다."""
     store = state.store
-    run_id = store.create_run(session_id, "chat", question)
+    run_id = store.create_run(session_id, "chat", question, user=getattr(user, "name", None))
     loop = asyncio.get_running_loop()
     q: asyncio.Queue = asyncio.Queue()
     cancel = threading.Event()
@@ -147,8 +149,9 @@ async def stream_chat(
                 "approvals": res.approvals,
             },
         )
-    except asyncio.CancelledError:  # 클라이언트가 끊음 → 에이전트에 취소 신호
+    except asyncio.CancelledError:  # 클라이언트가 끊음 → 에이전트에 취소 신호, 대기 전표는 닫는다
         cancel.set()
+        state.broker.cancel_pending(run_id, by="disconnected")
         raise
     except Exception as e:
         yield sse("error", {"run_id": run_id, "error": f"{type(e).__name__}: {e}"})

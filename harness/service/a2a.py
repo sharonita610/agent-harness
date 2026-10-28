@@ -60,7 +60,7 @@ class A2AFacade:
     def _start_run(self, session_id: str, text: str, user) -> str:
         """태스크마다 스레드 하나. 잡 큐(워커 1개)를 쓰면 결재를 기다리는 태스크 하나가 뒤의 태스크를 전부 막는다(ADR-017)."""
         store = self.state.store
-        run_id = store.create_run(session_id, "a2a", text)
+        run_id = store.create_run(session_id, "a2a", text, user=getattr(user, "name", None))
         flag = threading.Event()
         self._cancel[run_id] = flag
         sink = make_sink(store, run_id)
@@ -204,7 +204,9 @@ class A2AFacade:
         )
         cfg = params.get("configuration") or {}
         if cfg.get("blocking"):
-            deadline = time.monotonic() + float(cfg.get("timeoutSeconds") or 180)
+            deadline = time.monotonic() + min(
+                float(cfg.get("timeoutSeconds") or 180), 600.0
+            )  # 상한. 무한 대기로 워커를 잡아두지 않게
             while time.monotonic() < deadline:
                 run = store.get_run(run_id)
                 task = self._task(run, request_base)
@@ -226,12 +228,17 @@ class A2AFacade:
         if flag is None or run["status"] in ("done", "failed", "cancelled"):
             raise PermissionError("취소할 수 없는 상태")
         flag.set()  # 협조적 취소: 루프가 다음 스텝에서 멈춘다
+        self.state.broker.cancel_pending(rid)
         return self._task(self.state.store.get_run(rid), request_base)
 
     async def stream(self, rpc_id: Any, params: dict[str, Any], user, request_base: str):
         """message/stream: 태스크 생성 후 저장된 이벤트를 폴링해 status-update / artifact-update 를 SSE 로 보낸다."""
         store = self.state.store
-        task = self.send(params, user, request_base)
+        cfg = dict(params.get("configuration") or {})
+        cfg["blocking"] = (
+            False  # 스트림은 폴링으로 끝을 알린다. blocking 을 그대로 두면 이벤트 루프 안에서 time.sleep 으로 막는다
+        )
+        task = await asyncio.to_thread(self.send, {**params, "configuration": cfg}, user, request_base)
         rid, cid = task["id"], task["contextId"]
         yield f"data: {json.dumps({'jsonrpc': '2.0', 'id': rpc_id, 'result': task}, ensure_ascii=False)}\n\n"
         last_seq, last_state, idle = 0, task["status"]["state"], 0.0
@@ -307,6 +314,8 @@ def mount_a2a(app: FastAPI, state, pack, current_user, require) -> None:
                     else _rpc_error(rid, -32001, "Task not found", {"id": params.get("id")})
                 )
             if method == "tasks/cancel":
+                if not user.has_role("operator"):
+                    return JSONResponse(_rpc_error(rid, -32001, "operator 역할이 필요합니다"), status_code=403)
                 task = facade.cancel(params, base)
                 return JSONResponse(
                     {"jsonrpc": "2.0", "id": rid, "result": task} if task else _rpc_error(rid, -32001, "Task not found")

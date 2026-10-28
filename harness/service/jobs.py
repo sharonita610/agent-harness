@@ -31,7 +31,7 @@ class JobQueue:
                 pass
 
     def submit(self, session_id: str, question: str, provider_spec: str | None, user=None) -> str:
-        run_id = self.state.store.create_run(session_id, "job", question)
+        run_id = self.state.store.create_run(session_id, "job", question, user=getattr(user, "name", None))
         self._cancel[run_id] = threading.Event()
         item = (run_id, session_id, question, provider_spec, user)
         loop = getattr(self, "_loop", None)
@@ -53,6 +53,7 @@ class JobQueue:
         if flag is None or run is None or run["status"] in ("done", "failed", "cancelled"):
             return False
         flag.set()
+        self.state.broker.cancel_pending(run_id)  # 결재를 기다리던 전표는 바로 닫는다
         if run["status"] == "queued":
             self.state.store.finish_run(run_id, "cancelled", error="큐에서 취소됨")
         return True

@@ -36,7 +36,7 @@ export default function QueueBoard({
   const percentAt = (t: number) => Math.min(100, Math.max(0, ((t - t0) / span) * 100));
   const queueOrder = rows.filter((j) => j.status === "queued").map((j) => j.id);
   return (
-    <div className="qboard" role="list" aria-label="작업 큐 시간선">
+    <ul className="qboard" aria-label="작업 큐 시간선">
       {rows.map((j) => {
         const s = toMillis(j.started_at) || toMillis(j.created_at);
         const e = toMillis(j.finished_at) || now;
@@ -54,29 +54,29 @@ export default function QueueBoard({
                 : `실행 중 · ${formatDuration(now - s)}`
               : `${STATUS_KO[j.status] ?? j.status} · ${formatDuration(e - s)}`;
         return (
-          <button
-            key={j.id}
-            role="listitem"
-            className={`qrow st-${j.status}`}
-            onClick={() => onOpen(j.id)}
-            title={`${j.question}\n${title}`}
-          >
-            <span className="qq">{j.question}</span>
-            <span className="qtrack">
-              <span className={`qbar ${j.status}`} style={{ left: `${left}%`, width: `${width}%` }}>
-                {pct !== null && <span className="qfill" style={{ width: `${pct}%` }} />}
+          <li key={j.id}>
+            <button
+              className={`qrow st-${j.status}`}
+              onClick={() => onOpen(j.id)}
+              title={`${j.question}\n${title}`}
+            >
+              <span className="qq">{j.question}</span>
+              <span className="qtrack">
+                <span className={`qbar ${j.status}`} style={{ left: `${left}%`, width: `${width}%` }}>
+                  {pct !== null && <span className="qfill" style={{ width: `${pct}%` }} />}
+                </span>
               </span>
-            </span>
-            <span className="qside">
-              {j.status === "queued"
-                ? `${queueOrder.indexOf(j.id) + 1}번째 대기`
-                : j.status === "running" && p
-                  ? `${p.done}/${p.total}${p.label ? " · " + p.label : ""}`
-                  : title}
-            </span>
-          </button>
+              <span className="qside">
+                {j.status === "queued"
+                  ? `${queueOrder.indexOf(j.id) + 1}번째 대기`
+                  : j.status === "running" && p
+                    ? `${p.done}/${p.total}${p.label ? " · " + p.label : ""}`
+                    : title}
+              </span>
+            </button>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }

@@ -286,3 +286,44 @@ describe("yTicks", () => {
     expect(t.length).toBeGreaterThanOrEqual(3);
   });
 });
+
+describe("review fixes", () => {
+  it("bars below zero are drawn from the zero line and NaN values get no mark", () => {
+    const h = renderToStaticMarkup(
+      createElement(Chart, {
+        kind: "bar",
+        data: { x: ["a", "b", "c"], series: [{ name: "n", values: [-3, 5, NaN] }] },
+      }),
+    );
+    expect((h.match(/<rect/g) ?? []).length).toBe(2);
+    expect(h).not.toContain('height="0"');
+    expect(h).toContain(">-");
+  });
+  it("waveform rows given as arrays are zipped with their column names", () => {
+    const h = renderToStaticMarkup(
+      createElement(ResultCard, {
+        result: {
+          run_id: "r",
+          columns: ["t", "v(out)"],
+          rows: [
+            [0, 1.5],
+            [1, 2.5],
+          ],
+        },
+      }),
+    );
+    expect(h).toContain(">t</th>");
+    expect(h).toContain(">v(out)</th>");
+    expect(h).not.toMatch(/<th[^>]*>0<\/th>/);
+  });
+  it("falls back to raw json when every key is hidden or non-primitive", () => {
+    const h = renderToStaticMarkup(
+      createElement(ResultCard, { result: { truncated: false, note: "x", nested: { a: 1 } } }),
+    );
+    expect(h).toContain("원문 보기");
+  });
+  it("renders fenced code as a pre block", () => {
+    const h = renderToStaticMarkup(createElement(Rich, { text: "결과\n```sql\nSELECT 1\n```\n끝" }));
+    expect(h).toContain('<pre class="md">SELECT 1</pre>');
+  });
+});

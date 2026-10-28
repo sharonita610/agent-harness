@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import sqlite3
 import statistics
+import threading
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -18,12 +19,13 @@ from pydantic import BaseModel, Field
 
 from ...retrieval import DocIndex, OpenAIEmbedder, embedder_available
 from ...tools.registry import Tier, Tool
-from ...tools.sql import connect_readonly, guard_select, rows
+from ...tools.sql import connect_readonly, guard_select, rows, table_columns
 from ...viz import Figure, Marker, Series, render_svg
 from .seed import DEFAULT_DB, DEFECTS, PROCESSES, REFERENCE_DATE
 
 PACK_DIR = Path(__file__).parent
 DOCS_DIR = PACK_DIR / "docs"
+SQL_TIMEOUT_S = 10.0  # 한 조회의 상한(초). 넘으면 interrupt
 RUNS_DIR = Path(os.getenv("HARNESS_FACTORY_RUNS", str(DEFAULT_DB.parent / "factory_runs")))
 PERIOD_START = "2026-10-14 00:00:00"
 PERIOD_END = "2026-10-28 00:00:00"
@@ -173,9 +175,22 @@ def build_tools(
         raise FileNotFoundError(f"DB 가 없습니다: {db_path}. 먼저 `uv run harness seed --pack factory` 를 실행하세요.")
     ro = connect_readonly(db_path)
     index = index or make_index(docs_dir)
+    lock = threading.Lock()  # SQLite 연결 하나를 채팅·잡·MCP 스레드가 같이 쓴다. 잠금 없이는 "Recursive use of cursors"
+
+    def _locked(fn):
+        with lock:
+            timer = threading.Timer(SQL_TIMEOUT_S, ro.interrupt)
+            timer.start()
+            try:
+                return fn()
+            finally:
+                timer.cancel()
 
     def query(sql: str, params: tuple = ()) -> list[dict[str, Any]]:
-        return [dict(r) for r in ro.execute(sql, params).fetchall()]
+        return _locked(lambda: [dict(r) for r in ro.execute(sql, params).fetchall()])
+
+    def query_rows(sql: str, params: tuple = (), limit: int | None = None) -> dict[str, Any]:
+        return _locked(lambda: rows(ro.execute(sql, params), limit=limit))
 
     def resolve_station(station: str | int | None, line: int | None) -> list[int]:
         """스테이션 지정 → id 목록(없으면 전체 또는 라인 전체)."""
@@ -222,24 +237,24 @@ def build_tools(
     # ---- read: 구조
     def list_tables(_: NoArgs) -> Any:
         tables = [r["name"] for r in query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")]
-        return [{"table": t, "rows": ro.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]} for t in tables]
+        return [{"table": t, "rows": query(f"SELECT COUNT(*) AS n FROM {t}")[0]["n"]} for t in tables]
 
     def describe_table(a: DescribeTableArgs) -> Any:
         names = {r["name"] for r in query("SELECT name FROM sqlite_master WHERE type='table'")}
         if a.table not in names:
             raise ValueError(f"테이블 없음: {a.table}. 가능한 테이블: {sorted(names)}")
-        cols = [{"name": r[1], "type": r[2]} for r in ro.execute(f"PRAGMA table_info({a.table})")]
+        cols = [{"name": c["name"], "type": c["type"]} for c in table_columns(db_path, a.table)]
         return {
             "table": a.table,
             "columns": cols,
-            "sample_rows": rows(ro.execute(f"SELECT * FROM {a.table} LIMIT 3"))["rows"],
+            "sample_rows": query_rows(f"SELECT * FROM {a.table} LIMIT 3")["rows"],
         }
 
     def run_sql(a: RunSqlArgs) -> Any:
         sql = guard_select(
             a.sql, default_limit=a.limit, max_limit=500, write_hint="라벨 확정·티켓·알림 규칙은 전용 도구를 쓰세요."
         )
-        return {**rows(ro.execute(sql), limit=a.limit), "sql_executed": sql}
+        return {**query_rows(sql, limit=a.limit), "sql_executed": sql}
 
     # ---- read: 분석
     def ng_summary(a: SummaryArgs) -> Any:
