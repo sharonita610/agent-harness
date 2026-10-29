@@ -15,6 +15,11 @@ MODEL_PATH="${LLM_MODEL_PATH:-}"
 CTX="${1:-65536}"
 PORT="${LLM_PORT:-8080}"
 
+if [ -z "$MODEL_PATH" ] && [[ "${HARNESS_OFFLINE:-}" =~ ^(1|true|yes|on)$ ]]; then
+  echo "[serve_llm] 오프라인 모드(HARNESS_OFFLINE=1)에서는 Hugging Face 에서 받지 않습니다. LLM_MODEL_PATH=/path/model.gguf 를 지정하세요" >&2
+  exit 1
+fi
+
 if [ -n "$MODEL_PATH" ]; then
   MODEL_ARGS=(-m "$MODEL_PATH")
 else

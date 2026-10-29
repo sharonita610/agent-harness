@@ -95,3 +95,6 @@ data/factory_runs/
 # 데이터 탭이 그린 규정 문서 관계도(SVG)
 data/enterprise_files/
 data/factory_doc_embeddings.json
+
+# 에어갭 설치 묶음(scripts/offline_bundle.sh 결과, 수 GB)
+dist-offline/

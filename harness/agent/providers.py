@@ -9,6 +9,7 @@ import time
 import urllib.request
 from typing import Any, Callable, Protocol
 
+from ..offline import check_provider_kind, check_url
 from .types import LLMResponse, ToolCall, Usage
 
 DEFAULT_LOCAL_BASE_URL = "http://127.0.0.1:8080/v1"
@@ -416,6 +417,7 @@ def make_provider(spec: str | None = None, **kw) -> Provider:
     | "route" | "route:local->openai:gpt-5-mini" (싼 모델 -> 막히면 올릴 모델)"""
     spec = spec or os.getenv("HARNESS_PROVIDER", "local")
     kind, _, rest = spec.partition(":")
+    check_provider_kind(kind, spec)  # 오프라인 모드면 openai:/anthropic: 는 여기서 거부
     if kind == "route":
         cheap_spec, sep, strong_spec = (rest or "local->openai:gpt-5-mini").partition("->")
         if not sep or not cheap_spec or not strong_spec:
@@ -426,7 +428,7 @@ def make_provider(spec: str | None = None, **kw) -> Provider:
     if kind == "local":
         return OpenAICompatProvider(
             model=rest or os.getenv("LLM_MODEL", DEFAULT_LOCAL_MODEL),
-            base_url=os.getenv("LLM_BASE_URL", DEFAULT_LOCAL_BASE_URL),
+            base_url=check_url(os.getenv("LLM_BASE_URL", DEFAULT_LOCAL_BASE_URL), "모델 서버"),
             api_key="llama.cpp",
             name="local",
             **kw,
@@ -438,6 +440,10 @@ def make_provider(spec: str | None = None, **kw) -> Provider:
     if kind == "compat":
         base_url, _, model = rest.partition("|")
         return OpenAICompatProvider(
-            model=model or DEFAULT_LOCAL_MODEL, base_url=base_url, api_key="no-key", name="compat", **kw
+            model=model or DEFAULT_LOCAL_MODEL,
+            base_url=check_url(base_url, "모델 서버"),
+            api_key="no-key",
+            name="compat",
+            **kw,
         )
     raise ValueError(f"알 수 없는 프로바이더: {spec}")

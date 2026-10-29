@@ -259,7 +259,11 @@ class OTelExporter:
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-        self.endpoint = endpoint or os.getenv("HARNESS_OTLP_ENDPOINT", "http://127.0.0.1:4318/v1/traces")
+        from ..offline import check_url
+
+        self.endpoint = check_url(
+            endpoint or os.getenv("HARNESS_OTLP_ENDPOINT", "http://127.0.0.1:4318/v1/traces"), "트레이스 내보내기"
+        )
         self._provider = TracerProvider(resource=Resource.create({"service.name": service_name}))
         self._provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=self.endpoint)))
         self._tracer = self._provider.get_tracer("harness")

@@ -1,3 +1,12 @@
+/* 글꼴은 같이 담아 둔다(ui/public/fonts, SIL OFL). 에어갭 환경에서 화면이 밖으로 요청을 보내지 않도록 CDN 을 쓰지 않는다. */
+@font-face {
+  font-family: "Pretendard Variable";
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/PretendardVariable.woff2") format("woff2-variations");
+}
+
 /* 업무 데스크. 따뜻한 종이 위에 먹으로 쓴 글, 포인트는 남색 하나, 유일한 장식은 결재 도장이다. 글꼴은 Pretendard 하나. */
 :root {
   --paper: #f4f3f0;

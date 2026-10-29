@@ -26,6 +26,7 @@
 - [평가](#평가): 모델별 점수표, 사람 채점과 얼마나 일치하는지
 - [실패 모드 카탈로그](#실패-모드-카탈로그): AI 가 실제로 저지른 실수 16개와 그걸 막은 방법
 - [인증, 역할, 감사](#인증-역할-감사): 누가 무엇을 할 수 있고 기록은 어디에 남는지
+- [인터넷 없이 쓰기 (에어갭)](#인터넷-없이-쓰기-에어갭): `HARNESS_OFFLINE=1`, 바깥 호출 0 을 테스트로, 설치 묶음
 - [관측성: 트레이싱](#관측성-트레이싱): 한 질문에 시간이 어디에 쓰였는지 보는 법
 
 **직접 돌려 보려면 (개발자)**
@@ -37,7 +38,7 @@
 
 **어떻게 만들었나 (설계)**
 - [구성](#구성): 폴더별 역할
-- [설계 결정](#설계-결정): 왜 그렇게 만들었는지 요약, 상세는 ADR 26편
+- [설계 결정](#설계-결정): 왜 그렇게 만들었는지 요약, 상세는 ADR 27편
 - [로드맵](#로드맵) · [문서](#문서) · [세 번째 팩 만들기](docs/ADDING-A-PACK.md)
 
 **이 프로젝트가 증명하려는 것** (AI Agent Engineer 공고 13개의 공통 요구사항을 하나씩 대응):
@@ -59,7 +60,7 @@
 | 제조 현장 데이터 위의 에이전트 | 세 번째 팩 `factory`: 가짜 공장의 NG(불량) 이미지 기록·설비 파라미터·조치 위에서 "어느 라인이 언제 튀었나 → 무엇이 달라졌나 → 조치 → 효과" 를 도구로 답하고, 라벨 확정·티켓은 결재 | `harness/packs/factory/`, ADR-016 |
 | 지식 베이스와 검색 파이프라인 | 매뉴얼 PDF 765쪽 → 절 단위 1,137청크 → SQLite(BM25 + 벡터, 증분 임베딩) → 검색·읽기 도구 → 32문항으로 측정(hit@1 44% → 97%) | `harness/retrieval/kb.py`, ADR-014 |
 | 지식 그래프 | 실험 추적 그래프: 실행을 회로·소자·해석·측정 노드와 관계로 자동 기록, 같은 토폴로지 변형을 값 차이와 함께 연결. "지난번 R1=2.2k 때 fc", "같은 회로 실행 전부", "두 실행 비교" 를 도구 3개로 답함. 규정 **문서 그래프**: 문서 10개의 인용·절·데이터 개념 관계를 본문에서 자동 추출해 "이 규정을 개정하면 같이 봐야 하는 문서" 를 도구 2개로 답함 | `harness/packs/spice/graph.py`, `harness/retrieval/docgraph.py`, ADR-015, ADR-023 |
-| 판단 근거를 글로 | 설계 결정 문서 26편, 실험 노트 | `docs/decisions/`, `NOTES.md` |
+| 판단 근거를 글로 | 설계 결정 문서 27편, 실험 노트 | `docs/decisions/`, `NOTES.md` |
 
 MCP 서버로도 노출되어 Hermes Agent, Claude Desktop 같은 외부 에이전트에서 같은 도구를 쓸 수 있다. HTTP 로 열면 웹과 같은 키·범위·결재함을 거친다.
 
@@ -361,6 +362,7 @@ open http://127.0.0.1:8787/docs   # OpenAPI
 | `HARNESS_PACK` | 띄울 팩 `enterprise` / `spice` / `factory` / `supervisor` (`enterprise`) |
 | `HARNESS_PROVIDER` | 기본 모델 `local` / `local:별칭` / `openai:모델` / `anthropic:모델` / `compat:주소\|모델` / `route:싼모델->강한모델`(막히면 올림, ADR-024) (`local`) |
 | `HARNESS_ALLOWED_PROVIDERS` | 요청이 고를 수 있는 provider 목록(쉼표). 비우면 기본 provider 하나만 허용 |
+| `HARNESS_OFFLINE`, `HARNESS_OFFLINE_ALLOW` | 에어갭 모드: 외부 공급자 거부, 모델·임베딩·트레이스 주소를 루프백·사설망·사내 호스트로 제한. 예외 호스트는 쉼표 목록(접미사는 `.corp.local` 꼴) (ADR-027) |
 | `LLM_BASE_URL`, `LLM_MODEL_PATH` | 로컬 llama.cpp 주소(`http://127.0.0.1:8080/v1`)와 모델 파일(`scripts/serve_llm.sh`) |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | 호스팅 모델·임베딩 키 |
 | `HARNESS_EMBED_BASE_URL`, `HARNESS_EMBED_MODEL`, `HARNESS_HYBRID` | 임베딩 서버·모델, 하이브리드 검색 끄기(`0`) |
@@ -376,6 +378,27 @@ open http://127.0.0.1:8787/docs   # OpenAPI
 | `HARNESS_SPICE_RUNS`, `HARNESS_SPICE_LIBRARY`, `HARNESS_SPICE_KB`, `HARNESS_SPICE_GRAPH`, `HARNESS_NGSPICE` | 회로 팩의 실행 폴더·저장 회로·지식 베이스·실험 그래프·ngspice 경로 |
 | `HARNESS_FACTORY_DB`, `HARNESS_FACTORY_RUNS` | 공정 팩의 DB 와 그래프 폴더 |
 | `TZ` | 저장 시각의 시간대(Docker 에서 `Asia/Seoul`) |
+
+## 인터넷 없이 쓰기 (에어갭)
+
+은행·병원·공장처럼 데이터를 밖으로 내보낼 수 없는 곳을 위한 모드. 이 플랫폼은 기본값이 로컬 모델·SQLite·BM25·로컬 ngspice 라 원래 밖에 나가지 않지만, "설정을 잘못 해도 안 나간다" 는 코드가 보장해야 한다.
+
+```bash
+HARNESS_OFFLINE=1 uv run uvicorn harness.service.app:app --port 8787   # /health 에 offline: true
+HARNESS_OFFLINE=1 uv run pytest tests/test_offline.py                   # 바깥 소켓을 막고 평가 한 바퀴
+scripts/offline_bundle.sh docker --model ~/.cache/local-agent-lab/models/gpt-oss-20b-MXFP4.gguf   # 설치 묶음
+```
+
+| 켜면 | 어떻게 |
+|---|---|
+| 외부 모델 공급자(`openai:`, `anthropic:`) | 만들지 않는다. 시작 시 `OfflineViolation` |
+| 모델·임베딩·트레이스 주소 | 루프백·사설망(10/8, 172.16/12, 192.168/16)·점 없는 사내 호스트명만. 예외는 `HARNESS_OFFLINE_ALLOW` |
+| 바깥 임베딩 서버 | 탐색조차 하지 않고 BM25 만 쓴다 |
+| 모델 서버 스크립트 | Hugging Face 다운로드 거부, `LLM_MODEL_PATH`·`EMBED_MODEL_PATH` 요구 |
+| 화면 글꼴 | CDN 대신 동봉(`ui/public/fonts`, SIL OFL). 런타임 외부 요청 0 |
+| 모델 라우팅 | 바깥으로 올리지 못하므로 "작은 로컬 → 큰 로컬"(`route:local->compat:http://llm-big:8080/v1|big`)로만 |
+
+증명은 테스트다. `tests/test_offline.py` 가 루프백이 아닌 모든 소켓 연결을 실패시키는 가드를 건 채로 회사 팩 평가(도구·DB·문서 검색·채점·결과 저장)를 돌려 통과하는지 본다. 설치 묶음(`scripts/offline_bundle.sh`)은 인터넷이 되는 곳에서 도커 이미지 tar(또는 소스 + uv 휠 캐시 + 빌드된 화면)와 모델 파일을 `INSTALL.md` 와 함께 묶고, 대상 서버에서는 `docker load` 또는 `uv sync --offline` 으로 설치한다. 이 모드가 다루지 않는 것(인증·서명된 이미지·사내 계정 연동·업데이트 절차)은 ADR-027 에 적었다.
 
 ## 인증, 역할, 감사
 ```bash
@@ -667,7 +690,7 @@ _출처: [20261029-014321_local_supervisor_n3.json](harness/evals/results/202610
 
 ## 로드맵
 - 2주차: ~~FastAPI 서비스~~ ~~트레이싱(JSONL·OTLP)~~ ~~하이브리드 검색~~ 완료 → 상용 모델 비교 행 추가(API 키 필요)
-- 3주차: ~~React UI~~ ~~README 상단 재정리~~ ~~2차 도메인 팩(`spice`)~~ ~~LLM 판정자 vs 사람 채점 대조~~ ~~매뉴얼 지식 베이스~~ ~~실험 추적 그래프~~ ~~3차 팩(`factory`)~~ ~~A2A·총괄 비서~~ ~~LangGraph 비교 실험~~ ~~업무 데스크 화면·데이터 탭·큐 보드~~ ~~MCP over HTTP~~ ~~데모 영상(녹화 스크립트)~~ 완료 → 평가 결과 공개, Electron 셸, 판정자 전 팩 적용, 인젝션 문제 확대, CI 평가 스모크, ~~소자 라이브러리~~ ~~문서 그래프~~ ~~모델 라우팅~~ GPU 배포·양자화 비교
+- 3주차: ~~React UI~~ ~~README 상단 재정리~~ ~~2차 도메인 팩(`spice`)~~ ~~LLM 판정자 vs 사람 채점 대조~~ ~~매뉴얼 지식 베이스~~ ~~실험 추적 그래프~~ ~~3차 팩(`factory`)~~ ~~A2A·총괄 비서~~ ~~LangGraph 비교 실험~~ ~~업무 데스크 화면·데이터 탭·큐 보드~~ ~~MCP over HTTP~~ ~~데모 영상(녹화 스크립트)~~ 완료 → 평가 결과 공개, Electron 셸, 판정자 전 팩 적용, 인젝션 문제 확대, CI 평가 스모크, ~~소자 라이브러리~~ ~~문서 그래프~~ ~~모델 라우팅~~ ~~오프라인(에어갭) 모드~~ GPU 배포·양자화 비교
 
 ## 문서
-`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정 26편, 최근: ADR-024 모델 라우팅, ADR-025 요청 다양화, ADR-026 설비·시뮬레이터 상태) · `docs/ADDING-A-PACK.md`(팩 추가) · `docs/demo-script.md`(데모 대본) · `docs/VERIFY-day1-3.md`(검증 절차) · `scripts/capture_ui.py`(README 화면 캡처, 실제 실행)
+`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정 27편, 최근: ADR-025 요청 다양화, ADR-026 설비·시뮬레이터 상태, ADR-027 오프라인 모드) · `docs/ADDING-A-PACK.md`(팩 추가) · `docs/demo-script.md`(데모 대본) · `docs/VERIFY-day1-3.md`(검증 절차) · `scripts/capture_ui.py`(README 화면 캡처, 실제 실행)

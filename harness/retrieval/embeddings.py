@@ -8,6 +8,9 @@ import math
 import os
 from pathlib import Path
 from typing import Callable, Sequence
+from urllib.parse import urlparse
+
+from ..offline import allowed_host, check_url, is_offline
 
 DEFAULT_EMBED_BASE_URL = "http://127.0.0.1:8082/v1"
 DEFAULT_EMBED_MODEL = "local-embed"
@@ -30,7 +33,9 @@ class OpenAIEmbedder:
     ):
         from openai import OpenAI
 
-        self.base_url = base_url or os.getenv("HARNESS_EMBED_BASE_URL", DEFAULT_EMBED_BASE_URL)
+        self.base_url = check_url(
+            base_url or os.getenv("HARNESS_EMBED_BASE_URL", DEFAULT_EMBED_BASE_URL), "임베딩 서버"
+        )
         self.model = model or os.getenv("HARNESS_EMBED_MODEL", DEFAULT_EMBED_MODEL)
         self._client = OpenAI(
             base_url=self.base_url,
@@ -51,6 +56,8 @@ def embedder_available(base_url: str | None = None, timeout: float = 2.0) -> boo
     import urllib.request
 
     base = (base_url or os.getenv("HARNESS_EMBED_BASE_URL", DEFAULT_EMBED_BASE_URL)).rstrip("/").removesuffix("/v1")
+    if is_offline() and not allowed_host(urlparse(base).hostname or ""):
+        return False  # 오프라인 모드: 바깥 임베딩 서버는 있어도 없는 것으로(BM25 만 쓴다). 탐색조차 하지 않는다
     if not any(h in base for h in ("127.0.0.1", "localhost", "0.0.0.0", "embed:")):
         return bool(
             os.getenv("OPENAI_API_KEY")

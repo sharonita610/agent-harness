@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..agent.providers import make_provider
+from ..offline import is_offline
 from ..packs import Pack, load_pack
 from ..packs.supervisor.tools import DEFAULT_AGENTS
 from ..tools.permissions import Policy, describe
@@ -218,6 +219,7 @@ def create_app(
             "status": "ok",
             "tools": len(registry),
             "provider": state.default_provider,
+            "offline": is_offline(),
             "pending_approvals": len(state.broker.pending()),
             "auth_required": state.users.required,
             "model": model_status(),
