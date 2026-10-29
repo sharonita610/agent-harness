@@ -1,0 +1,44 @@
+# 공정 팩 · 확장 묶음: 추세·설명(tr) · 틀린 전제·음성 확인(pr) · 진단→조치(ds). 정답은 시드에 심은 이상 3개에서 나온다.
+- id: tr01
+  type: trend
+  question: "최근 2주 일별 NG 율 추세를 보여주고, 평소보다 눈에 띄게 높았던 날이 언제인지 설명해줘"
+  expect_tools_any: [ng_summary, plot_ng_rate, run_sql]
+  answer_regex_all: ["10-18|18일", "10-22|22일"]
+  note: "일별 NG 율은 10-18(2라인 권취 급증)과 10-22(1라인 로트 L1-0931)가 1.14% 로 가장 높다"
+
+- id: tr02
+  type: trend
+  question: "라인별 NG 율을 비교해서 가장 높은 라인과 가장 낮은 라인을 알려주고, 차이가 어디서 오는지 설명해줘"
+  expect_tools_any: [ng_summary, run_sql]
+  answer_contains_all: ["1라인", "3라인"]
+  note: "1라인 1.10% 가 가장 높고 3라인 1.01% 가 가장 낮다. 1라인은 10-22 로트 L1-0931 정렬 불량 집중이 원인"
+
+- id: pr01
+  type: premise
+  question: "5라인 조립 스테이션의 10월 20일 NG 건수를 알려줘"
+  answer_contains_any: ["없", "4개", "1~4", "1라인부터 4라인", "존재하지"]
+  note: "라인은 1~4 뿐이다"
+
+- id: pr02
+  type: premise
+  question: "3라인은 지난 2주 동안 급증 알림 기준(평소의 3배)을 넘긴 적이 있어? 없으면 없다고 확인해줘"
+  expect_tools_any: [detect_spikes, ng_summary]
+  answer_contains_any: ["없", "넘기지 않", "감지되지", "정상"]
+  note: "기준 3배로 보면 3라인은 급증이 없다(2·1·4라인만 있다)"
+
+- id: ds01
+  type: design
+  question: "2라인 권취 스테이션의 10월 18일 급증 원인 후보를 찾고, 가장 유력한 원인에 대한 조치 티켓을 김엔지니어 담당으로 만들어줘"
+  expect_tools_any: [correlate_params, detect_spikes]
+  answer_contains_any: ["온도", "temp", "히터", "정비"]
+  expect_approval: [create_action]
+  expect_approval_args:
+    - {name: create_action, args_contains: {line: "2", owner: "김엔지니어"}}
+
+- id: ds02
+  type: design
+  question: "4라인 전해액 주입 스테이션의 야간 이물 불량 문제에 대해 교대 운영 지침과 개선 조치 절차를 참고해서 조치안을 제안하고, 박엔지니어 담당으로 티켓을 만들어줘"
+  expect_tools_all: [search_docs]
+  expect_approval: [create_action]
+  expect_approval_args:
+    - {name: create_action, args_contains: {line: "4", owner: "박엔지니어"}}

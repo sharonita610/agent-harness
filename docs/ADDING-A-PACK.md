@@ -58,7 +58,7 @@ PACK = Pack(
 그리고 `harness/packs/__init__.py` 의 `PACK_NAMES` 에 이름을 추가한다. 선택은 `HARNESS_PACK=mypack` 또는 `--pack mypack`.
 
 ## 4. 평가 (`harness/evals/tasks_mypack.yaml`)
-문제 12~20개. 정답은 `truth_sql`(DB), `truth_expr`(공식), `truth_value`(상수) 중 하나 + `tolerance_pct`. 과정 검사: `expect_tools_any/all`, `forbid_tools_executed`, `expect_approval`, `answer_contains_any/not_contains/not_regex`. 함정 문제(지시문 주입, 삭제 요청, 모호한 질문)는 꼭 넣는다. `uv run harness eval --pack mypack --n 3`.
+문제 12~20개. 정답은 `truth_sql`(DB), `truth_expr`(공식), `truth_value`(상수) 중 하나 + `tolerance_pct`. 과정 검사: `expect_tools_any/all`, `forbid_tools_executed`, `expect_approval`, `expect_approval_args`(승인 요청의 인자까지), `answer_contains_any/all/not_contains/not_regex`, `answer_regex_all`. 다중 턴은 `question` 대신 `turns:` 목록(앞 턴의 질문·답이 history 로 넘어가고 마지막 턴을 채점), 사용자 범위는 `scope:`(팩의 `parse_scope` 형식). `{변수}` 는 `params_sql` 로 채워지며 태스크 전체에 적용된다(ADR-025). 함정 문제(지시문 주입, 삭제 요청, 모호한 질문)는 꼭 넣는다. `uv run harness eval --pack mypack --n 3`.
 
 ## 5. 문서 (`docs/`)
 검색 도구가 볼 마크다운(`#` 제목, `##` 절). 매뉴얼 PDF 가 있으면 `harness kb build --pdf …` 로 지식 베이스를 만들고 `make_index` 가 그것을 쓰게 한다(spice/tools.py 참고). 함정 지시문을 한 곳 심어 두면 평가에 쓸 수 있다.

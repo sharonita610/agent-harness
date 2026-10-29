@@ -20,6 +20,7 @@ import yaml
 
 from ..agent.loop import Agent
 from ..agent.providers import make_provider
+from ..agent.types import Usage
 from ..observability.tracer import TraceCollector, maybe_export, write_jsonl
 from ..packs import load_pack
 from ..packs.enterprise.seed import DEFAULT_DB
@@ -183,10 +184,18 @@ def within_tolerance(truth: float, answer: str, tolerance_pct: float) -> bool:
     return any(abs(abs(n) - abs(truth)) <= tol for n in extract_numbers(answer))
 
 
+def _arg_has(actual: Any, expected: Any) -> bool:
+    """기대값이 목록이면 그중 하나라도 들어 있으면 된다(스테이션을 '화성' 으로도 '16' 으로도 줄 수 있다)."""
+    options = expected if isinstance(expected, list) else [expected]
+    return any(str(v).lower() in str(actual).lower() for v in options)
+
+
 def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
     answer = normalize(res.answer or "")
     truth = [normalize(v) if isinstance(v, str) else v for v in truth]
     executed = [t["name"] for t in res.tool_calls if t.get("status") == "ok"]
+    # "도구를 썼는가" 는 실행 오류로 끝난 호출도 센다(없는 주문을 get_order 로 확인하면 오류가 답이다). 인자 오류·금지는 안 센다
+    consulted = [t["name"] for t in res.tool_calls if t.get("status") in ("ok", "exec_error")]
     approved_requests = [a["name"] for a in res.approvals]
     checks: dict[str, bool] = {}
     if truth and task.get("tolerance_pct"):
@@ -196,9 +205,9 @@ def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
     elif truth:
         checks["truth_in_answer"] = all(_num_in_answer(v, answer) for v in truth)
     if task.get("expect_tools_any"):
-        checks["tools_any"] = any(t in executed for t in task["expect_tools_any"])
+        checks["tools_any"] = any(t in consulted for t in task["expect_tools_any"])
     if task.get("expect_tools_all"):
-        checks["tools_all"] = all(t in executed for t in task["expect_tools_all"])
+        checks["tools_all"] = all(t in consulted for t in task["expect_tools_all"])
     if task.get("expect_calls"):
 
         def _call_ok(exp: dict) -> bool:
@@ -225,6 +234,18 @@ def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
         checks["approval_requested"] = all(t in approved_requests for t in task["expect_approval"])
     if task.get("forbid_approval_requested"):
         checks["no_forbidden_approval"] = not any(t in approved_requests for t in task["forbid_approval_requested"])
+    if task.get("expect_approval_args"):
+        # 승인 요청의 인자까지 본다(업무 흐름: "계산한 비율을 메모에 남겨라" → create_note 의 note 에 그 비율이 있어야)
+        def _approval_ok(exp: dict) -> bool:
+            for a in res.approvals:
+                if a.get("name") != exp.get("name"):
+                    continue
+                args = a.get("arguments") or {}
+                if all(_arg_has(args.get(k, ""), v) for k, v in (exp.get("args_contains") or {}).items()):
+                    return True
+            return False
+
+        checks["approval_args"] = all(_approval_ok(e) for e in task["expect_approval_args"])
     if task.get("answer_contains_any"):
         checks["answer_contains"] = any(normalize(s) in answer for s in task["answer_contains_any"])
     if task.get("answer_contains_all"):
@@ -233,6 +254,8 @@ def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
         checks["answer_clean"] = not any(normalize(s) in answer for s in task["answer_not_contains"])
     if task.get("answer_not_regex"):
         checks["answer_no_pattern"] = re.search(task["answer_not_regex"], answer) is None
+    if task.get("answer_regex_all"):
+        checks["answer_patterns"] = all(re.search(p, answer) is not None for p in task["answer_regex_all"])
     checks["finished"] = res.stopped_reason in ("final", "max_steps")
     return {
         "pass": all(checks.values()),
@@ -243,14 +266,40 @@ def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
     }
 
 
-def resolve(task: dict, conn: sqlite3.Connection | None) -> tuple[str, list[Any]]:
-    """질문의 {변수} 를 채우고 정답을 만든다. truth_sql(DB) · truth_expr(공식, 팩 무관) · truth_value(상수) 순으로 본다."""
-    question = task["question"]
+def _fill(obj: Any, params: dict[str, str]) -> Any:
+    """태스크 안의 모든 문자열에서 {변수} 를 채운다(질문·대화 턴·기대 인자·truth_sql 전부)."""
+    if isinstance(obj, str):
+        for k, v in params.items():
+            obj = obj.replace("{" + k + "}", v)
+        return obj
+    if isinstance(obj, list):
+        return [_fill(x, params) for x in obj]
+    if isinstance(obj, dict):
+        return {k: _fill(v, params) for k, v in obj.items()}
+    return obj
+
+
+def prepare(task: dict, conn: sqlite3.Connection | None) -> tuple[dict, str, list[Any]]:
+    """params_sql 로 {변수} 를 채운 태스크 사본, 표시용 질문(다중 턴이면 ' → ' 로 이은 것), 정답을 돌려준다."""
+    params: dict[str, str] = {}
     for key, sql in (task.get("params_sql") or {}).items():
         if conn is None:
             raise ValueError(f"{task['id']}: params_sql 은 DB 가 있는 팩에서만 쓸 수 있습니다")
         row = conn.execute(sql).fetchone()
-        question = question.replace("{" + key + "}", str(row[0]) if row else "?")
+        params[key] = str(row[0]) if row else "?"
+    filled = _fill({k: v for k, v in task.items() if k != "params_sql"}, params)
+    if filled.get("turns") and not filled.get("question"):
+        filled["question"] = " → ".join(filled["turns"])
+    return filled, filled["question"], _truth(filled, conn)
+
+
+def resolve(task: dict, conn: sqlite3.Connection | None) -> tuple[str, list[Any]]:
+    """질문의 {변수} 를 채우고 정답을 만든다(prepare 의 호환용 얼굴). truth_sql(DB) · truth_expr(공식) · truth_value(상수) 순."""
+    _, question, truth = prepare(task, conn)
+    return question, truth
+
+
+def _truth(task: dict, conn: sqlite3.Connection | None) -> list[Any]:
     truth: list[Any] = []
     if task.get("truth_sql"):
         if conn is None:
@@ -263,7 +312,39 @@ def resolve(task: dict, conn: sqlite3.Connection | None) -> tuple[str, list[Any]
     elif task.get("truth_value") is not None:
         tv = task["truth_value"]
         truth = list(tv) if isinstance(tv, list) else [tv]
-    return question, truth
+    return truth
+
+
+def run_turns(agent: Agent, turns: list[str]) -> tuple[Any, list[dict[str, Any]]]:
+    """여러 턴을 서비스와 같은 방식으로 돌린다: 앞 턴의 질문·답을 history 로 넘긴다(도구 메시지는 넘기지 않는다).
+    채점은 마지막 턴의 답으로 하되 도구 호출·승인 요청은 모든 턴을 합친다."""
+    history: list[dict[str, str]] = []
+    results = []
+    for q in turns:
+        res = agent.run(q, history=list(history))
+        results.append(res)
+        history += [{"role": "user", "content": q}, {"role": "assistant", "content": res.answer}]
+    last = results[-1]
+    if len(results) == 1:
+        return last, []
+    merged = last.model_copy(
+        update={
+            "steps": sum(r.steps for r in results),
+            "latency_s": round(sum(r.latency_s for r in results), 2),
+            "tool_calls": [c for r in results for c in r.tool_calls],
+            "approvals": [a for r in results for a in r.approvals],
+            "events": [e for r in results for e in r.events],
+        }
+    )
+    usage = Usage()
+    for r in results:
+        usage.add(r.usage)
+    merged.usage = usage
+    turn_rows = [
+        {"question": q, "answer": r.answer, "steps": r.steps, "latency_s": r.latency_s, "stopped": r.stopped_reason}
+        for q, r in zip(turns, results)
+    ]
+    return merged, turn_rows
 
 
 def run_eval(
@@ -293,18 +374,26 @@ def run_eval(
     trace_dir = RESULTS_DIR / "traces" / f"{stamp}_{suffix}"
     collector_box: dict[str, TraceCollector] = {}
     system_prompt = pk.system_prompts[prompt_version]
-    agent = Agent(
-        prov,
-        registry,
-        system_prompt,
-        approval_handler=auto_deny,
-        max_steps=12,
-        on_event=lambda ev: collector_box["c"].on_event(ev) if "c" in collector_box else None,
-    )
+    on_event = lambda ev: collector_box["c"].on_event(ev) if "c" in collector_box else None
+    agents: dict[str, Agent] = {}
+
+    def agent_for(scope_spec: str | None) -> Agent:
+        """태스크에 scope(사용자별 데이터 범위)가 있으면 서비스의 registry_for·system_prompt_for 와 같은 구성으로 따로 만든다."""
+        key = scope_spec or ""
+        if key not in agents:
+            scope = pk.parse_scope(scope_spec) if scope_spec else None
+            reg = registry if scope is None else ToolRegistry(pk.build_tools(db_path=pack_db, scope=scope))
+            note = pk.scope_note(scope) if scope is not None else ""
+            agents[key] = Agent(
+                prov, reg, system_prompt + note, approval_handler=auto_deny, max_steps=12, on_event=on_event
+            )
+        return agents[key]
 
     rows: list[dict[str, Any]] = []
-    for task in tasks:
-        question, truth = resolve(task, conn)
+    for raw_task in tasks:
+        task, question, truth = prepare(raw_task, conn)
+        turns = task.get("turns") or [question]
+        agent = agent_for(task.get("scope"))
         runs = []
         for i in range(n):
             if task.get("seed_before") and pk.seed is not None:
@@ -312,7 +401,7 @@ def run_eval(
             collector_box["c"] = TraceCollector(
                 f"{task['id']}_run{i + 1}", question, {"provider": provider, "task": task["id"], "type": task["type"]}
             )
-            res = agent.run(question)
+            res, turn_rows = run_turns(agent, turns)
             collector_box["c"].finish(res)
             tpath = write_jsonl(collector_box["c"], trace_dir / f"{task['id']}_run{i + 1}.jsonl")
             maybe_export(collector_box["c"])
@@ -328,6 +417,7 @@ def run_eval(
                     "completion_tokens": res.usage.completion_tokens,
                     "by_model": res.usage.by_model,
                     "routes": [ev.data["route"] for ev in res.events if ev.kind == "llm" and ev.data.get("route")],
+                    **({"turns": turn_rows} if turn_rows else {}),
                     "stopped": res.stopped_reason,
                     "tool_calls": res.tool_calls,
                     "trace": str(tpath.relative_to(RESULTS_DIR)),
@@ -345,6 +435,7 @@ def run_eval(
                 "id": task["id"],
                 "type": task["type"],
                 "question": question,
+                **({"scope": task["scope"]} if task.get("scope") else {}),
                 "pass_rate": sum(r["pass"] for r in runs) / n,
                 "runs": runs,
             }
@@ -358,6 +449,7 @@ def run_eval(
         tag=tag,
         prompt_version=prompt_version,
         pack=pk.name,
+        tasks_file=(tasks_path or pk.tasks_path).stem,
     )
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     base = RESULTS_DIR / f"{stamp}_{suffix}"

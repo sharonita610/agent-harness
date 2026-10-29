@@ -440,10 +440,10 @@ SYSTEM_PROMPT = f"""당신은 '한빛상사' 의 운영 데이터 비서입니�
 
 데이터 요약
 - customers(id, name, grade A/B/C, region, manager, phone, payment_terms) · products(id, sku, name, category, unit_price)
-- orders(id, customer_id, order_date, status: 접수/출고/배송중/완료/지연/취소, total_amount, delay_reason, discount_rate)
+- orders(id, customer_id, order_date, status: 접수/출고/배송중/완료/지연/취소, total_amount, delay_reason, discount_rate: 0~1 소수, 0.1 = 10%)
 - order_items(order_id, product_id, qty, unit_price) · shipments(order_id, warehouse_id, carrier, planned_date, shipped_date, delivered_date)
 - inventory(warehouse_id, product_id, on_hand, safety_stock) · warehouses(id, name, region) · order_notes · order_status_history
-- 지연 일수 = 출고 예정일(planned_date) 다음 날부터 실제 출고일(없으면 오늘)까지
+- 지연 일수 = 출고 예정일(planned_date) 다음 날부터 실제 출고일(없으면 오늘)까지 = julianday(shipped_date 또는 오늘) - julianday(planned_date). 예: 예정 10-16, 오늘 10-27 이면 11일
 """
 
 
@@ -465,10 +465,10 @@ SYSTEM_PROMPT_V2 = f"""당신은 '한빛상사' 운영 데이터 비서입니다
 
 데이터 요약
 - customers(id, name, grade A/B/C, region, manager, phone, payment_terms) · products(id, sku, name, category, unit_price)
-- orders(id, customer_id, order_date, status: 접수/출고/배송중/완료/지연/취소, total_amount, delay_reason, discount_rate)
+- orders(id, customer_id, order_date, status: 접수/출고/배송중/완료/지연/취소, total_amount, delay_reason, discount_rate: 0~1 소수, 0.1 = 10%)
 - order_items(order_id, product_id, qty, unit_price) · shipments(order_id, warehouse_id, carrier, planned_date, shipped_date, delivered_date)
 - inventory(warehouse_id, product_id, on_hand, safety_stock) · warehouses · order_notes · order_status_history
-- 지연 일수 = planned_date 다음 날부터 shipped_date(없으면 오늘)까지
+- 지연 일수 = planned_date 다음 날부터 shipped_date(없으면 오늘)까지 = julianday(shipped_date 또는 오늘) - julianday(planned_date)
 """
 
 SYSTEM_PROMPTS = {"v1": SYSTEM_PROMPT, "v2": SYSTEM_PROMPT_V2}

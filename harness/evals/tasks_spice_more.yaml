@@ -1,0 +1,76 @@
+# 회로 팩 · 확장 묶음: 다중 턴(mt) · 틀린 전제(pr) · 설계·진단(ds) · 표현 변형(va). 정답은 공식(truth_expr)이나 라이브러리 모델로 미리 돌린 값.
+- id: mt01
+  type: multiturn
+  turns:
+    - "저항 1kΩ, 커패시터 100nF 인 RC 저역통과 필터의 차단 주파수를 시뮬레이션으로 구해줘"
+    - "저항을 2.2kΩ 으로 바꾸면 차단 주파수는 얼마가 돼? 다시 시뮬레이션해줘"
+  truth_expr: "1/(2*pi*2.2e3*100e-9)"
+  tolerance_pct: 3
+  expect_tools_all: [run_simulation]
+
+- id: mt02
+  type: multiturn
+  turns:
+    - "rc_step 샘플 회로의 시정수(출력이 63.2% 에 도달하는 시간)를 시뮬레이션으로 재줘"
+    - "방금 그 실행의 출력 파형을 그래프로 그려줘"
+  expect_tools_all: [run_simulation, plot_waveform]
+  answer_contains_any: ["그래프", "svg", "plot", "파형"]
+
+- id: pr01
+  type: premise
+  question: "rc_bandstop 샘플 회로의 중심 주파수를 시뮬레이션으로 구해줘"
+  expect_tools_any: [list_circuits, get_circuit]
+  answer_contains_any: ["없", "존재하지", "찾을 수", "보이지", "않습니다"]
+  note: "rc_bandstop 샘플은 없다. 없다고 말하고 있는 샘플을 안내하면 통과"
+
+- id: pr02
+  type: premise
+  question: "소자 라이브러리의 1N5819 모델로 1 mA 에서 순방향 전압을 구해줘"
+  expect_tools_any: [search_parts, get_part]
+  answer_contains_any: ["없", "라이브러리에"]
+  forbid_tools_executed: [run_simulation]
+  note: "1N5819 는 라이브러리에 없다. 없다고 답해야 하며 임의 모델로 시뮬레이션하면 실패"
+
+- id: ds01
+  type: design
+  question: "C=100nF 로 고정하고 저항을 1kΩ, 1.5kΩ, 2.2kΩ 세 값으로 바꿔 가며 RC 저역통과 필터의 차단 주파수를 재서, 1 kHz 에 가장 가까운 저항 값을 골라줘"
+  expect_tools_any: [run_sweep, run_simulation]
+  answer_contains_any: ["1.5k", "1.5 k", "1500", "1,500"]
+  note: "fc: 1k→1591 Hz, 1.5k→1061 Hz, 2.2k→723 Hz 이므로 1.5kΩ"
+
+- id: ds02
+  type: design
+  question: "이 넷리스트가 왜 안 돌아가는지 찾아서 고친 뒤 출력 전압을 알려줘:\n* bad divider\nV1 in 0 dc 5\nR1 in out 1k\nR2 out gnd 1k\n.op"
+  expect_tools_all: [run_simulation]
+  truth_value: 2.5
+  tolerance_pct: 2
+  answer_contains_any: ["gnd", "접지", "0 으로", "0으로", "노드 0"]
+  note: "접지 노드는 gnd 가 아니라 0 이어야 한다. 고치면 분압 2.5 V"
+
+- id: ds03
+  type: design
+  question: "1N4148 대신 1N4007 을 쓰면 1 mA 에서 순방향 전압이 얼마나 달라져? 둘 다 소자 라이브러리 모델로 시뮬레이션해서 두 값을 비교해줘"
+  truth_value: [0.5847, 0.2312]
+  tolerance_pct: 3
+  expect_tools_all: [run_simulation]
+
+- id: ds04
+  type: design
+  question: "rc_lowpass 샘플에서 R1 을 470Ω 부터 4.7kΩ 까지 로그 간격 5점으로 스윕해서, 차단 주파수가 1 kHz 아래로 내려가는 첫 번째 R1 값을 알려줘"
+  expect_tools_all: [run_sweep]
+  answer_contains_any: ["2643", "2 643", "2,643", "2.64k", "2.64 k", "2.6k", "2.6 k", "2.64 kΩ", "2.643"]
+  note: "470, 836, 1486, 2643, 4700 Ω → fc 3386, 1904, 1071, 602, 339 Hz. 처음 1 kHz 아래는 2643 Ω"
+
+- id: va01
+  type: variant
+  question: "rc lowpass R 1k C 100n, fc?"
+  truth_expr: "1/(2*pi*1e3*100e-9)"
+  tolerance_pct: 3
+  expect_tools_any: [run_simulation]
+
+- id: va02
+  type: variant
+  question: "What's the -3 dB cutoff of a 4.7k / 22n RC low-pass? Simulate it and answer in Korean."
+  truth_expr: "1/(2*pi*4.7e3*22e-9)"
+  tolerance_pct: 3
+  expect_tools_any: [run_simulation]

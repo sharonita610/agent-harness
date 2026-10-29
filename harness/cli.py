@@ -240,11 +240,11 @@ def retrieval_eval(
 
 
 @app.command()
-def judge(results: Path, provider: str = "local", limit: Optional[int] = None):
+def judge(results: Path, provider: str = "local", limit: Optional[int] = None, tasks: Optional[Path] = None):
     """저장된 평가 결과를 LLM 판정자가 다시 채점해 judge 필드를 채운다(에이전트 재실행 없음)."""
     from .evals.judge import judge_results
 
-    judge_results(results, provider_spec=provider, limit=limit, console=console)
+    judge_results(results, provider_spec=provider, tasks_path=tasks, limit=limit, console=console)
 
 
 @app.command("grade-sheet")

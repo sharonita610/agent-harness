@@ -10,14 +10,26 @@ root = Path(__file__).resolve().parents[1]
 res_dir = root / "harness/evals/results"
 jsons = sorted(p for p in res_dir.glob("*.json") if not p.name.startswith(("retrieval_", "agreement_", "human-")))
 # 묶음 = 팩 + 태스크 집합. 같은 팩이라도 추가 묶음(소자 라이브러리 lib01~, 문서 그래프 g01~)은 다른 문제라 표를 따로 만든다
-SET_KO = {"lib": "소자 라이브러리 묶음", "g": "문서 그래프 묶음"}
+SET_KO = {"lib": "소자 라이브러리 묶음", "g": "문서 그래프 묶음"}  # tasks_file 이 없는 옛 결과용(첫 태스크 id 접두사)
+FILE_KO = {
+    "tasks_spice_library": "소자 라이브러리 묶음",
+    "tasks_enterprise_docgraph": "문서 그래프 묶음",
+    "tasks_enterprise_more": "확장 묶음(다중 턴·업무 흐름·추세·틀린 전제·표현 변형)",
+    "tasks_spice_more": "확장 묶음(다중 턴·틀린 전제·설계·표현 변형)",
+    "tasks_factory_more": "확장 묶음(추세·틀린 전제·진단→조치)",
+}
 by_pack: dict[str, list] = {}
 for p in jsons:
     d = json.loads(p.read_text(encoding="utf-8"))
     label = p.stem.split("_", 2)[-1] if p.stem.count("_") >= 2 else p.stem
     pack = d["summary"].get("pack") or "enterprise"
-    first = (d["tasks"][0]["id"] if d["tasks"] else "").rstrip("0123456789")
-    key = pack + (f" · {SET_KO[first]}" if first in SET_KO else "")
+    tf = d["summary"].get("tasks_file")
+    if tf:
+        set_name = FILE_KO.get(tf, "" if tf in ("tasks", "tasks_spice", "tasks_factory", "tasks_supervisor") else tf)
+    else:
+        first = (d["tasks"][0]["id"] if d["tasks"] else "").rstrip("0123456789")
+        set_name = SET_KO.get(first, "")
+    key = pack + (f" · {set_name}" if set_name else "")
     by_pack.setdefault(key, []).append((label, d))
 
 PACK_KO = {
@@ -40,6 +52,12 @@ TYPE_KO = {
     "compound": "복합",
     "approval": "결재 대기",
     "graph": "문서 그래프",
+    "multiturn": "다중 턴",
+    "workflow": "업무 흐름",
+    "trend": "추세·설명",
+    "premise": "틀린 전제·범위",
+    "design": "설계·진단",
+    "variant": "표현 변형",
 }
 
 

@@ -1,0 +1,186 @@
+# 회사 팩 · 확장 묶음: 다중 턴(mt) · 업무 흐름(wf) · 추세·설명(tr) · 틀린 전제·범위(pr) · 표현 변형(va).
+# turns 가 있으면 앞 턴의 질문·답을 history 로 넘기고 마지막 턴을 채점한다(도구·승인은 모든 턴 합산).
+# scope 가 있으면 그 사용자 범위로 레지스트리와 프롬프트를 만든다(서비스의 사용자별 범위와 같은 구성).
+- id: mt01
+  type: multiturn
+  turns:
+    - "현재 상태가 '지연'인 주문은 총 몇 건이야?"
+    - "그중 등급 A 거래처 주문은 몇 건이야?"
+  truth_sql: "SELECT COUNT(*) FROM orders o JOIN customers c ON c.id=o.customer_id WHERE o.status='지연' AND c.grade='A'"
+  expect_tools_any: [run_sql]
+
+- id: mt02
+  type: multiturn
+  turns:
+    - "지연 주문 중 주문 금액이 가장 큰 주문 번호는?"
+    - "그 주문의 거래처 이름과 지연 사유는?"
+  truth_sql: "SELECT o.delay_reason FROM orders o WHERE o.status='지연' ORDER BY o.total_amount DESC LIMIT 1"
+  answer_contains_any: ["고구려미래엔지니어링"]
+  expect_tools_any: [run_sql, get_order]
+
+- id: mt03
+  type: multiturn
+  turns:
+    - "주문 {oid}번 상태 알려줘"
+    - "거기에 '고객 재확인 요청' 이라고 메모 남겨줘"
+  params_sql:
+    oid: "SELECT id FROM orders WHERE status='지연' ORDER BY id LIMIT 1"
+  expect_approval: [create_note]
+  expect_approval_args:
+    - {name: create_note, args_contains: {order_id: "{oid}", note: "고객 재확인"}}
+
+- id: mt04
+  type: multiturn
+  turns:
+    - "배송사 지연으로 출고가 7일 늦어진 주문의 보상 비율은 얼마야?"
+    - "같은 7일인데 지연 사유가 재고 부족이었다면?"
+  expect_tools_any: [search_docs]
+  answer_contains_any: ["7%", "7 %", "7퍼센트"]
+  note: "6~10일 5% 에 재고 부족이면 2%p 추가 → 7%"
+
+- id: mt05
+  type: multiturn
+  turns:
+    - "등급 B 거래처는 몇 곳이야?"
+    - "C 등급은?"
+    - "둘을 합치면 몇 곳이야?"
+  truth_sql: "SELECT COUNT(*) FROM customers WHERE grade IN ('B','C')"
+  expect_tools_any: [run_sql]
+
+- id: wf01
+  type: workflow
+  question: "주문 {oid}번이 며칠 지연됐는지 확인하고 보상 규정에 맞는 보상 비율을 알려줘. 그리고 그 비율을 '보상 n% 안내' 형식으로 주문 메모에 남겨줘"
+  params_sql:
+    oid: "SELECT o.id FROM orders o JOIN shipments s ON s.order_id=o.id WHERE o.status='지연' AND o.delay_reason='배송사 지연' AND s.shipped_date IS NULL AND julianday('2026-10-27')-julianday(s.planned_date) BETWEEN 7 AND 9 ORDER BY o.id LIMIT 1"
+  expect_tools_all: [search_docs]
+  expect_tools_any: [get_order, run_sql]
+  answer_contains_any: ["5%", "5 %", "5퍼센트"]
+  expect_approval: [create_note]
+  expect_approval_args:
+    - {name: create_note, args_contains: {order_id: "{oid}", note: "5%"}}
+
+- id: wf02
+  type: workflow
+  question: "지연 11일 이상이고 지연 사유가 재고 부족이며 아직 출고되지 않은 주문은 몇 건이야? 규정상 보상 비율은 얼마인지도 알려주고, 그 주문들 중 금액이 가장 큰 주문에 '장기 지연 보상 검토' 라고 메모 남겨줘"
+  params_sql:
+    big: "SELECT o.id FROM orders o JOIN shipments s ON s.order_id=o.id WHERE o.status='지연' AND o.delay_reason='재고 부족' AND s.shipped_date IS NULL AND julianday('2026-10-27')-julianday(s.planned_date) >= 11 ORDER BY o.total_amount DESC LIMIT 1"
+  truth_sql: "SELECT COUNT(*) FROM orders o JOIN shipments s ON s.order_id=o.id WHERE o.status='지연' AND o.delay_reason='재고 부족' AND s.shipped_date IS NULL AND julianday('2026-10-27')-julianday(s.planned_date) >= 11"
+  expect_tools_all: [run_sql, search_docs]
+  answer_contains_any: ["12%", "12 %", "12퍼센트"]
+  expect_approval: [create_note]
+  expect_approval_args:
+    - {name: create_note, args_contains: {order_id: "{big}", note: "장기 지연"}}
+  note: "11일 이상 10% + 재고 부족 2%p = 12%"
+
+- id: wf03
+  type: workflow
+  question: "지난달(2026년 9월) 주문 중 할인율이 10% 를 넘는 주문은 몇 건이야? 그 주문들에 승인 기록이 있어야 하는 근거를 월말 마감 절차 문서에서 찾아서 같이 알려줘"
+  truth_sql: "SELECT COUNT(*) FROM orders WHERE order_date LIKE '2026-09%' AND discount_rate > 0.10"
+  expect_tools_all: [run_sql, search_docs]
+  answer_contains_any: ["승인 기록", "마감"]
+
+- id: wf04
+  type: workflow
+  question: "주문 {oid}번을 고객 요청으로 취소 처리해줘. 취소 규정상 출고 전이어야 하니 먼저 현재 상태를 확인하고 진행해"
+  params_sql:
+    oid: "SELECT id FROM orders WHERE status='접수' ORDER BY id LIMIT 1"
+  expect_tools_any: [get_order, run_sql]
+  expect_approval: [update_order_status]
+  expect_approval_args:
+    - {name: update_order_status, args_contains: {order_id: "{oid}", new_status: "취소"}}
+
+- id: tr01
+  type: trend
+  question: "최근 4개월(2026년 7월~10월) 월별 주문 수와 지연 주문 수를 보여주고, 지연율이 가장 높았던 달이 언제인지 말해줘"
+  truth_sql: "SELECT SUM(status='지연') FROM orders WHERE order_date LIKE '2026-10%'"
+  expect_tools_any: [run_sql]
+  answer_regex_all: ["10월|2026-10"]
+  note: "지연율은 10월(24/230, 10.4%)이 가장 높다"
+
+- id: tr02
+  type: trend
+  question: "지연 주문의 사유별 건수를 보여주고, 그중 규정상 회사 책임인 사유가 전체 지연의 몇 % 인지 설명해줘"
+  truth_sql: "SELECT COUNT(*) FROM orders WHERE status='지연' AND delay_reason='재고 부족'"
+  expect_tools_all: [run_sql, search_docs]
+  answer_contains_any: ["회사 책임"]
+  answer_regex_all: ["4[34](\\.\\d+)?\\s*%"]
+  note: "회사 책임 사유는 재고 부족(112/255 = 43.9%). 결제 확인 지연은 공동 책임, 배송사 지연·주소 오류는 회사 책임 아님"
+
+- id: tr03
+  type: trend
+  question: "거래처 등급 A, B, C 별로 지연 주문 비율(지연 건수 ÷ 전체 주문)을 비교해서 어느 등급이 가장 높은지 알려줘"
+  expect_tools_any: [run_sql]
+  answer_contains_any: ["등급 A", "A 등급", "A등급", "A 거래처"]
+  note: "A 9.1%, B 8.5%, C 8.3%"
+
+- id: pr01
+  type: premise
+  question: "주문 99999번의 지연 사유를 알려줘"
+  expect_tools_any: [get_order, run_sql]
+  answer_contains_any: ["없", "존재하지", "찾을 수"]
+  answer_not_contains: ["재고 부족", "배송사 지연", "주소 오류", "결제 확인 지연"]
+
+- id: pr02
+  type: premise
+  question: "등급 D 거래처 목록을 뽑아줘"
+  answer_contains_any: ["없", "존재하지", "A, B, C", "A/B/C", "A·B·C", "세 등급", "3개 등급", "A, B 또는 C"]
+
+- id: pr03
+  type: premise
+  scope: "region=부산"
+  question: "서울 지역 거래처의 지연 주문은 몇 건이야?"
+  answer_contains_any: ["범위", "권한", "0건", "없"]
+  note: "부산 범위 사용자에게 서울 거래처는 보이지 않는다. 0건이라 하거나 범위 밖이라고 안내해야 한다"
+
+- id: pr04
+  type: premise
+  scope: "region=부산"
+  question: "현재 상태가 '지연'인 주문은 총 몇 건이야?"
+  truth_sql: "SELECT COUNT(*) FROM orders o JOIN customers c ON c.id=o.customer_id WHERE o.status='지연' AND c.region='부산'"
+  expect_tools_any: [run_sql]
+  note: "같은 질문(q01)이지만 부산 범위 사용자라 39건이어야 한다(전체는 255)"
+
+- id: pr05
+  type: premise
+  question: "지난번에 말한 그 거래처 등급이 뭐야?"
+  answer_contains_any: ["어느 거래처", "어떤 거래처", "거래처 이름", "거래처명", "알려주", "말씀해", "어떤 업체", "어느 업체"]
+  forbid_approval_requested: [update_order_status, create_note]
+
+- id: pr06
+  type: premise
+  question: "주문 {oid}번은 며칠 지연됐어?"
+  params_sql:
+    oid: "SELECT o.id FROM orders o JOIN shipments s ON s.order_id=o.id WHERE o.status='완료' AND s.shipped_date <= s.planned_date ORDER BY o.id LIMIT 1"
+  expect_tools_any: [get_order, run_sql]
+  answer_contains_any: ["지연되지", "지연이 아", "지연 상태가 아", "0일", "지연 없", "지연이 없", "제때", "정상 출고", "지연되지 않"]
+  note: "완료 주문이고 예정일 안에 출고됐으므로 지연이 없다고 답해야 한다"
+
+- id: va01
+  type: variant
+  question: "지연중인 주문 몇개임?"
+  truth_sql: "SELECT COUNT(*) FROM orders WHERE status='지연'"
+  expect_tools_any: [run_sql]
+
+- id: va02
+  type: variant
+  question: "How many orders are currently in the '지연' (delayed) status? Please answer in Korean."
+  truth_sql: "SELECT COUNT(*) FROM orders WHERE status='지연'"
+  expect_tools_any: [run_sql]
+
+- id: va03
+  type: variant
+  question: "안녕하세요, 영업팀 김대리입니다. 월요일 회의 자료를 준비하고 있는데요, 혹시 지금 안전재고 아래로 떨어진 재고 항목이 몇 개인지 확인해 주실 수 있을까요? 바쁘신데 감사합니다."
+  truth_sql: "SELECT COUNT(*) FROM inventory WHERE on_hand < safety_stock"
+  expect_tools_any: [run_sql]
+
+- id: va04
+  type: variant
+  question: "할인 200만원 승인권자?"
+  expect_tools_any: [search_docs]
+  answer_contains_any: ["영업부서장", "부서장"]
+
+- id: va05
+  type: variant
+  question: "Carrier delay, shipment went out 7 days late. What compensation rate applies under our policy? Answer in Korean."
+  expect_tools_any: [search_docs]
+  answer_contains_any: ["5%", "5 %", "5퍼센트"]
