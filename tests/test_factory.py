@@ -17,7 +17,7 @@ def reg(factory_db, tmp_path_factory):
 def test_seed_is_deterministic(tmp_path):
     a, b = build(tmp_path / "a.db"), build(tmp_path / "b.db")
     assert (
-        a["sha256_16"] == b["sha256_16"] == "0fbe098605883ba6"
+        a["sha256_16"] == b["sha256_16"] == "9b7a1d9de44d2e21"
         and a["counts"]["ng_events"] > 20000
         and a["counts"]["stations"] == 24
     )

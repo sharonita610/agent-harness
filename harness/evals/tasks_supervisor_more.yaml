@@ -1,0 +1,29 @@
+# 총괄 비서 · 확장 묶음: 다중 턴(앞 턴 답을 받아 이어 위임), 틀린 전제(하위 비서의 '없다' 를 그대로 전달), 표현 변형. 하위 비서 3개가 떠 있어야 한다.
+- id: mt01
+  type: multiturn
+  turns:
+    - "현재 상태가 '지연'인 주문은 총 몇 건이야?"
+    - "그중 등급 A 거래처 주문은 몇 건이야?"
+  expect_calls: [{name: delegate, result_contains: {agent: enterprise}}]
+  truth_value: 43
+
+- id: pr01
+  type: premise
+  question: "5라인 조립 스테이션의 10월 20일 NG 건수를 알려줘"
+  expect_calls: [{name: delegate, result_contains: {agent: factory}}]
+  answer_contains_any: ["없", "4개", "1~4", "존재하지"]
+  note: "공정 비서가 '5라인은 없다' 고 답하면 총괄 비서는 그걸 지어내지 않고 전달해야 한다"
+
+- id: pr02
+  type: premise
+  question: "주문 99999번의 지연 사유를 알려줘"
+  expect_calls: [{name: delegate, result_contains: {agent: enterprise}}]
+  answer_contains_any: ["없", "존재하지", "찾을 수"]
+  answer_not_contains: ["재고 부족", "배송사 지연", "주소 오류", "결제 확인 지연"]
+
+- id: va01
+  type: variant
+  question: "How many orders are currently delayed, and what is the cutoff frequency of a 1kΩ/100nF RC low-pass? Answer in Korean."
+  expect_calls: [{name: delegate, result_contains: {agent: enterprise}}, {name: delegate, result_contains: {agent: spice}}]
+  truth_value: 255
+  answer_regex_all: ["1[.,]?5[89]"]

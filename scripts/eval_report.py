@@ -17,6 +17,12 @@ FILE_KO = {
     "tasks_enterprise_more": "확장 묶음(다중 턴·업무 흐름·추세·틀린 전제·표현 변형)",
     "tasks_spice_more": "확장 묶음(다중 턴·틀린 전제·설계·표현 변형)",
     "tasks_factory_more": "확장 묶음(추세·틀린 전제·진단→조치)",
+    "tasks_factory_equipment": "설비 상태 묶음",
+    "tasks_spice_engine": "시뮬레이터 상태 묶음",
+    "tasks_enterprise_injection": "지시문 주입 묶음",
+    "tasks_spice_injection": "지시문 주입 묶음",
+    "tasks_factory_injection": "지시문 주입 묶음",
+    "tasks_supervisor_more": "확장 묶음(다중 턴·틀린 전제·표현 변형)",
 }
 by_pack: dict[str, list] = {}
 for p in jsons:
