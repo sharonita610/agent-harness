@@ -17,10 +17,21 @@ class ToolCall(BaseModel):
 class Usage(BaseModel):
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    by_model: dict[str, dict[str, int]] = Field(default_factory=dict)  # 라우팅 때 모델별 토큰·호출 수(비용 계산용)
 
-    def add(self, other: "Usage") -> None:
+    def add(self, other: "Usage", model: str | None = None) -> None:
         self.prompt_tokens += other.prompt_tokens
         self.completion_tokens += other.completion_tokens
+        if other.by_model:
+            for m, u in other.by_model.items():
+                slot = self.by_model.setdefault(m, {"prompt_tokens": 0, "completion_tokens": 0, "calls": 0})
+                for k in slot:
+                    slot[k] += u.get(k, 0)
+        elif model:
+            slot = self.by_model.setdefault(model, {"prompt_tokens": 0, "completion_tokens": 0, "calls": 0})
+            slot["prompt_tokens"] += other.prompt_tokens
+            slot["completion_tokens"] += other.completion_tokens
+            slot["calls"] += 1
 
 
 class LLMResponse(BaseModel):
@@ -28,6 +39,8 @@ class LLMResponse(BaseModel):
     tool_calls: list[ToolCall] = Field(default_factory=list)
     usage: Usage = Field(default_factory=Usage)
     finish_reason: str | None = None
+    model: str | None = None  # 실제로 답한 모델(라우팅 프로바이더가 채움)
+    route: str | None = None  # 강한 모델로 올린 이유(라우팅 때만)
 
 
 EventKind = Literal[

@@ -297,10 +297,132 @@ class AnthropicProvider:
         )
 
 
+class RoutingProvider:
+    """모델 라우팅: 싼 모델(보통 로컬)로 돌리다가 "막혔다" 는 신호가 보이면 그 호출부터 강한 모델로 올린다(ADR-024).
+
+    신호 셋, 전부 대화 내용과 스텝 번호에서만 읽는다(별도 분류기 없음):
+    - 도구 오류 연속: 직전 도구 결과가 연달아 `escalate_after_errors` 개 이상 오류("오류: …")
+    - 스텝 소진 조짐: 한 실행에서 `escalate_after_steps` 스텝을 넘겨도 답이 안 나옴(루프가 step 을 넘겨준다)
+    - 응답 품질: 싼 모델의 응답이 비었거나(길이 제한) 도구 인자가 JSON 이 아님 → 같은 메시지로 강한 모델에 다시 묻는다
+    한 번 올라가면 그 실행이 끝날 때까지 강한 모델이 맡는다(step 1 에서 초기화). 토큰은 모델별로 따로 센다.
+    """
+
+    name = "route"
+
+    def __init__(
+        self,
+        cheap: Provider,
+        strong: Provider,
+        cheap_spec: str = "local",
+        strong_spec: str = "openai",
+        escalate_after_errors: int = 2,
+        escalate_after_steps: int = 6,
+    ):
+        self.cheap, self.strong = cheap, strong
+        self.cheap_spec, self.strong_spec = cheap_spec, strong_spec
+        self.escalate_after_errors = escalate_after_errors
+        self.escalate_after_steps = escalate_after_steps
+        self.model = f"{getattr(cheap, 'model', cheap_spec)} → {getattr(strong, 'model', strong_spec)}"
+        self.supports_stream = bool(getattr(cheap, "supports_stream", False))
+        self.wants_step = True
+        self._sticky: dict[str, str] = {}  # 대화 키 → 올라간 이유(실행이 끝날 때까지 유지)
+
+    # ---- 신호
+    @staticmethod
+    def _key(messages: list[dict[str, Any]]) -> str:
+        first_user = next((m for m in messages if m.get("role") == "user"), None)
+        return str(hash((messages[0].get("content") if messages else None, first_user and first_user.get("content"))))
+
+    @staticmethod
+    def _is_error(content: Any) -> bool:
+        text = str(content or "").lstrip()
+        return text.startswith(("오류", "도구 실행 오류", "인자 검증 실패")) or "오류" in text[:24]
+
+    def trailing_tool_errors(self, messages: list[dict[str, Any]]) -> int:
+        n = 0
+        for m in reversed(messages):
+            role = m.get("role")
+            if role == "tool":
+                if self._is_error(m.get("content")):
+                    n += 1
+                else:
+                    break
+            elif role == "user":
+                break
+        return n
+
+    def decide(self, messages: list[dict[str, Any]], step: int | None) -> str | None:
+        key = self._key(messages)
+        if step == 1:
+            self._sticky.pop(key, None)
+        if key in self._sticky:
+            return self._sticky[key]
+        errs = self.trailing_tool_errors(messages)
+        if errs >= self.escalate_after_errors:
+            return f"tool_errors:{errs}"
+        if step is not None and step > self.escalate_after_steps:
+            return f"steps:{step}"
+        return None
+
+    @staticmethod
+    def _weak_response(resp: LLMResponse) -> str | None:
+        if any(tc.parse_error for tc in resp.tool_calls):
+            return "parse_error"
+        if not (resp.text or "").strip() and not resp.tool_calls:
+            return "empty" if resp.finish_reason != "length" else "truncated"
+        return None
+
+    # ---- 호출
+    def _call(self, prov: Provider, messages, tools, on_delta) -> LLMResponse:
+        if on_delta is not None and getattr(prov, "supports_stream", False):
+            return prov.complete(messages, tools, on_delta=on_delta)  # type: ignore[call-arg]
+        return prov.complete(messages, tools)
+
+    def complete(self, messages, tools=None, on_delta: OnDelta | None = None, step: int | None = None) -> LLMResponse:
+        key = self._key(messages)
+        reason = self.decide(messages, step)
+        if reason:
+            self._sticky[key] = reason
+            resp = self._call(self.strong, messages, tools, on_delta)
+            resp.usage = _attributed(resp.usage, self.strong_spec)
+            resp.model, resp.route = self.strong_spec, reason
+            return resp
+        cheap = self._call(self.cheap, messages, tools, on_delta)
+        weak = self._weak_response(cheap)
+        if weak is None:
+            cheap.usage = _attributed(cheap.usage, self.cheap_spec)
+            cheap.model = self.cheap_spec
+            return cheap
+        reason = f"cheap_response:{weak}"
+        self._sticky[key] = reason
+        strong = self._call(
+            self.strong, messages, tools, None
+        )  # 스트리밍으로 이미 흘린 조각이 있어도 답은 강한 모델 것
+        usage = _attributed(cheap.usage, self.cheap_spec)
+        usage.add(strong.usage, model=self.strong_spec)
+        strong.usage = usage
+        strong.model, strong.route = self.strong_spec, reason
+        return strong
+
+
+def _attributed(usage: Usage, model: str) -> Usage:
+    out = Usage()
+    out.add(usage, model=model)
+    return out
+
+
 def make_provider(spec: str | None = None, **kw) -> Provider:
-    """spec 예: "local" | "local:모델별칭" | "openai:gpt-5-mini" | "anthropic:claude-sonnet-4-5" | "compat:http://host:port/v1|model" """
+    """spec 예: "local" | "local:모델별칭" | "openai:gpt-5-mini" | "anthropic:claude-sonnet-4-5" | "compat:http://host:port/v1|model"
+    | "route" | "route:local->openai:gpt-5-mini" (싼 모델 -> 막히면 올릴 모델)"""
     spec = spec or os.getenv("HARNESS_PROVIDER", "local")
     kind, _, rest = spec.partition(":")
+    if kind == "route":
+        cheap_spec, sep, strong_spec = (rest or "local->openai:gpt-5-mini").partition("->")
+        if not sep or not cheap_spec or not strong_spec:
+            raise ValueError(f"route 형식: route:<싼 모델>-><강한 모델> (받은 값: {spec!r})")
+        return RoutingProvider(
+            make_provider(cheap_spec, **kw), make_provider(strong_spec, **kw), cheap_spec, strong_spec
+        )
     if kind == "local":
         return OpenAICompatProvider(
             model=rest or os.getenv("LLM_MODEL", DEFAULT_LOCAL_MODEL),

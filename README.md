@@ -36,7 +36,7 @@
 
 **어떻게 만들었나 (설계)**
 - [구성](#구성): 폴더별 역할
-- [설계 결정](#설계-결정): 왜 그렇게 만들었는지 요약, 상세는 ADR 23편
+- [설계 결정](#설계-결정): 왜 그렇게 만들었는지 요약, 상세는 ADR 24편
 - [로드맵](#로드맵) · [문서](#문서) · [세 번째 팩 만들기](docs/ADDING-A-PACK.md)
 
 **이 프로젝트가 증명하려는 것** (AI Agent Engineer 공고 13개의 공통 요구사항을 하나씩 대응):
@@ -51,14 +51,14 @@
 | 관측성 | 이벤트 → 스팬, JSONL + OpenTelemetry(Jaeger 확인), 사람 대기 시간 분리 | `harness/observability/`, ADR-007 |
 | RAG | BM25 + 임베딩 하이브리드(RRF), 검색 품질 평가 18문항 | ADR-008 |
 | 서비스화 | FastAPI, SSE 이벤트 스트림, 승인 API, 비동기 잡 큐, React + TypeScript 화면(업무 데스크: 비서 전환·작업지·통합 결재함) | `harness/service/`, `ui/`, ADR-006, ADR-018 |
-| 모델 비교 | 로컬 2종(gpt-oss-20b 98%, Hermes-4-14B 79%) 같은 조건 비교, 상용은 설정 한 줄 | 아래 평가 표, ADR-005 |
+| 모델 비교, 라우팅 | 로컬 2종(gpt-oss-20b 98%, Hermes-4-14B 79%) 같은 조건 비교, 상용은 설정 한 줄. 로컬로 돌리다 막히면(도구 오류 연속·스텝 소진·빈 응답) 그 호출부터 강한 모델로 올리는 라우팅 프로바이더, 모델별 비용 집계 | 아래 평가 표, ADR-005, ADR-024 |
 | 전문 소프트웨어 위의 에이전트, 도메인 교체 | 두 번째 팩 `spice`: 같은 플랫폼에 폴더 하나를 더해 **ngspice 회로 시뮬레이션 비서** 가 된다. 넷리스트 가드, 측정·스윕·그래프, 공식 정답 평가 | `harness/packs/spice/`, ADR-013 |
 | 멀티에이전트, A2A 프로토콜 | 비서 3개가 각각 **A2A 에이전트**(agent card + JSON-RPC)로 노출되고, 네 번째 팩 **총괄 비서** 가 A2A 로 질문을 나눠 위임해 답을 합친다. 하위 비서의 사람 결재는 `input-required` 로 전달 | `harness/service/a2a.py`, `harness/packs/supervisor/`, ADR-017 |
 | 멀티에이전트 프레임워크(LangGraph) | 같은 도구·모델·문제로 LangGraph ReAct 그래프를 돌려 비교(회사 6/6, 회로 8/8). 루프는 어느 쪽이든 같고, 차이는 결재·실패 모드·예산·관측·평가 층 | `docs/experiments/langgraph/` |
 | 제조 현장 데이터 위의 에이전트 | 세 번째 팩 `factory`: 가짜 공장의 NG(불량) 이미지 기록·설비 파라미터·조치 위에서 "어느 라인이 언제 튀었나 → 무엇이 달라졌나 → 조치 → 효과" 를 도구로 답하고, 라벨 확정·티켓은 결재 | `harness/packs/factory/`, ADR-016 |
 | 지식 베이스와 검색 파이프라인 | 매뉴얼 PDF 765쪽 → 절 단위 1,137청크 → SQLite(BM25 + 벡터, 증분 임베딩) → 검색·읽기 도구 → 32문항으로 측정(hit@1 44% → 97%) | `harness/retrieval/kb.py`, ADR-014 |
 | 지식 그래프 | 실험 추적 그래프: 실행을 회로·소자·해석·측정 노드와 관계로 자동 기록, 같은 토폴로지 변형을 값 차이와 함께 연결. "지난번 R1=2.2k 때 fc", "같은 회로 실행 전부", "두 실행 비교" 를 도구 3개로 답함. 규정 **문서 그래프**: 문서 10개의 인용·절·데이터 개념 관계를 본문에서 자동 추출해 "이 규정을 개정하면 같이 봐야 하는 문서" 를 도구 2개로 답함 | `harness/packs/spice/graph.py`, `harness/retrieval/docgraph.py`, ADR-015, ADR-023 |
-| 판단 근거를 글로 | 설계 결정 문서 23편, 실험 노트 | `docs/decisions/`, `NOTES.md` |
+| 판단 근거를 글로 | 설계 결정 문서 24편, 실험 노트 | `docs/decisions/`, `NOTES.md` |
 
 MCP 서버로도 노출되어 Hermes Agent, Claude Desktop 같은 외부 에이전트에서 같은 도구를 쓸 수 있다. HTTP 로 열면 웹과 같은 키·범위·결재함을 거친다.
 
@@ -277,7 +277,7 @@ uv run harness chat                  # 대화형. 변경 요청은 터미널에�
 uv run pytest -q                      # 단위 테스트
 uv run harness eval --n 1            # 평가 → harness/evals/results/*.md
 ```
-다른 모델: `--provider anthropic:claude-sonnet-4-5` (ANTHROPIC_API_KEY), `--provider openai:gpt-5-mini` (OPENAI_API_KEY), `--provider compat:http://host:port/v1|model`.
+다른 모델: `--provider anthropic:claude-sonnet-4-5` (ANTHROPIC_API_KEY), `--provider openai:gpt-5-mini` (OPENAI_API_KEY), `--provider compat:http://host:port/v1|model`. 라우팅: `--provider route:local->openai:gpt-5-mini` 는 로컬로 돌리다 막히면(도구 오류 연속, 스텝 소진 조짐, 빈 응답) 그 호출부터 강한 모델로 올린다(아래 "모델 라우팅" 절).
 
 로컬 모델 두 가지 (24GB 맥 기준, 한 번에 하나만):
 | 모델 | 띄우기 | 생성 속도 | 용도 |
@@ -319,7 +319,7 @@ open http://127.0.0.1:8787/docs   # OpenAPI
 | 변수 | 뜻 (기본값) |
 |---|---|
 | `HARNESS_PACK` | 띄울 팩 `enterprise` / `spice` / `factory` / `supervisor` (`enterprise`) |
-| `HARNESS_PROVIDER` | 기본 모델 `local` / `local:별칭` / `openai:모델` / `anthropic:모델` / `compat:주소\|모델` (`local`) |
+| `HARNESS_PROVIDER` | 기본 모델 `local` / `local:별칭` / `openai:모델` / `anthropic:모델` / `compat:주소\|모델` / `route:싼모델->강한모델`(막히면 올림, ADR-024) (`local`) |
 | `HARNESS_ALLOWED_PROVIDERS` | 요청이 고를 수 있는 provider 목록(쉼표). 비우면 기본 provider 하나만 허용 |
 | `LLM_BASE_URL`, `LLM_MODEL_PATH` | 로컬 llama.cpp 주소(`http://127.0.0.1:8080/v1`)와 모델 파일(`scripts/serve_llm.sh`) |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | 호스팅 모델·임베딩 키 |
@@ -475,6 +475,15 @@ gpt-oss-20b n=3 결과(48개 답변)에 판정자(같은 로컬 모델)를 돌�
 
 설계: ADR-003, ADR-011. 결과 표는 아래에 갱신한다.
 
+**모델 라우팅 (2026-10-29, `route:local->openai:gpt-5-mini`, ADR-024):** 질문을 미리 분류하지 않고, 실행 중 신호(도구 오류 연속 2, 6스텝 초과, 빈 응답·JSON 아닌 인자)가 보이면 그 호출부터 강한 모델로 올린다. 한 번 올라가면 그 실행은 끝까지 강한 모델이 맡고, 토큰은 모델별로 따로 세어 비용을 합친다.
+
+| 문제 묶음 | 로컬만 | 라우팅 | 올라간 실행 | 강한 모델 호출 | 비용 |
+|---|---|---|---|---|---|
+| 회사 16문제 × 3 | 98% (n=3, v1) | **100%** (48/48) | 0/48 | 0/101 | $0 |
+| 소자 라이브러리 4문제 × 3 | 83% (10/12) | **100%** (12/12) | 4/12 | 16/54 (30%) | $0.05 |
+
+회사 팩에서는 한 번도 올라가지 않았다. 로컬 모델이 막히지 않는 문제에는 라우팅이 비용 0 으로 로컬과 같다는 뜻이고, 신호가 조용할 때 괜히 올리지 않는다는 확인이다. 라이브러리 묶음에서는 로컬이 틀리던 lib01·lib02 의 4개 실행이 올라갔다(사유: 스텝 초과 2, 도구 오류 연속 1, 빈 응답 1). 올라간 실행은 싼 모델이 모아 둔 시뮬레이션 결과를 이어받아 전부 맞혔고, 12회 비용은 $0.05 로 호출의 30% 만 강한 모델이 썼다. 결과: [회사](harness/evals/results/20261029-201719_route-local-to-openai-gpt-5-mini_route-n3.json) · [라이브러리](harness/evals/results/20261029-202209_route-local-to-openai-gpt-5-mini_spice_library-route-n3.json). 한계: 신호 없이 자신 있게 틀리는 답은 못 잡는다(회사 팩 gpt-5-mini 의 되물음처럼 "틀리지 않았지만 통과도 아닌" 답도 그대로 간다).
+
 <!-- EVAL_RESULTS_START -->
 _출처: [20261027-012753_local_day3-smoke.json](harness/evals/results/20261027-012753_local_day3-smoke.json), [20261027-153738_local_gpt-oss-20b.json](harness/evals/results/20261027-153738_local_gpt-oss-20b.json), [20261028-003519_local_gpt-oss-20b-n3.json](harness/evals/results/20261028-003519_local_gpt-oss-20b-n3.json), [20261028-004241_local_hermes-4-14b-n3.json](harness/evals/results/20261028-004241_local_hermes-4-14b-n3.json), [20261028-025754_local_gpt-oss-20b-n3-v2.json](harness/evals/results/20261028-025754_local_gpt-oss-20b-n3-v2.json), [20261028-045150_openai-gpt-5-mini_gpt-5-mini-n3.json](harness/evals/results/20261028-045150_openai-gpt-5-mini_gpt-5-mini-n3.json)_ · 같은 문제, n = 태스크당 반복 횟수
 
@@ -607,7 +616,7 @@ _출처: [20261029-014321_local_supervisor_n3.json](harness/evals/results/202610
 
 ## 로드맵
 - 2주차: ~~FastAPI 서비스~~ ~~트레이싱(JSONL·OTLP)~~ ~~하이브리드 검색~~ 완료 → 상용 모델 비교 행 추가(API 키 필요)
-- 3주차: ~~React UI~~ ~~README 상단 재정리~~ ~~2차 도메인 팩(`spice`)~~ ~~LLM 판정자 vs 사람 채점 대조~~ ~~매뉴얼 지식 베이스~~ ~~실험 추적 그래프~~ ~~3차 팩(`factory`)~~ ~~A2A·총괄 비서~~ ~~LangGraph 비교 실험~~ ~~업무 데스크 화면·데이터 탭·큐 보드~~ ~~MCP over HTTP~~ ~~데모 영상(녹화 스크립트)~~ 완료 → 평가 결과 공개, Electron 셸, 판정자 전 팩 적용, 인젝션 문제 확대, CI 평가 스모크, ~~소자 라이브러리~~ ~~문서 그래프~~ 모델 라우팅, GPU 배포·양자화 비교
+- 3주차: ~~React UI~~ ~~README 상단 재정리~~ ~~2차 도메인 팩(`spice`)~~ ~~LLM 판정자 vs 사람 채점 대조~~ ~~매뉴얼 지식 베이스~~ ~~실험 추적 그래프~~ ~~3차 팩(`factory`)~~ ~~A2A·총괄 비서~~ ~~LangGraph 비교 실험~~ ~~업무 데스크 화면·데이터 탭·큐 보드~~ ~~MCP over HTTP~~ ~~데모 영상(녹화 스크립트)~~ 완료 → 평가 결과 공개, Electron 셸, 판정자 전 팩 적용, 인젝션 문제 확대, CI 평가 스모크, ~~소자 라이브러리~~ ~~문서 그래프~~ ~~모델 라우팅~~ GPU 배포·양자화 비교
 
 ## 문서
-`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정 23편, 최근: ADR-021 MCP over HTTP, ADR-022 소자 라이브러리, ADR-023 문서 그래프) · `docs/ADDING-A-PACK.md`(팩 추가) · `docs/demo-script.md`(데모 대본) · `docs/VERIFY-day1-3.md`(검증 절차) · `scripts/capture_ui.py`(README 화면 캡처, 실제 실행)
+`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정 24편, 최근: ADR-022 소자 라이브러리, ADR-023 문서 그래프, ADR-024 모델 라우팅) · `docs/ADDING-A-PACK.md`(팩 추가) · `docs/demo-script.md`(데모 대본) · `docs/VERIFY-day1-3.md`(검증 절차) · `scripts/capture_ui.py`(README 화면 캡처, 실제 실행)

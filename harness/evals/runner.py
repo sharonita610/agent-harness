@@ -286,7 +286,10 @@ def run_eval(
     prov = make_provider(provider)
     registry = ToolRegistry(pk.build_tools(db_path=pack_db) if pack_db else pk.build_tools())
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    suffix = f"{provider.replace(':', '-').replace('/', '-')}{('_' + pk.name) if pk.name != 'enterprise' else ''}{('_' + tag) if tag else ''}"
+    safe_provider = (
+        provider.replace("->", "-to-").replace(":", "-").replace("/", "-").replace("|", "-")
+    )  # 파일 이름에 >, :, / 금지
+    suffix = f"{safe_provider}{('_' + pk.name) if pk.name != 'enterprise' else ''}{('_' + tag) if tag else ''}"
     trace_dir = RESULTS_DIR / "traces" / f"{stamp}_{suffix}"
     collector_box: dict[str, TraceCollector] = {}
     system_prompt = pk.system_prompts[prompt_version]
@@ -323,6 +326,8 @@ def run_eval(
                     "latency_s": res.latency_s,
                     "prompt_tokens": res.usage.prompt_tokens,
                     "completion_tokens": res.usage.completion_tokens,
+                    "by_model": res.usage.by_model,
+                    "routes": [ev.data["route"] for ev in res.events if ev.kind == "llm" and ev.data.get("route")],
                     "stopped": res.stopped_reason,
                     "tool_calls": res.tool_calls,
                     "trace": str(tpath.relative_to(RESULTS_DIR)),
@@ -373,11 +378,47 @@ def _summarize(rows, **meta) -> dict[str, Any]:
         by_type.setdefault(t["type"], []).append(t["pass_rate"])
     total_prompt = sum(r["prompt_tokens"] for r in all_runs)
     total_completion = sum(r["completion_tokens"] for r in all_runs)
+    provider = meta.get("provider", "local")
+    cost = cost_usd(provider, total_prompt, total_completion)
+    routing: dict[str, Any] = {}
+    if provider.startswith("route"):
+        # 라우팅: 모델별 토큰을 모아 모델별 단가로 비용을 더한다. 어떤 실행이 왜 올라갔는지도 센다
+        by_model: dict[str, dict[str, float]] = {}
+        for r in all_runs:
+            for m, u in (r.get("by_model") or {}).items():
+                slot = by_model.setdefault(m, {"prompt_tokens": 0, "completion_tokens": 0, "calls": 0})
+                for k in slot:
+                    slot[k] += u.get(k, 0)
+        for m, u in by_model.items():
+            u.update(cost_usd(m, int(u["prompt_tokens"]), int(u["completion_tokens"])))
+        strong_spec = provider.partition(":")[2].partition("->")[2] or "openai:gpt-5-mini"
+        strong_calls = by_model.get(strong_spec, {}).get("calls", 0)
+        all_calls = sum(u["calls"] for u in by_model.values())
+        reasons: dict[str, int] = {}
+        for r in all_runs:
+            routes = r.get("routes") or []
+            if routes:  # 올라간 뒤의 호출은 같은 사유가 반복되므로 실행당 첫 사유만 센다
+                why = routes[0]
+                key = why if why.startswith("cheap_response") else why.split(":")[0]  # "tool_errors:3" → tool_errors
+                reasons[key] = reasons.get(key, 0) + 1
+        cost = {
+            "cost_usd": round(sum(u.get("cost_usd") or 0 for u in by_model.values()), 5),
+            "cost_usd_if_hosted": round(sum(u.get("cost_usd_if_hosted") or 0 for u in by_model.values()), 5),
+        }
+        routing = {
+            "by_model": by_model,
+            "strong_calls": strong_calls,
+            "all_calls": all_calls,
+            "strong_share": round(strong_calls / all_calls, 3) if all_calls else 0,
+            "escalated_runs": sum(1 for r in all_runs if strong_spec in (r.get("by_model") or {})),
+            "escalation_reasons": reasons,
+        }
     return {
         **meta,
         "tasks": len(rows),
         "runs": len(all_runs),
-        **cost_usd(meta.get("provider", "local"), total_prompt, total_completion),
+        **cost,
+        **({"routing": routing} if routing else {}),
         "pass_rate": round(sum(r["pass"] for r in all_runs) / max(1, len(all_runs)), 3),
         "by_type": {k: round(sum(v) / len(v), 3) for k, v in by_type.items()},
         "avg_steps": round(statistics.mean(r["steps"] for r in all_runs), 2) if all_runs else 0,
@@ -407,6 +448,19 @@ def render_markdown(summary: dict[str, Any], rows: list[dict[str, Any]]) -> str:
             else ""
         )
         + (f" · 프롬프트 {summary['prompt_version']}" if summary.get("prompt_version") else ""),
+    ]
+    if summary.get("routing"):
+        ro = summary["routing"]
+        per_model = " · ".join(
+            f"{m}: 호출 {u['calls']}, 토큰 {int(u['prompt_tokens'] + u['completion_tokens']):,}, ${u.get('cost_usd') or 0:.4f}"
+            for m, u in ro["by_model"].items()
+        )
+        lines.append(
+            f"- 라우팅: 강한 모델 호출 {ro['strong_calls']}/{ro['all_calls']} ({ro['strong_share']:.0%}), 올라간 실행 {ro['escalated_runs']}/{summary['runs']}"
+            + (f", 사유 {ro['escalation_reasons']}" if ro["escalation_reasons"] else "")
+            + f" · {per_model}"
+        )
+    lines += [
         "",
         "| id | 유형 | 통과율 | 스텝 | 지연(s) | 실패 항목 | 답변(앞 80자) |",
         "|---|---|---|---|---|---|---|",

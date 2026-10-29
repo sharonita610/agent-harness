@@ -93,19 +93,20 @@ class Agent:
             emit("step", step)
             messages = compact(messages, self.context_budget_tokens)
             t_call = time.perf_counter()
+            extra = {"step": step} if getattr(self.provider, "wants_step", False) else {}
             try:
                 if getattr(self.provider, "supports_stream", False):
                     resp = self.provider.complete(
-                        messages, schemas, on_delta=lambda piece, _s=step: emit("delta", _s, text=piece)
+                        messages, schemas, on_delta=lambda piece, _s=step: emit("delta", _s, text=piece), **extra
                     )
                 else:
-                    resp = self.provider.complete(messages, schemas)
+                    resp = self.provider.complete(messages, schemas, **extra)
             except Exception as e:  # 네트워크/프로바이더 오류
                 emit("stopped", step, reason="provider_error", error=str(e))
                 return self._result(
                     f"모델 호출 오류: {e}", step, "provider_error", tool_log, approvals, events, usage, t0, messages
                 )
-            usage.add(resp.usage)
+            usage.add(resp.usage, model=resp.model or getattr(self.provider, "model", None))
             emit(
                 "llm",
                 step,
@@ -115,6 +116,8 @@ class Agent:
                 prompt_tokens=resp.usage.prompt_tokens,
                 completion_tokens=resp.usage.completion_tokens,
                 latency_s=round(time.perf_counter() - t_call, 2),
+                **({"model": resp.model} if resp.model else {}),
+                **({"route": resp.route} if resp.route else {}),
             )
 
             calls = resp.tool_calls or salvage_text_tool_calls(resp.text)
@@ -173,7 +176,7 @@ class Agent:
             )
             try:
                 resp = self.provider.complete(messages, None)
-                usage.add(resp.usage)
+                usage.add(resp.usage, model=resp.model or getattr(self.provider, "model", None))
                 answer = (resp.text or "").strip()
             except Exception as e:
                 answer = f"스텝 한도 도달 후 마무리 호출 실패: {e}"
