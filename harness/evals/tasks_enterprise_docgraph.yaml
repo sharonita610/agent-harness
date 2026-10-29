@@ -1,0 +1,30 @@
+# 회사 팩 · 문서 그래프 태스크(ADR-023). 정답은 문서 본문의 인용 관계와 개념 사전에서 결정적으로 나오며 테스트가 같은 값을 고정한다.
+- id: g01
+  type: graph
+  question: "배송 지연 보상 규정을 개정하면 같이 검토해야 하는 문서는 뭐야?"
+  answer_contains_all: ["주문 취소", "재고 부족"]
+  expect_tools_any: [impact_of, related_docs]
+
+- id: g02
+  type: graph
+  question: "재고 부족 처리 절차(WH-004)가 참조하는 문서를 알려줘"
+  answer_contains_all: ["주문 취소", "보상"]
+  expect_tools_any: [related_docs, impact_of]
+
+- id: g03
+  type: graph
+  question: "창고 운영 지침은 어떤 문서를 인용하고 있어?"
+  answer_contains_all: ["재고 부족", "주문 취소"]
+  expect_tools_any: [related_docs, impact_of]
+
+- id: g04
+  type: graph
+  question: "할인 승인 규정을 바꾸면 영향받는 문서가 있어?"
+  answer_contains_all: ["거래처 등급"]
+  expect_tools_any: [impact_of, related_docs]
+
+- id: g05
+  type: graph
+  question: "주문 취소 규정을 인용하는 문서는 어떤 것들이야?"
+  answer_contains_all: ["재고 부족", "창고 운영"]
+  expect_tools_any: [related_docs, impact_of]

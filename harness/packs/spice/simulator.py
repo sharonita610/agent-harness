@@ -44,7 +44,9 @@ _MEAS_FORMS = (
     "at",
 )
 _MEAS_KINDS = ("ac", "dc", "tran", "op", "sp")
-_RESULT_LINE = re.compile(r"^\s*([A-Za-z_][\w#]*)\s*=\s*([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)")
+_RESULT_LINE = re.compile(
+    r"^\s*([A-Za-z_@][^\s=]*)\s*=\s*([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)"
+)  # "fc = 1.59e+03 targ=…", "v(1) = 5.8e-01", "v1#branch = -1e-03"
 _ROWS_LINE = re.compile(r"No\. of Data Rows\s*:\s*(\d+)")
 _DISPLAY_LINE = re.compile(r"^\s{2,}(\S+)\s*:\s*(\w+),\s*(real|complex),\s*(\d+) long")
 
@@ -224,6 +226,32 @@ def parse_output(out: str) -> dict[str, Any]:
     return {"results": results, "vectors": vectors, "errors": errors, "warnings": warnings, "points": points}
 
 
+def _short_circuit_warnings(nl: Netlist) -> list[str]:
+    """소형 모델이 자주 하는 실수: 0 V 전압원을 노드와 접지 사이에 두어(V1 a 0 0) 그 노드에 걸린 소자를 단락시킨다.
+    (전류를 재려고 넣은 것인데 직렬이 아니라 병렬이 된 경우.) 해석 전에 경고 문장으로 알려 준다."""
+    out: list[str] = []
+    for c in nl.components:
+        if c.kind != "V" or len(c.nodes) < 2 or "0" not in c.nodes[:2]:
+            continue
+        raw = (c.value or "").strip().lower()
+        for prefix in ("dc", "="):
+            raw = raw.removeprefix(prefix).strip()
+        try:
+            zero = parse_si(raw) == 0
+        except Exception:
+            zero = raw in ("", "0", "0v")
+        if not zero:
+            continue
+        node = c.nodes[0] if c.nodes[1] == "0" else c.nodes[1]
+        shorted = [d.name for d in nl.components if d is not c and node in d.nodes and "0" in d.nodes]
+        if shorted:
+            out.append(
+                f"{c.name} 은 0 V 전압원이 노드 {node} 와 접지 사이에 있어 노드 {node} 를 접지에 묶습니다. "
+                f"같은 두 노드에 걸린 {', '.join(shorted)} 이(가) 단락되어 전압이 0 이 됩니다. 전류를 재려면 전압원을 직렬로 넣으세요."
+            )
+    return out
+
+
 def _control_block(nl: Netlist, meas_lines: list[str], save: list[str], data_file: str = "data.txt") -> str:
     lines = [
         ".control",
@@ -293,7 +321,7 @@ def simulate(
         )
     meas_lines: list[str] = []
     meas_names: list[str] = []
-    warnings = list(nl.warnings)
+    warnings = list(nl.warnings) + _short_circuit_warnings(nl)
     specs = [*measurements, *nl.inline_measurements]
     if nl.analysis_kind == "op" and specs:
         warnings.append(
@@ -339,7 +367,15 @@ def simulate(
     rc, out, elapsed = _run(cir, workdir, timeout_s)
     parsed = parse_output(out)
     if nl.analysis_kind == "op":
-        measured = {k: v for k, v in parsed["results"].items()}
+        # ngspice 의 print all 은 숫자 노드는 "v(1)", 이름 노드는 "out", 벡터가 하나뿐이면 "all" 로 찍는다 → 전부 "v(노드)" 로 통일
+        nodes = {n.lower() for n in nl.nodes} - {"0"}
+        measured = {}
+        for k, v in parsed["results"].items():
+            if k == "all" and len(parsed["vectors"]) == 1:
+                k = parsed["vectors"][0]["name"].lower()
+            if k in nodes:
+                k = f"v({k})"
+            measured[k] = v
     else:
         measured = {n: parsed["results"].get(n) for n in meas_names}
     failed = [n for n, v in measured.items() if v is None]

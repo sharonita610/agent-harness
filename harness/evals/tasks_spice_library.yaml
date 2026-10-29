@@ -1,0 +1,28 @@
+# 회로 팩 · 소자 라이브러리 태스크. 정답은 라이브러리의 모델 카드로 ngspice 를 직접 돌려 얻은 값(테스트가 같은 값을 고정한다).
+- id: lib01
+  type: sim
+  question: "소자 라이브러리의 1N4148 모델을 써서, 다이오드에 1mA 를 흘릴 때 순방향 전압을 시뮬레이션으로 구해줘"
+  truth_value: 0.5847
+  tolerance_pct: 3
+  expect_tools_all: [run_simulation]
+  # search_parts/get_part 호출은 요구하지 않는다: 이름을 아는 소자는 run_simulation(parts=[...]) 로 바로 붙이는 것이 의도한 경로다
+
+- id: lib02
+  type: sim
+  question: "12V 입력을 직렬 저항 1kΩ 과 라이브러리의 5.1V 제너 다이오드(ZENER_5V1)로 안정화하면 출력 전압은 몇 V 야? 시뮬레이션으로 구해줘"
+  truth_value: 5.117
+  tolerance_pct: 3
+  expect_tools_all: [run_simulation]
+
+- id: lib03
+  type: doc
+  question: "소자 라이브러리에 있는 NPN 트랜지스터 모델 이름을 전부 알려줘"
+  answer_contains_all: ["2N2222", "2N3904", "BC547"]
+  expect_tools_any: [search_parts]
+
+- id: lib04
+  type: doc
+  question: "라이브러리의 2N2222 모델에서 순방향 전류 이득(Bf)은 얼마로 잡혀 있어?"
+  truth_value: 255.9
+  tolerance_pct: 2
+  expect_tools_any: [get_part, search_parts]

@@ -66,7 +66,7 @@ def make_client(tmp_path, seeded_db):
 def test_health_and_tools(make_client):
     with make_client([]) as c:
         h = c.get("/health").json()
-        assert h["status"] == "ok" and h["tools"] == 10
+        assert h["status"] == "ok" and h["tools"] == 12
         tools = c.get("/tools").json()
         assert {t["name"]: t["policy"] for t in tools}["delete_order"] == "차단"
 

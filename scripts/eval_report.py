@@ -9,11 +9,16 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 res_dir = root / "harness/evals/results"
 jsons = sorted(p for p in res_dir.glob("*.json") if not p.name.startswith(("retrieval_", "agreement_", "human-")))
+# 묶음 = 팩 + 태스크 집합. 같은 팩이라도 추가 묶음(소자 라이브러리 lib01~, 문서 그래프 g01~)은 다른 문제라 표를 따로 만든다
+SET_KO = {"lib": "소자 라이브러리 묶음", "g": "문서 그래프 묶음"}
 by_pack: dict[str, list] = {}
 for p in jsons:
     d = json.loads(p.read_text(encoding="utf-8"))
     label = p.stem.split("_", 2)[-1] if p.stem.count("_") >= 2 else p.stem
-    by_pack.setdefault(d["summary"].get("pack") or "enterprise", []).append((label, d))
+    pack = d["summary"].get("pack") or "enterprise"
+    first = (d["tasks"][0]["id"] if d["tasks"] else "").rstrip("0123456789")
+    key = pack + (f" · {SET_KO[first]}" if first in SET_KO else "")
+    by_pack.setdefault(key, []).append((label, d))
 
 PACK_KO = {
     "enterprise": "회사 데이터 비서 (enterprise)",
@@ -34,6 +39,7 @@ TYPE_KO = {
     "route": "라우팅",
     "compound": "복합",
     "approval": "결재 대기",
+    "graph": "문서 그래프",
 }
 
 
@@ -61,7 +67,7 @@ details{margin:6px 0}summary{cursor:pointer;color:var(--accent)}pre{white-space:
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0 4px}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
 .card b{font-size:26px;font-weight:600;display:block}.card span{color:var(--muted);font-size:13px}
 </style></head><body><main>
-<h1>에이전트 평가 리포트</h1><div class="sub">팩별로 같은 16문제 · n = 태스크당 반복 횟수</div>""")
+<h1>에이전트 평가 리포트</h1><div class="sub">묶음(팩·태스크 집합)별로 같은 문제 · n = 태스크당 반복 횟수</div>""")
 
 for pack, runs in by_pack.items():
     types = []
@@ -69,8 +75,10 @@ for pack, runs in by_pack.items():
         for k in d["summary"]["by_type"]:
             if k not in types:
                 types.append(k)
+    pack_name, _, set_name = pack.partition(" · ")
+    title = PACK_KO.get(pack_name, pack_name) + (f" · {set_name}" if set_name else "")
     parts.append(
-        f'<h1 style="margin-top:28px">{esc(PACK_KO.get(pack, pack))}</h1><h2>모델 비교</h2><table><tr><th>모델</th><th>n</th><th class=num>통과율(규칙)</th><th class=num>판정자</th>'
+        f'<h1 style="margin-top:28px">{esc(title)}</h1><h2>모델 비교</h2><table><tr><th>모델</th><th>n</th><th class=num>통과율(규칙)</th><th class=num>판정자</th>'
         + "".join(f"<th class=num>{TYPE_KO.get(t, t)}</th>" for t in types)
         + "<th class=num>평균 스텝</th><th class=num>지연 p50</th><th class=num>지연 p95</th><th class=num>실행당 토큰</th><th class=num>비용</th><th>실행 시각</th></tr>"
     )

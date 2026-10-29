@@ -22,7 +22,8 @@ def test_enterprise_dashboard_shapes_and_scope(seeded_db):
     db, _ = seeded_db
     panels = check_panels(enterprise_dashboard(db_path=db))
     p = _by_id(panels)
-    assert {"stats", "status", "monthly", "reasons", "shortage", "recent"} <= set(p)
+    assert {"stats", "status", "monthly", "reasons", "shortage", "recent", "docgraph", "docs"} <= set(p)
+    assert p["docgraph"]["data"]["url"].endswith("docgraph.svg") and len(p["docs"]["data"]["rows"]) == 10
     total = next(s for s in p["stats"]["data"] if s["label"] == "전체 주문")["value"]
     assert total > 0 and all(pn["kind"] in PANEL_KINDS for pn in panels)
     assert p["monthly"]["data"]["x"] and len(p["monthly"]["data"]["series"]) == 2
@@ -69,7 +70,7 @@ def test_supervisor_dashboard_reports_each_agent(seeded_db, tmp_path: Path):
     client = TestClient(create_app(db_path=str(tmp_path / "svc.sqlite"), pack="enterprise"))
     p = _by_id(check_panels(supervisor_dashboard(agents=["http://127.0.0.1:8786", "http://127.0.0.1:9"], http=client)))
     rows = p["agents"]["data"]["rows"]
-    assert rows[0]["연결"] == "연결됨" and rows[0]["팩"] == "enterprise" and rows[0]["도구"] == 10
+    assert rows[0]["연결"] == "연결됨" and rows[0]["팩"] == "enterprise" and rows[0]["도구"] == 12
     assert len(rows) == 2  # TestClient 는 호스트를 가리지 않아 둘 다 같은 앱으로 간다
     assert p["stats"]["data"][0]["value"] == "2/2"
 

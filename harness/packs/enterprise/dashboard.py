@@ -8,10 +8,12 @@ from typing import Any
 from ...tools.sql import rows
 from .scope import Scope
 from .seed import DEFAULT_DB, REFERENCE_DATE
-from .tools import connect_ro
+from .tools import FILES_DIR, connect_ro, make_graph
 
 
-def dashboard(scope: Scope | None = None, db_path: Path = DEFAULT_DB) -> list[dict[str, Any]]:
+def dashboard(
+    scope: Scope | None = None, db_path: Path = DEFAULT_DB, files_dir: Path = FILES_DIR
+) -> list[dict[str, Any]]:
     ro = connect_ro(db_path, scope)
     query = lambda sql, params=(): rows(ro.execute(sql, params))["rows"]
     total = query("SELECT COUNT(*) AS n FROM orders")[0]["n"]
@@ -37,7 +39,7 @@ def dashboard(scope: Scope | None = None, db_path: Path = DEFAULT_DB) -> list[di
         "FROM orders o JOIN customers c ON c.id=o.customer_id WHERE o.status='지연' ORDER BY o.order_date DESC LIMIT 8"
     )
     scope_text = f" · 범위: {scope.describe()}" if scope is not None else ""
-    return [
+    panels = [
         {
             "id": "stats",
             "title": "한눈에" + scope_text,
@@ -95,3 +97,34 @@ def dashboard(scope: Scope | None = None, db_path: Path = DEFAULT_DB) -> list[di
             "data": {"columns": ["주문", "거래처", "주문일", "사유", "금액"], "rows": recent},
         },
     ]
+    # 규정 문서 관계도: 문서 그래프(ADR-023). 범위와 무관하게 문서는 모두 보인다.
+    try:
+        graph = make_graph()
+        files_dir.mkdir(parents=True, exist_ok=True)
+        (files_dir / "docgraph.svg").write_text(graph.render_svg(), encoding="utf-8")
+        stats = graph.stats()
+        panels.append(
+            {
+                "id": "docgraph",
+                "title": f"규정 문서 관계도 (문서 {stats['docs']}개 · 인용 {stats['by_kind'].get('참조', 0) + stats['by_kind'].get('주제', 0)}건 · 같은 데이터 {stats['by_kind'].get('데이터', 0)}쌍)",
+                "kind": "image",
+                "span": 2,
+                "data": {"url": "/files/enterprise/docgraph.svg", "alt": "규정 문서 관계도"},
+                "note": "화살표는 문서가 다른 문서의 번호·제목·절을 인용하는 관계, 점선은 같은 데이터 개념(안전재고, 지연 사유 …)을 다루는 관계. 비서의 related_docs·impact_of 가 보는 것과 같은 그래프다.",
+            }
+        )
+        panels.append(
+            {
+                "id": "docs",
+                "title": "규정 문서",
+                "kind": "table",
+                "span": 2,
+                "data": {
+                    "columns": ["문서", "제목", "담당", "개정일", "인용함", "인용됨", "데이터 개념"],
+                    "rows": graph.table(),
+                },
+            }
+        )
+    except Exception:
+        pass
+    return panels

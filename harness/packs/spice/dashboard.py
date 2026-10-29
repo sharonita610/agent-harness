@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .graph import GRAPH_PATH, ExperimentGraph, render_graph_svg
+from .library import LIBRARY
 from .netlist import format_si
 from .simulator import RUNS_DIR
 from .tools import CIRCUITS_DIR, LIBRARY_DIR, _circuit_meta, _unit_for
@@ -104,6 +105,28 @@ def dashboard(
             "data": {"columns": ["실행", "회로", "해석", "점 수", "측정값", "소요(ms)"], "rows": runs},
         },
     ]
+    panels.append(
+        {
+            "id": "parts",
+            "title": "소자 라이브러리",
+            "kind": "table",
+            "span": 2,
+            "data": {
+                "columns": ["이름", "종류", "모델", "설명", "핵심 값"],
+                "rows": [
+                    {
+                        "이름": p["name"],
+                        "종류": LIBRARY.summary(p)["kind"],
+                        "모델": p["model"],
+                        "설명": p["title"],
+                        "핵심 값": ", ".join(f"{k} {v}" for k, v in p["params"].items()),
+                    }
+                    for p in LIBRARY.parts
+                ],
+            },
+            "note": LIBRARY.note,
+        }
+    )
     try:
         g = ExperimentGraph(graph_path)
         if g.stats()["nodes"].get("run"):

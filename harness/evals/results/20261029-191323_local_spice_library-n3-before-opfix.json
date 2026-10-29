@@ -1,0 +1,1338 @@
+{
+  "summary": {
+    "provider": "local",
+    "model": "local-llm",
+    "n": 3,
+    "tag": null,
+    "prompt_version": "v1",
+    "pack": "spice",
+    "tasks": 4,
+    "runs": 12,
+    "cost_usd": 0.0,
+    "cost_usd_if_hosted": 0.00924,
+    "pass_rate": 0.75,
+    "by_type": {
+      "sim": 0.5,
+      "doc": 1.0
+    },
+    "avg_steps": 6.17,
+    "p50_latency_s": 37.0,
+    "p95_latency_s": 133.3,
+    "tokens_per_run": 31758,
+    "generated_at": "2026-10-29T19:24:13"
+  },
+  "tasks": [
+    {
+      "id": "lib01",
+      "type": "sim",
+      "question": "소자 라이브러리의 1N4148 모델을 써서, 다이오드에 1mA 를 흘릴 때 순방향 전압을 시뮬레이션으로 구해줘",
+      "pass_rate": 0.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": false,
+          "checks": {
+            "truth_within_tolerance": false,
+            "tools_any": false,
+            "tools_all": false,
+            "finished": false
+          },
+          "truth": [
+            0.5847
+          ],
+          "executed_tools": [
+            "search_manual",
+            "search_manual"
+          ],
+          "approvals": [],
+          "answer": "도구 호출 오류가 반복되어 작업을 중단했습니다. 질문을 더 구체적으로 주시거나 다른 방법을 알려주세요.",
+          "steps": 7,
+          "latency_s": 53.6,
+          "prompt_tokens": 34983,
+          "completion_tokens": 2697,
+          "stopped": "too_many_tool_errors",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nV1 1 0 dc 0\nD1 1 0 1N4148\n.dc V1 0 2 0.001\n.meas v1 WHEN i(D1)=0.001 V(1)\n",
+                "parts": [
+                  "1N4148"
+                ],
+                "measurements": [
+                  "v1"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 2,
+              "name": "search_manual",
+              "arguments": {
+                "query": "meas i(D1)",
+                "k": 5
+              },
+              "status": "ok",
+              "result_preview": "[{\"doc\": \"ngspice manual\", \"section\": \"EXAMPLES\", \"section_id\": \"26.17.3\", \"page\": 679, \"part\": 0, \"snippet\": \"…This example saves all the small-signal parameters of the previous diode:\\n.SAVE @[d1][g11] @[d1][g12] @[d1][g21] @[d1][g22]\\n.SAVE @[d1][c11] @[d1][c12] @[d1][c21] @[d1][c22]\\n.SAVE @[d1]"
+            },
+            {
+              "step": 3,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nI1 0 1 dc 1m\nD1 1 0 1N4148\n.op\n.meas v1 WHEN i(I1)=0.001 V(1)\n",
+                "parts": [
+                  "1N4148"
+                ],
+                "measurements": [
+                  "v1"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 4,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nV1 1 0 dc 0\nD1 1 0 1N4148\n.dc V1 0 2 0.001\n.meas Vf WHEN i(D1)=0.001 V(1)\n",
+                "parts": [
+                  "1N4148"
+                ],
+                "measurements": [
+                  "Vf"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 5,
+              "name": "search_manual",
+              "arguments": {
+                "query": "meas i(D1)",
+                "k": 5
+              },
+              "status": "ok",
+              "result_preview": "[{\"doc\": \"ngspice manual\", \"section\": \"EXAMPLES\", \"section_id\": \"26.17.3\", \"page\": 679, \"part\": 0, \"snippet\": \"…This example saves all the small-signal parameters of the previous diode:\\n.SAVE @[d1][g11] @[d1][g12] @[d1][g21] @[d1][g22]\\n.SAVE @[d1][c11] @[d1][c12] @[d1][c21] @[d1][c22]\\n.SAVE @[d1]"
+            },
+            {
+              "step": 6,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nI1 0 1 dc 1m\nD1 1 0 1N4148\n.op\n.meas V1 WHEN i(I1)=0.001 V(1)\n",
+                "parts": [
+                  "1N4148"
+                ],
+                "measurements": [
+                  "V1"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 7,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nV1 1 0 dc 0\nD1 1 0 1N4148\n.dc V1 0 2 0.001\n.meas V1 WHEN i(D1)=0.001 V(1)\n",
+                "parts": [
+                  "1N4148"
+                ],
+                "measurements": [
+                  "V1"
+                ]
+              },
+              "status": "exec_error"
+            }
+          ],
+          "trace": "traces/20261029-191323_local_spice/lib01_run1.jsonl",
+          "trace_summary": {
+            "run_id": "lib01_run1",
+            "spans": 15,
+            "llm_calls": 7,
+            "tool_calls": 7,
+            "tool_errors": 5,
+            "approvals": 0,
+            "llm_ms": 53480,
+            "tool_ms": 110,
+            "human_ms": 0,
+            "total_ms": 53601
+          }
+        },
+        {
+          "run": 2,
+          "pass": false,
+          "checks": {
+            "truth_within_tolerance": false,
+            "tools_any": true,
+            "tools_all": true,
+            "finished": true
+          },
+          "truth": [
+            0.5847
+          ],
+          "executed_tools": [
+            "check_netlist",
+            "search_parts",
+            "run_simulation",
+            "run_simulation",
+            "search_manual",
+            "run_simulation",
+            "run_simulation",
+            "run_simulation"
+          ],
+          "approvals": [],
+          "answer": "",
+          "steps": 12,
+          "latency_s": 178.89,
+          "prompt_tokens": 62988,
+          "completion_tokens": 9722,
+          "stopped": "max_steps",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "check_netlist",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nV1 1 0 0\nI1 1 0 1mA\nD1 1 0 1N4148\n.op"
+              },
+              "status": "ok",
+              "result_preview": "{\"title\": \"1N4148 forward voltage at 1mA\", \"components\": [{\"name\": \"V1\", \"type\": \"V\", \"nodes\": [\"1\", \"0\"], \"value\": \"0\"}, {\"name\": \"I1\", \"type\": \"I\", \"nodes\": [\"1\", \"0\"], \"value\": \"1mA\"}, {\"name\": \"D1\", \"type\": \"D\", \"nodes\": [\"1\", \"0\"], \"value\": null}], \"nodes\": [\"1\", \"0\"], \"analyses\": [\".op\"], \"mod"
+            },
+            {
+              "step": 2,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nV1 1 0 0\nI1 1 0 1mA\nD1 1 0 1N4148\n.op",
+                "parts": [
+                  "1N4148"
+                ],
+                "measurements": [
+                  "v(1)"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 3,
+              "name": "search_parts",
+              "arguments": {
+                "query": "1N4148",
+                "kind": "diode"
+              },
+              "status": "ok",
+              "result_preview": "{\"parts\": [{\"name\": \"1N4148\", \"model\": \"D1N4148\", \"kind\": \"다이오드\", \"title\": \"소신호 스위칭 다이오드\", \"params\": {\"Vf@1mA\": \"약 0.58 V\", \"Bv\": \"75 V\", \"tt\": \"20 ns\"}}], \"count\": 1, \"note\": \"교과서식 근사 모델이다. 제조사 공식 모델이 아니며 데이터시트와 수치가 다를 수 있다. 회로 동작의 '감'을 잡는 용도. 쓰려면 run_simulation 의 parts 에 이름을 넣고 넷리스트에서 model 이름을 쓴다"
+            },
+            {
+              "step": 4,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nV1 1 0 0\nI1 1 0 1mA\nD1 1 0 D1N4148\n.op",
+                "parts": [
+                  "D1N4148"
+                ],
+                "measurements": [
+                  "v(1)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_be60fbac\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"v1#branch\": -0.001}, \"vectors\": [\"V(1)\", \"v1#branch\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"errors\": [], \"elapsed_ms\": 21, \"ngspice\": \"ngsp"
+            },
+            {
+              "step": 5,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nV1 1 0 0\nI1 1 0 1mA\nD1 1 0 D1N4148\n.model D1N4148 D1N4148 (IS=1e-14 N=1.7)\n.op",
+                "parts": [
+                  "D1N4148"
+                ],
+                "measurements": [
+                  "v(1)"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 6,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nI1 1 0 1mA\nD1 1 0 D1N4148\n.op",
+                "parts": [
+                  "D1N4148"
+                ],
+                "measurements": [
+                  "v(1)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_eb05576b\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"all\": -75.6041}, \"vectors\": [\"V(1)\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"errors\": [], \"elapsed_ms\": 63, \"ngspice\": \"ngspice-47\", \"measure"
+            },
+            {
+              "step": 7,
+              "name": "search_manual",
+              "arguments": {
+                "query": "diode model D1N4148",
+                "k": 5
+              },
+              "status": "ok",
+              "result_preview": "[{\"doc\": \"넷리스트 기본 문법\", \"section\": \"소자 줄 형식\", \"section_id\": \"\", \"page\": null, \"part\": 0, \"snippet\": \"…n- [dc 값] [ac 크기]` | `I1 0 out dc 1m` |\\n| D | 다이오드 | `Dname 애노드 캐소드 모델` | `D1 in out [D1N4148]` |\\n| Q | BJT | `Qname C B E 모델` | `Q1 c b e NPN1` |\\n| M | MOSFET | `Mname D G S B 모델…\", \"score\": -7.2"
+            },
+            {
+              "step": 8,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nI1 1 0 1mA\nD1 1 0 D1N4148\n.model D1N4148 D1N4148 (IS=1e-14 N=1.7)\n.op",
+                "parts": [
+                  "D1N4148"
+                ],
+                "measurements": [
+                  "v(1)"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 9,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nV1 1 0 0\nI1 1 0 1mA\nD1 1 0 D1N4148\n.op",
+                "parts": [
+                  "D1N4148"
+                ],
+                "measurements": [
+                  "V(1)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_7b339037\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"v1#branch\": -0.001}, \"vectors\": [\"V(1)\", \"v1#branch\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"errors\": [], \"elapsed_ms\": 36, \"ngspice\": \"ngsp"
+            },
+            {
+              "step": 10,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nI1 1 0 1mA\nD1 1 0 D1N4148\n.op",
+                "parts": [
+                  "D1N4148"
+                ],
+                "measurements": [
+                  "v(1)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_77346b80\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"all\": -75.6041}, \"vectors\": [\"V(1)\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"errors\": [], \"elapsed_ms\": 36, \"ngspice\": \"ngspice-47\", \"measure"
+            },
+            {
+              "step": 11,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nV1 1 0 0\nI1 1 0 1mA\nD1 1 0 D1N4148\n.tran 1u 1m\n.end",
+                "parts": [
+                  "D1N4148"
+                ],
+                "measurements": [
+                  "V(1)"
+                ],
+                "save_vectors": [
+                  "V(1)"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 12,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nI1 1 0 1mA\nD1 1 0 D1N4148\n.op\n",
+                "parts": [
+                  "D1N4148"
+                ],
+                "measurements": [
+                  "v1 V(1)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_92d88f64\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"all\": -75.6041}, \"vectors\": [\"V(1)\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"errors\": [], \"elapsed_ms\": 38, \"ngspice\": \"ngspice-47\", \"measure"
+            }
+          ],
+          "trace": "traces/20261029-191323_local_spice/lib01_run2.jsonl",
+          "trace_summary": {
+            "run_id": "lib01_run2",
+            "spans": 25,
+            "llm_calls": 12,
+            "tool_calls": 12,
+            "tool_errors": 4,
+            "approvals": 0,
+            "llm_ms": 145860,
+            "tool_ms": 425,
+            "human_ms": 0,
+            "total_ms": 178891
+          }
+        },
+        {
+          "run": 3,
+          "pass": false,
+          "checks": {
+            "truth_within_tolerance": false,
+            "tools_any": false,
+            "tools_all": true,
+            "finished": true
+          },
+          "truth": [
+            0.5847
+          ],
+          "executed_tools": [
+            "run_simulation",
+            "run_simulation",
+            "run_simulation",
+            "run_simulation",
+            "run_simulation",
+            "run_simulation",
+            "run_simulation"
+          ],
+          "approvals": [],
+          "answer": "시뮬레이션 결과: 0.655 V (1 mA 흐를 때 1N4148의 순방향 전압)",
+          "steps": 9,
+          "latency_s": 89.05,
+          "prompt_tokens": 38460,
+          "completion_tokens": 4872,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nV1 1 0 DC 0\nI1 1 0 DC 1mA\nD1 1 0 1N4148\n.model 1N4148 D\n.op",
+                "parts": [
+                  "1N4148"
+                ],
+                "measurements": [
+                  "Vd v(d)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_7e3c7c34\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"v1#branch\": -0.001}, \"vectors\": [\"V(1)\", \"v1#branch\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"errors\": [], \"elapsed_ms\": 37, \"ngspice\": \"ngsp"
+            },
+            {
+              "step": 2,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nV1 1 0 DC 0\nI1 1 0 DC 1mA\nD1 1 0 1N4148\n.model 1N4148 D\n.op",
+                "parts": [
+                  "1N4148"
+                ],
+                "measurements": [
+                  "Vd V(1)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_28d8229f\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"v1#branch\": -0.001}, \"vectors\": [\"V(1)\", \"v1#branch\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"errors\": [], \"elapsed_ms\": 24, \"ngspice\": \"ngsp"
+            },
+            {
+              "step": 3,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nV1 1 0 DC 0\nI1 0 1 DC 1mA\nD1 1 0 1N4148\n.model 1N4148 D\n.op",
+                "parts": [
+                  "1N4148"
+                ],
+                "measurements": [
+                  "Vd V(1)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_b9bf2b48\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"v1#branch\": 0.001}, \"vectors\": [\"V(1)\", \"v1#branch\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"errors\": [], \"elapsed_ms\": 30, \"ngspice\": \"ngspi"
+            },
+            {
+              "step": 4,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nI1 1 0 DC 1mA\nD1 1 0 1N4148\n.model 1N4148 D\n.op",
+                "parts": [
+                  "1N4148"
+                ],
+                "measurements": [
+                  "V(1)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_5274426a\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"all\": -1000000000.0}, \"vectors\": [\"V(1)\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"errors\": [], \"elapsed_ms\": 15, \"ngspice\": \"ngspice-47\", \"me"
+            },
+            {
+              "step": 6,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nI1 1 0 DC 1mA\nD1 1 0 1N4148\n.model 1N4148 D\n.measure Vd V(1)\n.op",
+                "parts": [
+                  "1N4148"
+                ],
+                "measurements": [
+                  "Vd"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_045b164e\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"all\": -1000000000.0}, \"vectors\": [\"V(1)\"], \"saved_vectors\": [], \"warnings\": [\"넷리스트 안의 .measure 1개를 measurements 로 옮겼습니다(다음부터는 measurements 인자로 주세요).\", \"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 2"
+            },
+            {
+              "step": 7,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nV1 1 0 DC 0.1\nI1 1 0 DC 1mA\nD1 1 0 1N4148\n.model 1N4148 D\n.op",
+                "parts": [
+                  "1N4148"
+                ],
+                "measurements": [
+                  "V(1)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_42caa63a\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"v1#branch\": -0.001}, \"vectors\": [\"V(1)\", \"v1#branch\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"errors\": [], \"elapsed_ms\": 42, \"ngspice\": \"ngsp"
+            },
+            {
+              "step": 8,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 1N4148 forward voltage at 1mA\nI1 0 1 DC 1mA\nD1 1 0 1N4148\n.model 1N4148 D\n.op",
+                "parts": [
+                  "1N4148"
+                ],
+                "measurements": [
+                  "V(1)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_796ca4d4\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"all\": 0.655118}, \"vectors\": [\"V(1)\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"errors\": [], \"elapsed_ms\": 26, \"ngspice\": \"ngspice-47\", \"measure"
+            }
+          ],
+          "trace": "traces/20261029-191323_local_spice/lib01_run3.jsonl",
+          "trace_summary": {
+            "run_id": "lib01_run3",
+            "spans": 18,
+            "llm_calls": 9,
+            "tool_calls": 7,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 88770,
+            "tool_ms": 264,
+            "human_ms": 0,
+            "total_ms": 89050
+          }
+        }
+      ]
+    },
+    {
+      "id": "lib02",
+      "type": "sim",
+      "question": "12V 입력을 직렬 저항 1kΩ 과 라이브러리의 5.1V 제너 다이오드(ZENER_5V1)로 안정화하면 출력 전압은 몇 V 야? 시뮬레이션으로 구해줘",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "truth_within_tolerance": true,
+            "tools_all": true,
+            "finished": true
+          },
+          "truth": [
+            5.117
+          ],
+          "executed_tools": [
+            "search_parts",
+            "search_manual",
+            "run_simulation",
+            "check_netlist",
+            "run_simulation",
+            "run_simulation",
+            "run_simulation",
+            "search_manual"
+          ],
+          "approvals": [],
+          "answer": "시뮬레이션 결과: Vout ≈ 0.718 V (모델 이슈로 인한 비정상).  \n실제 5.1 V 제너 다이오드 기준이라 5.1 V가 나와야 함.",
+          "steps": 12,
+          "latency_s": 79.6,
+          "prompt_tokens": 61839,
+          "completion_tokens": 3553,
+          "stopped": "max_steps",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "search_parts",
+              "arguments": {
+                "query": "ZENER_5V1",
+                "kind": "diode"
+              },
+              "status": "ok",
+              "result_preview": "{\"parts\": [{\"name\": \"ZENER_5V1\", \"model\": \"DZ5V1\", \"kind\": \"다이오드\", \"title\": \"5.1 V 제너 다이오드\", \"params\": {\"Vz\": \"5.1 V\", \"Izt\": \"5 mA\"}}], \"count\": 1, \"note\": \"교과서식 근사 모델이다. 제조사 공식 모델이 아니며 데이터시트와 수치가 다를 수 있다. 회로 동작의 '감'을 잡는 용도. 쓰려면 run_simulation 의 parts 에 이름을 넣고 넷리스트에서 model 이름을 쓴다.\"}"
+            },
+            {
+              "step": 2,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V to 5.1V Zener\nV1 12 0 dc 12\nR1 12 out 1k\nD1 out 0 ZENER_5V1\n.op\n",
+                "parts": [
+                  "ZENER_5V1"
+                ],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 3,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V to 5.1V Zener\nV1 Vin 0 dc 12\nR1 Vin out 1k\nD1 out 0 ZENER_5V1\n.op\n",
+                "parts": [
+                  "ZENER_5V1"
+                ],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 4,
+              "name": "search_manual",
+              "arguments": {
+                "query": "ngspice .op command",
+                "k": 3
+              },
+              "status": "ok",
+              "result_preview": "[{\"doc\": \"ngspice manual\", \"section\": \"Version: Print the version of ngspice\", \"section_id\": \"13.5.105\", \"page\": 450, \"part\": 0, \"snippet\": \"…line in rawfiles.)\\n[Options] description:\\n• No [option]: The output of the [command] is the message you can see when running [ngspice]\\nfrom the [command] l"
+            },
+            {
+              "step": 5,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V to 5.1V Zener\nV1 Vin 0 dc 12\nR1 Vin out 1k\nD1 out 0 ZENER_5V1\n.op\n.end\n",
+                "parts": [
+                  "ZENER_5V1"
+                ],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 6,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* test\nV1 1 0 dc 12\n.op\n.end\n",
+                "parts": [],
+                "measurements": [
+                  "v(1)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_07eaba4a\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"v1#branch\": 0.0}, \"vectors\": [\"V(1)\", \"v1#branch\"], \"saved_vectors\": [], \"warnings\": [\"소자가 하나만 연결된 노드: 1 (떠 있는 노드면 해석이 실패할 수 있음)\", \"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"error"
+            },
+            {
+              "step": 7,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V to 5.1V Zener\nV1 Vin 0 dc 12\nR1 Vin out 1k\nD1 out 0 ZENER_5V1\n.op\n",
+                "parts": [
+                  "ZENER_5V1"
+                ],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 8,
+              "name": "check_netlist",
+              "arguments": {
+                "netlist": "* 12V to 5.1V Zener\nV1 Vin 0 dc 12\nR1 Vin out 1k\nD1 out 0 ZENER_5V1\n.op\n"
+              },
+              "status": "ok",
+              "result_preview": "{\"title\": \"12V to 5.1V Zener\", \"components\": [{\"name\": \"V1\", \"type\": \"V\", \"nodes\": [\"Vin\", \"0\"], \"value\": \"12\"}, {\"name\": \"R1\", \"type\": \"R\", \"nodes\": [\"Vin\", \"out\"], \"value\": \"1k\"}, {\"name\": \"D1\", \"type\": \"D\", \"nodes\": [\"out\", \"0\"], \"value\": null}], \"nodes\": [\"Vin\", \"0\", \"out\"], \"analyses\": [\".op\"],"
+            },
+            {
+              "step": 9,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V to 5.1V Zener\nV1 Vin 0 dc 12\nR1 Vin out 1k\nD1 out 0 DZ5V1\n.model DZ5V1 D (Vz=5.1 V Izt=5mA)\n.op\n",
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_383ce53b\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"out\": 0.7177948, \"v1#branch\": -0.0112822, \"vin\": 12.0}, \"vectors\": [\"out\", \"v1#branch\", \"vin\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\", \"Warning"
+            },
+            {
+              "step": 10,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V to 5.1V Zener\nV1 Vin 0 dc 12\nR1 Vin out 1k\nD1 out 0 DZ5V1\n.model DZ5V1 D (Vz=5.1 V Izt=5mA)\n.op\n",
+                "measurements": [
+                  "v(out)",
+                  "i(D1)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_762ad70b\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"out\": 0.7177948, \"v1#branch\": -0.0112822, \"vin\": 12.0}, \"vectors\": [\"out\", \"v1#branch\", \"vin\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 2개는 무시했습니다.\", \"Warning"
+            },
+            {
+              "step": 11,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V to 5.1V Zener\nV1 Vin 0 dc 12\nR1 Vin out 1k\nD1 0 out DZ5V1\n.model DZ5V1 D (Vz=5.1 V Izt=5mA)\n.op\n",
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_87540ebb\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"out\": 12.0, \"v1#branch\": -1.201e-11, \"vin\": 12.0}, \"vectors\": [\"out\", \"v1#branch\", \"vin\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\", \"Warning: Mod"
+            },
+            {
+              "step": 12,
+              "name": "search_manual",
+              "arguments": {
+                "query": "D model Vz Izt",
+                "k": 5
+              },
+              "status": "ok",
+              "result_preview": "[{\"doc\": \"ngspice manual\", \"section\": \"Hxxxx: Linear Current-Controlled Voltage Sources (CCVS)\", \"section_id\": \"4.2.4\", \"page\": 104, \"part\": 0, \"snippet\": \"…HX 5 17 [VZ] 0.5K\\nn+ and n- are the positive and negative nodes, respectively. vnam is the name of a voltage source\\nthrough which the control"
+            }
+          ],
+          "trace": "traces/20261029-191323_local_spice/lib02_run1.jsonl",
+          "trace_summary": {
+            "run_id": "lib02_run1",
+            "spans": 25,
+            "llm_calls": 12,
+            "tool_calls": 12,
+            "tool_errors": 4,
+            "approvals": 0,
+            "llm_ms": 63140,
+            "tool_ms": 344,
+            "human_ms": 0,
+            "total_ms": 79596
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "truth_within_tolerance": true,
+            "tools_all": true,
+            "finished": true
+          },
+          "truth": [
+            5.117
+          ],
+          "executed_tools": [
+            "search_parts",
+            "run_simulation",
+            "run_simulation",
+            "run_simulation",
+            "run_simulation",
+            "search_manual",
+            "search_manual"
+          ],
+          "approvals": [],
+          "answer": "출력 전압(정적·DC): 0.516 V (측정: .op)  \n(예상 5.1 V와 차이: 4.584 V)",
+          "steps": 12,
+          "latency_s": 133.28,
+          "prompt_tokens": 61410,
+          "completion_tokens": 6352,
+          "stopped": "max_steps",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "search_parts",
+              "arguments": {
+                "query": "ZENER_5V1",
+                "kind": "diode"
+              },
+              "status": "ok",
+              "result_preview": "{\"parts\": [{\"name\": \"ZENER_5V1\", \"model\": \"DZ5V1\", \"kind\": \"다이오드\", \"title\": \"5.1 V 제너 다이오드\", \"params\": {\"Vz\": \"5.1 V\", \"Izt\": \"5 mA\"}}], \"count\": 1, \"note\": \"교과서식 근사 모델이다. 제조사 공식 모델이 아니며 데이터시트와 수치가 다를 수 있다. 회로 동작의 '감'을 잡는 용도. 쓰려면 run_simulation 의 parts 에 이름을 넣고 넷리스트에서 model 이름을 쓴다.\"}"
+            },
+            {
+              "step": 2,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V source with 1k series resistor and 5.1V Zener\nV1 12 0 dc 12\nR1 12 out 1k\nD1 out 0 ZENER_5V1\n.op\n",
+                "parts": [
+                  "ZENER_5V1"
+                ],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 3,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V source with 1k series resistor and 5.1V Zener\nV1 12 0 dc 12\nR1 12 out 1k\nD1 out 0 ZENER_5V1\n.op\n.end\n",
+                "parts": [
+                  "ZENER_5V1"
+                ],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 4,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V source with 1k series resistor and 5.1V Zener\nV1 12 0 dc 12\nR1 12 out 1k\nD1 out 0 DZ5V1\n.op\n.end\n",
+                "parts": [
+                  "ZENER_5V1"
+                ],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_e3cf11c3\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"out\": 0.5160533, \"v1#branch\": -0.0114839}, \"vectors\": [\"V(12)\", \"out\", \"v1#branch\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"errors\": [], \"ela"
+            },
+            {
+              "step": 5,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V source with 1k series resistor and 5.1V Zener\nV1 12 0 dc 12\nR1 12 out 1k\n.model DZ5V1 D (Vz=5.1 Izt=5mA)\nD1 out 0 DZ5V1\n.op\n.end\n",
+                "parts": [],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_36143f15\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"out\": 0.7177948, \"v1#branch\": -0.0112822}, \"vectors\": [\"V(12)\", \"out\", \"v1#branch\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\", \"Warning: Model iss"
+            },
+            {
+              "step": 6,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V source with 1k series resistor and 5.1V Zener\nV1 12 0 dc 12\nR1 12 out 1k\nD1 0 out ZENER_5V1\n.op\n.end\n",
+                "parts": [
+                  "ZENER_5V1"
+                ],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 7,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V source with 1k series resistor and 5.1V Zener\nV1 12 0 dc 12\nR1 12 out 1k\n.model DZ5V1 D (Vz=5.1 Izt=5mA)\nD1 0 out DZ5V1\n.op\n.end\n",
+                "parts": [],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_d62d6028\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"out\": 12.0, \"v1#branch\": -1.201e-11}, \"vectors\": [\"V(12)\", \"out\", \"v1#branch\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\", \"Warning: Model issue on"
+            },
+            {
+              "step": 8,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V source with 1k series resistor and 5.1V Zener\nV1 12 0 dc 12\nR1 12 out 1k\n.model Z5V1 D (Vz=5.1 Is=1e-9 N=1 Bv=10)\nD1 0 out Z5V1\n.op\n.end\n",
+                "parts": [],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_e793c30b\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"out\": 10.01772, \"v1#branch\": -0.00198228}, \"vectors\": [\"V(12)\", \"out\", \"v1#branch\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\", \"Warning: Model iss"
+            },
+            {
+              "step": 10,
+              "name": "search_manual",
+              "arguments": {
+                "query": "Zener diode model D Vz",
+                "k": 5
+              },
+              "status": "ok",
+              "result_preview": "[{\"doc\": \"ngspice manual\", \"section\": \"Zener Diode\", \"section_id\": \"8.2.13\", \"page\": 203, \"part\": 0, \"snippet\": \"…cm_[zener]\\nSpice_[Model]_Name:\\n[zener]\\nDescription:\\n\\\"[zener] [diode]\\\"\\nPORT_TABLE:\\nPort Name:\\nz\\nDescription:\\n\\\"[zener]\\\"\\nDirection:\\ninout\\nDefault_Type:\\ngd\\nAllowed_Types:\\n"
+            },
+            {
+              "step": 11,
+              "name": "search_manual",
+              "arguments": {
+                "query": "Zener model D Vz Is",
+                "k": 5
+              },
+              "status": "ok",
+              "result_preview": "[{\"doc\": \"ngspice manual\", \"section\": \"Zener Diode\", \"section_id\": \"8.2.13\", \"page\": 203, \"part\": 0, \"snippet\": \"…The [Zener] Diode [models] the DC characteristics of most [zeners]. This [model]\\ndiffers from the Diode/Rectifier by providing a user-defined dynamic resistance in the\\nreverse breakdow"
+            },
+            {
+              "step": 12,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V source with 1k series resistor and 5.1V Zener\nV1 12 0 dc 12\nR1 12 out 1k\n.model Z5V1 Zener (Vz=5.1 Is=1e-9)\nD1 out 0 Z5V1\n.op\n.end\n",
+                "parts": [],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "exec_error"
+            }
+          ],
+          "trace": "traces/20261029-191323_local_spice/lib02_run2.jsonl",
+          "trace_summary": {
+            "run_id": "lib02_run2",
+            "spans": 25,
+            "llm_calls": 12,
+            "tool_calls": 11,
+            "tool_errors": 4,
+            "approvals": 0,
+            "llm_ms": 115240,
+            "tool_ms": 345,
+            "human_ms": 0,
+            "total_ms": 133278
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "truth_within_tolerance": true,
+            "tools_all": true,
+            "finished": true
+          },
+          "truth": [
+            5.117
+          ],
+          "executed_tools": [
+            "search_parts",
+            "search_manual",
+            "run_simulation",
+            "search_manual",
+            "search_parts",
+            "get_part",
+            "run_simulation"
+          ],
+          "approvals": [],
+          "answer": "시뮬레이션 결과: **5.12 V** (12 V 입력 → 1 kΩ → 5.1 V 제너)  \n이론적 5.1 V와의 차이: **+0.017 V** (≈+0.33 %)  \n(분석: .op)",
+          "steps": 10,
+          "latency_s": 54.88,
+          "prompt_tokens": 50956,
+          "completion_tokens": 2589,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "search_parts",
+              "arguments": {
+                "query": "Zener",
+                "kind": "diode"
+              },
+              "status": "ok",
+              "result_preview": "{\"parts\": [{\"name\": \"ZENER_5V1\", \"model\": \"DZ5V1\", \"kind\": \"다이오드\", \"title\": \"5.1 V 제너 다이오드\", \"params\": {\"Vz\": \"5.1 V\", \"Izt\": \"5 mA\"}}], \"count\": 1, \"note\": \"교과서식 근사 모델이다. 제조사 공식 모델이 아니며 데이터시트와 수치가 다를 수 있다. 회로 동작의 '감'을 잡는 용도. 쓰려면 run_simulation 의 parts 에 이름을 넣고 넷리스트에서 model 이름을 쓴다.\"}"
+            },
+            {
+              "step": 2,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V to 5.1V Zener\nV1 in 0 dc 12\nR1 in out 1k\nD1 out 0 ZENER_5V1\n.op\n",
+                "parts": [
+                  "ZENER_5V1"
+                ],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 3,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V to 5.1V Zener\nV1 in 0 dc 12\nR1 in out 1k\nD1 out 0 ZENER_5V1\n.op\n.end\n",
+                "parts": [
+                  "ZENER_5V1"
+                ],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "exec_error"
+            },
+            {
+              "step": 4,
+              "name": "search_manual",
+              "arguments": {
+                "query": "zener diode model ngspice",
+                "k": 5
+              },
+              "status": "ok",
+              "result_preview": "[{\"doc\": \"ngspice manual\", \"section\": \"Zener Diode\", \"section_id\": \"8.2.13\", \"page\": 203, \"part\": 0, \"snippet\": \"…cm_[zener]\\nSpice_[Model]_Name:\\n[zener]\\nDescription:\\n\\\"[zener] [diode]\\\"\\nPORT_TABLE:\\nPort Name:\\nz\\nDescription:\\n\\\"[zener]\\\"\\nDirection:\\ninout\\nDefault_Type:\\ngd\\nAllowed_Types:\\n"
+            },
+            {
+              "step": 5,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V to 5.1V Zener\nV1 in 0 dc 12\nR1 in out 1k\nD1 out 0 DZ5V1\n.op\n.end\n",
+                "parts": [
+                  "DZ5V1"
+                ],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_6d73973d\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"in\": 12.0, \"out\": 0.5160533, \"v1#branch\": -0.0114839}, \"vectors\": [\"in\", \"out\", \"v1#branch\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"errors\":"
+            },
+            {
+              "step": 6,
+              "name": "search_manual",
+              "arguments": {
+                "query": "zener 5.1V ngspice model",
+                "k": 5
+              },
+              "status": "ok",
+              "result_preview": "[{\"doc\": \"ngspice manual\", \"section\": \"Zener Diode\", \"section_id\": \"8.2.13\", \"page\": 203, \"part\": 0, \"snippet\": \"…cm_[zener]\\nSpice_[Model]_Name:\\n[zener]\\nDescription:\\n\\\"[zener] diode\\\"\\nPORT_TABLE:\\nPort Name:\\nz\\nDescription:\\n\\\"[zener]\\\"\\nDirection:\\ninout\\nDefault_Type:\\ngd\\nAllowed_Types:\\n[g"
+            },
+            {
+              "step": 7,
+              "name": "search_parts",
+              "arguments": {
+                "query": "zener",
+                "kind": "diode"
+              },
+              "status": "ok",
+              "result_preview": "{\"parts\": [{\"name\": \"ZENER_5V1\", \"model\": \"DZ5V1\", \"kind\": \"다이오드\", \"title\": \"5.1 V 제너 다이오드\", \"params\": {\"Vz\": \"5.1 V\", \"Izt\": \"5 mA\"}}], \"count\": 1, \"note\": \"교과서식 근사 모델이다. 제조사 공식 모델이 아니며 데이터시트와 수치가 다를 수 있다. 회로 동작의 '감'을 잡는 용도. 쓰려면 run_simulation 의 parts 에 이름을 넣고 넷리스트에서 model 이름을 쓴다.\"}"
+            },
+            {
+              "step": 8,
+              "name": "get_part",
+              "arguments": {
+                "name": "ZENER_5V1"
+              },
+              "status": "ok",
+              "result_preview": "{\"name\": \"ZENER_5V1\", \"model\": \"DZ5V1\", \"kind\": \"다이오드\", \"title\": \"5.1 V 제너 다이오드\", \"params\": {\"Vz\": \"5.1 V\", \"Izt\": \"5 mA\"}, \"card\": \".model DZ5V1 D(Is=1n Rs=1 N=1.2 Bv=5.1 Ibv=5m Cjo=50p)\", \"element_example\": \"D1 cathode anode DZ5V1   (역방향으로 연결: 캐소드가 높은 전위)\", \"note\": \"교과서식 근사 모델이다. 제조사 공식 모델이 아니며 데이"
+            },
+            {
+              "step": 9,
+              "name": "run_simulation",
+              "arguments": {
+                "netlist": "* 12V to 5.1V Zener\nV1 in 0 dc 12\nR1 in out 1k\nD1 0 out DZ5V1\n.op\n.end\n",
+                "parts": [
+                  "DZ5V1"
+                ],
+                "measurements": [
+                  "v(out)"
+                ]
+              },
+              "status": "ok",
+              "result_preview": "{\"run_id\": \"sim_389b7f7d\", \"analysis\": \".op\", \"analysis_kind\": \"op\", \"points\": 1, \"measurements\": {\"in\": 12.0, \"out\": 5.116835, \"v1#branch\": -0.00688316}, \"vectors\": [\"in\", \"out\", \"v1#branch\"], \"saved_vectors\": [], \"warnings\": [\"동작점(.op) 해석은 측정식 없이 모든 노드 전압과 전원 전류를 돌려주므로 측정식 1개는 무시했습니다.\"], \"errors\":"
+            }
+          ],
+          "trace": "traces/20261029-191323_local_spice/lib02_run3.jsonl",
+          "trace_summary": {
+            "run_id": "lib02_run3",
+            "spans": 20,
+            "llm_calls": 10,
+            "tool_calls": 9,
+            "tool_errors": 2,
+            "approvals": 0,
+            "llm_ms": 54680,
+            "tool_ms": 181,
+            "human_ms": 0,
+            "total_ms": 54882
+          }
+        }
+      ]
+    },
+    {
+      "id": "lib03",
+      "type": "doc",
+      "question": "소자 라이브러리에 있는 NPN 트랜지스터 모델 이름을 전부 알려줘",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "search_parts"
+          ],
+          "approvals": [],
+          "answer": "NPN 트랜지스터 모델 목록  \n- 2N2222  \n- 2N3904  \n- BC547",
+          "steps": 2,
+          "latency_s": 3.71,
+          "prompt_tokens": 6279,
+          "completion_tokens": 161,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "search_parts",
+              "arguments": {
+                "query": "",
+                "kind": "npn"
+              },
+              "status": "ok",
+              "result_preview": "{\"parts\": [{\"name\": \"2N2222\", \"model\": \"Q2N2222\", \"kind\": \"NPN 트랜지스터\", \"title\": \"범용 NPN 트랜지스터\", \"params\": {\"Bf(hFE)\": \"256\", \"Vaf\": \"74 V\", \"Ic max\": \"800 mA\"}}, {\"name\": \"2N3904\", \"model\": \"Q2N3904\", \"kind\": \"NPN 트랜지스터\", \"title\": \"소신호 NPN 트랜지스터\", \"params\": {\"Bf(hFE)\": \"416\", \"Vaf\": \"74 V\", \"Ic max\""
+            }
+          ],
+          "trace": "traces/20261029-191323_local_spice/lib03_run1.jsonl",
+          "trace_summary": {
+            "run_id": "lib03_run1",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 3700,
+            "tool_ms": 1,
+            "human_ms": 0,
+            "total_ms": 3712
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "search_parts"
+          ],
+          "approvals": [],
+          "answer": "- 2N2222  \n- 2N3904  \n- BC547",
+          "steps": 2,
+          "latency_s": 5.23,
+          "prompt_tokens": 6279,
+          "completion_tokens": 255,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "search_parts",
+              "arguments": {
+                "query": "",
+                "kind": "npn"
+              },
+              "status": "ok",
+              "result_preview": "{\"parts\": [{\"name\": \"2N2222\", \"model\": \"Q2N2222\", \"kind\": \"NPN 트랜지스터\", \"title\": \"범용 NPN 트랜지스터\", \"params\": {\"Bf(hFE)\": \"256\", \"Vaf\": \"74 V\", \"Ic max\": \"800 mA\"}}, {\"name\": \"2N3904\", \"model\": \"Q2N3904\", \"kind\": \"NPN 트랜지스터\", \"title\": \"소신호 NPN 트랜지스터\", \"params\": {\"Bf(hFE)\": \"416\", \"Vaf\": \"74 V\", \"Ic max\""
+            }
+          ],
+          "trace": "traces/20261029-191323_local_spice/lib03_run2.jsonl",
+          "trace_summary": {
+            "run_id": "lib03_run2",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 5220,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 5228
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "search_parts"
+          ],
+          "approvals": [],
+          "answer": "NPN 트랜지스터 모델(소자 라이브러리에 등록된 것):\n\n- 2N2222 (모델명: Q2N2222)  \n- 2N3904 (모델명: Q2N3904)  \n- BC547 (모델명: QBC547)",
+          "steps": 2,
+          "latency_s": 4.17,
+          "prompt_tokens": 6279,
+          "completion_tokens": 191,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "search_parts",
+              "arguments": {
+                "query": "",
+                "kind": "npn"
+              },
+              "status": "ok",
+              "result_preview": "{\"parts\": [{\"name\": \"2N2222\", \"model\": \"Q2N2222\", \"kind\": \"NPN 트랜지스터\", \"title\": \"범용 NPN 트랜지스터\", \"params\": {\"Bf(hFE)\": \"256\", \"Vaf\": \"74 V\", \"Ic max\": \"800 mA\"}}, {\"name\": \"2N3904\", \"model\": \"Q2N3904\", \"kind\": \"NPN 트랜지스터\", \"title\": \"소신호 NPN 트랜지스터\", \"params\": {\"Bf(hFE)\": \"416\", \"Vaf\": \"74 V\", \"Ic max\""
+            }
+          ],
+          "trace": "traces/20261029-191323_local_spice/lib03_run3.jsonl",
+          "trace_summary": {
+            "run_id": "lib03_run3",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 4160,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 4166
+          }
+        }
+      ]
+    },
+    {
+      "id": "lib04",
+      "type": "doc",
+      "question": "라이브러리의 2N2222 모델에서 순방향 전류 이득(Bf)은 얼마로 잡혀 있어?",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "truth_within_tolerance": true,
+            "tools_any": true,
+            "finished": true
+          },
+          "truth": [
+            255.9
+          ],
+          "executed_tools": [
+            "get_part"
+          ],
+          "approvals": [],
+          "answer": "2N2222 모델의 순방향 전류 이득 (Bf, hFE)은 **256** 으로 정의돼 있습니다. (라이브러리에서 제공되는 값)",
+          "steps": 2,
+          "latency_s": 20.33,
+          "prompt_tokens": 6221,
+          "completion_tokens": 1139,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "get_part",
+              "arguments": {
+                "name": "2N2222"
+              },
+              "status": "ok",
+              "result_preview": "{\"name\": \"2N2222\", \"model\": \"Q2N2222\", \"kind\": \"NPN 트랜지스터\", \"title\": \"범용 NPN 트랜지스터\", \"params\": {\"Bf(hFE)\": \"256\", \"Vaf\": \"74 V\", \"Ic max\": \"800 mA\"}, \"card\": \".model Q2N2222 NPN(Is=14.34f Bf=255.9 Nf=1 Vaf=74.03 Ikf=0.2847 Ise=14.34f Ne=1.307 Br=6.092 Rb=10 Rc=1 Cje=22.01p Cjc=7.306p Tf=411.1p Tr=46"
+            }
+          ],
+          "trace": "traces/20261029-191323_local_spice/lib04_run1.jsonl",
+          "trace_summary": {
+            "run_id": "lib04_run1",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 20320,
+            "tool_ms": 1,
+            "human_ms": 0,
+            "total_ms": 20327
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "truth_within_tolerance": true,
+            "tools_any": true,
+            "finished": true
+          },
+          "truth": [
+            255.9
+          ],
+          "executed_tools": [
+            "search_parts"
+          ],
+          "approvals": [],
+          "answer": "2N2222 모델의 순방향 전류 이득(Bf, hFE)은 **256**입니다. (소자 라이브러리에서 제공되는 값)",
+          "steps": 2,
+          "latency_s": 12.68,
+          "prompt_tokens": 6154,
+          "completion_tokens": 707,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "search_parts",
+              "arguments": {
+                "query": "2N2222",
+                "kind": "npn"
+              },
+              "status": "ok",
+              "result_preview": "{\"parts\": [{\"name\": \"2N2222\", \"model\": \"Q2N2222\", \"kind\": \"NPN 트랜지스터\", \"title\": \"범용 NPN 트랜지스터\", \"params\": {\"Bf(hFE)\": \"256\", \"Vaf\": \"74 V\", \"Ic max\": \"800 mA\"}}], \"count\": 1, \"note\": \"교과서식 근사 모델이다. 제조사 공식 모델이 아니며 데이터시트와 수치가 다를 수 있다. 회로 동작의 '감'을 잡는 용도. 쓰려면 run_simulation 의 parts 에 이름을 넣고 넷리스트에서 model"
+            }
+          ],
+          "trace": "traces/20261029-191323_local_spice/lib04_run2.jsonl",
+          "trace_summary": {
+            "run_id": "lib04_run2",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 12680,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 12683
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "truth_within_tolerance": true,
+            "tools_any": true,
+            "finished": true
+          },
+          "truth": [
+            255.9
+          ],
+          "executed_tools": [
+            "get_part"
+          ],
+          "approvals": [],
+          "answer": "2N2222 모델의 순방향 전류 이득(Bf)은 **256**으로 설정되어 있습니다.",
+          "steps": 2,
+          "latency_s": 14.53,
+          "prompt_tokens": 6221,
+          "completion_tokens": 783,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "get_part",
+              "arguments": {
+                "name": "2N2222"
+              },
+              "status": "ok",
+              "result_preview": "{\"name\": \"2N2222\", \"model\": \"Q2N2222\", \"kind\": \"NPN 트랜지스터\", \"title\": \"범용 NPN 트랜지스터\", \"params\": {\"Bf(hFE)\": \"256\", \"Vaf\": \"74 V\", \"Ic max\": \"800 mA\"}, \"card\": \".model Q2N2222 NPN(Is=14.34f Bf=255.9 Nf=1 Vaf=74.03 Ikf=0.2847 Ise=14.34f Ne=1.307 Br=6.092 Rb=10 Rc=1 Cje=22.01p Cjc=7.306p Tf=411.1p Tr=46"
+            }
+          ],
+          "trace": "traces/20261029-191323_local_spice/lib04_run3.jsonl",
+          "trace_summary": {
+            "run_id": "lib04_run3",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 14520,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 14525
+          }
+        }
+      ]
+    }
+  ]
+}

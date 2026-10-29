@@ -13,7 +13,7 @@ details{margin:6px 0}summary{cursor:pointer;color:var(--accent)}pre{white-space:
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0 4px}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
 .card b{font-size:26px;font-weight:600;display:block}.card span{color:var(--muted);font-size:13px}
 </style></head><body><main>
-<h1>에이전트 평가 리포트</h1><div class="sub">팩별로 같은 16문제 · n = 태스크당 반복 횟수</div>
+<h1>에이전트 평가 리포트</h1><div class="sub">묶음(팩·태스크 집합)별로 같은 문제 · n = 태스크당 반복 횟수</div>
 <h1 style="margin-top:28px">회사 데이터 비서 (enterprise)</h1><h2>모델 비교</h2><table><tr><th>모델</th><th>n</th><th class=num>통과율(규칙)</th><th class=num>판정자</th><th class=num>조회</th><th class=num>복합</th><th class=num>규정</th><th class=num>변경→승인</th><th class=num>함정</th><th class=num>평균 스텝</th><th class=num>지연 p50</th><th class=num>지연 p95</th><th class=num>실행당 토큰</th><th class=num>비용</th><th>실행 시각</th></tr>
 <tr><td><b>day3-smoke</b><br><span class=pill>local-llm</span></td><td class=num>1</td><td class=num><b>81%</b></td><td class=num>-</td><td class=num>80%</td><td class=num>50%</td><td class=num>67%</td><td class=num>100%</td><td class=num>100%</td><td class=num>2.38</td><td class=num>6.7s</td><td class=num>18.8s</td><td class=num>5,250</td><td class=num>$0<br><small>호스팅이면 $0.002</small></td><td>2026-10-28T02:52</td></tr>
 <tr><td><b>gpt-oss-20b</b><br><span class=pill>local-llm</span></td><td class=num>1</td><td class=num><b>100%</b></td><td class=num>-</td><td class=num>100%</td><td class=num>100%</td><td class=num>100%</td><td class=num>100%</td><td class=num>100%</td><td class=num>2</td><td class=num>6.0s</td><td class=num>12.3s</td><td class=num>3,406</td><td class=num>$0<br><small>호스팅이면 $0.001</small></td><td>2026-10-28T02:52</td></tr>
@@ -2820,5 +2820,482 @@ AI 비서나 분류기는 라벨을 **제안**만 하고, 확정은 사람이 �
 <details><summary><span class=ok>PASS</span> r08 run1 · 5스텝 · 29.52s</summary><div><span class=pill>list_agents → delegate → delegate → delegate</span></div><pre>어떤 주문이 늦었나요?</pre></details>
 <details><summary><span class=ok>PASS</span> r08 run2 · 1스텝 · 4.25s</summary><div><span class=pill>(도구 호출 없음)</span></div><pre>어떤 항목이 늦었는지 알려 주세요.</pre></details>
 <details><summary><span class=ok>PASS</span> r08 run3 · 4스텝 · 24.47s</summary><div><span class=pill>list_agents → delegate → delegate</span></div><pre>어떤 주문이 지연되었는지 알려 주실 수 있나요? 주문 번호를 알려 주시면 원인과 상황을 바로 확인해 드리겠습니다.</pre></details>
+</details>
+<h1 style="margin-top:28px">회로 시뮬레이션 비서 (spice) · 소자 라이브러리 묶음</h1><h2>모델 비교</h2><table><tr><th>모델</th><th>n</th><th class=num>통과율(규칙)</th><th class=num>판정자</th><th class=num>해석</th><th class=num>규정</th><th class=num>평균 스텝</th><th class=num>지연 p50</th><th class=num>지연 p95</th><th class=num>실행당 토큰</th><th class=num>비용</th><th>실행 시각</th></tr>
+<tr><td><b>spice_library-n3-before-opfix</b><br><span class=pill>local-llm</span></td><td class=num>3</td><td class=num><b>75%</b></td><td class=num>-</td><td class=num>50%</td><td class=num>100%</td><td class=num>6.17</td><td class=num>37.0s</td><td class=num>133.3s</td><td class=num>31,758</td><td class=num>$0<br><small>호스팅이면 $0.009</small></td><td>2026-10-29T19:24</td></tr>
+<tr><td><b>spice_library-n3-after-opfix</b><br><span class=pill>local-llm</span></td><td class=num>3</td><td class=num><b>75%</b></td><td class=num>-</td><td class=num>50%</td><td class=num>100%</td><td class=num>5.25</td><td class=num>26.1s</td><td class=num>129.1s</td><td class=num>22,586</td><td class=num>$0<br><small>호스팅이면 $0.007</small></td><td>2026-10-29T19:43</td></tr>
+<tr><td><b>spice_library-n3-v2</b><br><span class=pill>local-llm</span></td><td class=num>3</td><td class=num><b>75%</b></td><td class=num>-</td><td class=num>50%</td><td class=num>100%</td><td class=num>4.58</td><td class=num>14.2s</td><td class=num>138.4s</td><td class=num>23,056</td><td class=num>$0<br><small>호스팅이면 $0.007</small></td><td>2026-10-29T19:57</td></tr>
+<tr><td><b>spice_library-n3-v3</b><br><span class=pill>local-llm</span></td><td class=num>3</td><td class=num><b>83%</b></td><td class=num>-</td><td class=num>67%</td><td class=num>100%</td><td class=num>4.25</td><td class=num>17.3s</td><td class=num>77.0s</td><td class=num>19,022</td><td class=num>$0<br><small>호스팅이면 $0.006</small></td><td>2026-10-29T20:10</td></tr>
+</table>
+<h2>태스크별 통과율</h2><table><tr><th>태스크</th><th>유형</th><th>질문</th><th class=num>spice_library-n3-before-opfix</th><th class=num>spice_library-n3-after-opfix</th><th class=num>spice_library-n3-v2</th><th class=num>spice_library-n3-v3</th></tr>
+<tr><td>lib01</td><td>해석</td><td>소자 라이브러리의 1N4148 모델을 써서, 다이오드에 1mA 를 흘릴 때 순방향 전압을 시뮬레이션으로 구해줘</td><td class=num><span class=bad>0/3</span><br><small>finished,tools_all,tools_any,truth_within_tolerance</small></td><td class=num><span class=bad>1/3</span><br><small>finished,tools_all,tools_any,truth_within_tolerance</small></td><td class=num><span class=bad>0/3</span><br><small>tools_any,truth_within_tolerance</small></td><td class=num><span class=bad>2/3</span><br><small>truth_within_tolerance</small></td></tr>
+<tr><td>lib02</td><td>해석</td><td>12V 입력을 직렬 저항 1kΩ 과 라이브러리의 5.1V 제너 다이오드(ZENER_5V1)로 안정화하면 출력 전압은 몇 V 야? 시뮬레이션으로 구해줘</td><td class=num><span class=ok>3/3</span></td><td class=num><span class=bad>2/3</span><br><small>finished,tools_all,truth_within_tolerance</small></td><td class=num><span class=ok>3/3</span></td><td class=num><span class=bad>2/3</span><br><small>finished,truth_within_tolerance</small></td></tr>
+<tr><td>lib03</td><td>규정</td><td>소자 라이브러리에 있는 NPN 트랜지스터 모델 이름을 전부 알려줘</td><td class=num><span class=ok>3/3</span></td><td class=num><span class=ok>3/3</span></td><td class=num><span class=ok>3/3</span></td><td class=num><span class=ok>3/3</span></td></tr>
+<tr><td>lib04</td><td>규정</td><td>라이브러리의 2N2222 모델에서 순방향 전류 이득(Bf)은 얼마로 잡혀 있어?</td><td class=num><span class=ok>3/3</span></td><td class=num><span class=ok>3/3</span></td><td class=num><span class=ok>3/3</span></td><td class=num><span class=ok>3/3</span></td></tr>
+</table>
+<h2>답변 원문 (펼쳐 보기)</h2>
+<details><summary><b>spice_library-n3-before-opfix</b> · local-llm · 통과율 75%</summary>
+<details><summary><span class=bad>FAIL</span> lib01 run1 · 7스텝 · 53.6s · 실패: truth_within_tolerance,tools_any,tools_all,finished</summary><div><span class=pill>search_manual → search_manual</span><span class=pill>정답: [0.5847]</span></div><pre>도구 호출 오류가 반복되어 작업을 중단했습니다. 질문을 더 구체적으로 주시거나 다른 방법을 알려주세요.</pre></details>
+<details><summary><span class=bad>FAIL</span> lib01 run2 · 12스텝 · 178.89s · 실패: truth_within_tolerance</summary><div><span class=pill>check_netlist → search_parts → run_simulation → run_simulation → search_manual → run_simulation → run_simulation → run_simulation</span><span class=pill>정답: [0.5847]</span></div><pre></pre></details>
+<details><summary><span class=bad>FAIL</span> lib01 run3 · 9스텝 · 89.05s · 실패: truth_within_tolerance,tools_any</summary><div><span class=pill>run_simulation → run_simulation → run_simulation → run_simulation → run_simulation → run_simulation → run_simulation</span><span class=pill>정답: [0.5847]</span></div><pre>시뮬레이션 결과: 0.655 V (1 mA 흐를 때 1N4148의 순방향 전압)</pre></details>
+<details><summary><span class=ok>PASS</span> lib02 run1 · 12스텝 · 79.6s</summary><div><span class=pill>search_parts → search_manual → run_simulation → check_netlist → run_simulation → run_simulation → run_simulation → search_manual</span><span class=pill>정답: [5.117]</span></div><pre>시뮬레이션 결과: Vout ≈ 0.718 V (모델 이슈로 인한 비정상).  
+실제 5.1 V 제너 다이오드 기준이라 5.1 V가 나와야 함.</pre></details>
+<details><summary><span class=ok>PASS</span> lib02 run2 · 12스텝 · 133.28s</summary><div><span class=pill>search_parts → run_simulation → run_simulation → run_simulation → run_simulation → search_manual → search_manual</span><span class=pill>정답: [5.117]</span></div><pre>출력 전압(정적·DC): 0.516 V (측정: .op)  
+(예상 5.1 V와 차이: 4.584 V)</pre></details>
+<details><summary><span class=ok>PASS</span> lib02 run3 · 10스텝 · 54.88s</summary><div><span class=pill>search_parts → search_manual → run_simulation → search_manual → search_parts → get_part → run_simulation</span><span class=pill>정답: [5.117]</span></div><pre>시뮬레이션 결과: **5.12 V** (12 V 입력 → 1 kΩ → 5.1 V 제너)  
+이론적 5.1 V와의 차이: **+0.017 V** (≈+0.33 %)  
+(분석: .op)</pre></details>
+<details><summary><span class=ok>PASS</span> lib03 run1 · 2스텝 · 3.71s</summary><div><span class=pill>search_parts</span></div><pre>NPN 트랜지스터 모델 목록  
+- 2N2222  
+- 2N3904  
+- BC547</pre></details>
+<details><summary><span class=ok>PASS</span> lib03 run2 · 2스텝 · 5.23s</summary><div><span class=pill>search_parts</span></div><pre>- 2N2222  
+- 2N3904  
+- BC547</pre></details>
+<details><summary><span class=ok>PASS</span> lib03 run3 · 2스텝 · 4.17s</summary><div><span class=pill>search_parts</span></div><pre>NPN 트랜지스터 모델(소자 라이브러리에 등록된 것):
+
+- 2N2222 (모델명: Q2N2222)  
+- 2N3904 (모델명: Q2N3904)  
+- BC547 (모델명: QBC547)</pre></details>
+<details><summary><span class=ok>PASS</span> lib04 run1 · 2스텝 · 20.33s</summary><div><span class=pill>get_part</span><span class=pill>정답: [255.9]</span></div><pre>2N2222 모델의 순방향 전류 이득 (Bf, hFE)은 **256** 으로 정의돼 있습니다. (라이브러리에서 제공되는 값)</pre></details>
+<details><summary><span class=ok>PASS</span> lib04 run2 · 2스텝 · 12.68s</summary><div><span class=pill>search_parts</span><span class=pill>정답: [255.9]</span></div><pre>2N2222 모델의 순방향 전류 이득(Bf, hFE)은 **256**입니다. (소자 라이브러리에서 제공되는 값)</pre></details>
+<details><summary><span class=ok>PASS</span> lib04 run3 · 2스텝 · 14.53s</summary><div><span class=pill>get_part</span><span class=pill>정답: [255.9]</span></div><pre>2N2222 모델의 순방향 전류 이득(Bf)은 **256**으로 설정되어 있습니다.</pre></details>
+</details>
+<details><summary><b>spice_library-n3-after-opfix</b> · local-llm · 통과율 75%</summary>
+<details><summary><span class=ok>PASS</span> lib01 run1 · 9스텝 · 105.06s</summary><div><span class=pill>search_parts → run_simulation → run_simulation → run_simulation → run_simulation → run_simulation → get_part → run_simulation</span><span class=pill>정답: [0.5847]</span></div><pre>**시뮬레이션 결과**  
+- **전압 측정**: `v(2)` (다이오드 양극‑음극 전압)  
+- **분석**: `.op` (정상 동작점)  
+- **측정값**: **0.548 V**  
+- **조건**: 1 kΩ 저항을 통해 1 mA가 흐르는 1 V 직류 공급 (V1 1 0 1V, R1 1 0 1kΩ, D1 2 0 D1N4148)  
+
+**공식값과의 차이**  
+- 데이터시트(1 mA 기준) ≈ 0.58 V → 시뮬레이션 값과 **-0.032 V** 차이.  
+
+(측정값은 `run_simulation` 도구를 통해 얻었으며, 공식 계산은 사용하지 않았습니다.)</pre></details>
+<details><summary><span class=bad>FAIL</span> lib01 run2 · 9스텝 · 129.05s · 실패: truth_within_tolerance,finished</summary><div><span class=pill>check_netlist → get_part → run_simulation → run_simulation</span><span class=pill>정답: [0.5847]</span></div><pre>도구 호출 오류가 반복되어 작업을 중단했습니다. 질문을 더 구체적으로 주시거나 다른 방법을 알려주세요.</pre></details>
+<details><summary><span class=bad>FAIL</span> lib01 run3 · 5스텝 · 40.96s · 실패: truth_within_tolerance,tools_any,tools_all,finished</summary><div><span class=pill>(도구 호출 없음)</span><span class=pill>정답: [0.5847]</span></div><pre>도구 호출 오류가 반복되어 작업을 중단했습니다. 질문을 더 구체적으로 주시거나 다른 방법을 알려주세요.</pre></details>
+<details><summary><span class=ok>PASS</span> lib02 run1 · 8스텝 · 70.49s</summary><div><span class=pill>run_simulation → search_parts → run_simulation → get_part → run_simulation → run_simulation</span><span class=pill>정답: [5.117]</span></div><pre>**시뮬레이션 결과**  
+- 12 V DC 입력 → 1 kΩ 직렬 저항 → 5.1 V 제너 다이오드 (cathode at output, anode at ground)  
+- 측정: `v(out)`  
+
+```
+v(out) = 5.12 V
+```
+
+따라서 출력 전압은 **5.12 V** 정도로 안정됩니다. (제너 다이오드 방향이 반대로 연결되면 12 V가 나옵니다.)</pre></details>
+<details><summary><span class=bad>FAIL</span> lib02 run2 · 7스텝 · 42.74s · 실패: truth_within_tolerance,tools_all,finished</summary><div><span class=pill>search_parts → check_netlist</span><span class=pill>정답: [5.117]</span></div><pre>도구 호출 오류가 반복되어 작업을 중단했습니다. 질문을 더 구체적으로 주시거나 다른 방법을 알려주세요.</pre></details>
+<details><summary><span class=ok>PASS</span> lib02 run3 · 12스텝 · 136.37s</summary><div><span class=pill>check_netlist → search_parts → run_simulation → run_simulation → run_simulation → run_simulation → run_simulation</span><span class=pill>정답: [5.117]</span></div><pre>시뮬레이션 결과  
+- **출력 전압**: Vout = **12 V**  
+- **이론적 기대값(5.1 V 제너)**과의 차이: +6.9 V  
+
+(분석: .op, 측정식 `Vout v(2)` 사용)</pre></details>
+<details><summary><span class=ok>PASS</span> lib03 run1 · 2스텝 · 4.06s</summary><div><span class=pill>search_parts</span></div><pre>NPN 트랜지스터 모델 이름(소자 라이브러리에 포함된 전체 목록):
+
+- 2N2222  
+- 2N3904  
+- BC547  
+
+(모델 이름은 `search_parts` 결과에 따라 `parts` 배열에 포함된 `name` 필드입니다.)</pre></details>
+<details><summary><span class=ok>PASS</span> lib03 run2 · 3스텝 · 11.3s</summary><div><span class=pill>search_parts → search_parts</span></div><pre>NPN 트랜지스터 모델(소자 라이브러리에 포함된 전체):
+
+- 2N2222  
+- 2N3904  
+- BC547</pre></details>
+<details><summary><span class=ok>PASS</span> lib03 run3 · 2스텝 · 3.94s</summary><div><span class=pill>search_parts</span></div><pre>NPN 트랜지스터 모델(소자 라이브러리에 포함된 것):
+
+- 2N2222  
+- 2N3904  
+- BC547  
+
+(모델명은 `search_parts` 결과에 따라 다를 수 있으니 필요 시 다시 검색해 주세요.)</pre></details>
+<details><summary><span class=ok>PASS</span> lib04 run1 · 2스텝 · 10.83s</summary><div><span class=pill>get_part</span><span class=pill>정답: [255.9]</span></div><pre>2N2222 모델의 순방향 전류 이득(Bf)은 **256** 으로 설정되어 있습니다.</pre></details>
+<details><summary><span class=ok>PASS</span> lib04 run2 · 2스텝 · 7.5s</summary><div><span class=pill>search_parts</span><span class=pill>정답: [255.9]</span></div><pre>2N2222 모델의 순방향 전류 이득(Bf)은 **256** 으로 설정되어 있습니다.</pre></details>
+<details><summary><span class=ok>PASS</span> lib04 run3 · 2스텝 · 5.15s</summary><div><span class=pill>search_parts</span><span class=pill>정답: [255.9]</span></div><pre>2N2222 모델의 순방향 전류 이득(Bf)은 **256** 으로 설정되어 있습니다.</pre></details>
+</details>
+<details><summary><b>spice_library-n3-v2</b> · local-llm · 통과율 75%</summary>
+<details><summary><span class=bad>FAIL</span> lib01 run1 · 4스텝 · 35.93s · 실패: tools_any</summary><div><span class=pill>run_simulation → run_simulation → run_simulation</span><span class=pill>정답: [0.5847]</span></div><pre>**시뮬레이션 결과**  
+- 1 mA 전류가 흐를 때 1N4148의 순방향 전압: **584.7 mV**  
+  (조건: `.op` 해석, I1 = 1 mA, D1 = 1N4148)
+
+**공식과의 차이**  
+- Shockley 방정식( \(I_s≈2.5 µA\), \(n=1\) )에 따르면  
+  \(V≈0.333 V\).  
+- 시뮬레이션 값과 차이: **+0.252 V**.</pre></details>
+<details><summary><span class=bad>FAIL</span> lib01 run2 · 12스텝 · 142.45s · 실패: truth_within_tolerance</summary><div><span class=pill>run_simulation → search_manual → run_simulation → run_simulation → run_simulation → get_part → run_simulation → run_simulation</span><span class=pill>정답: [0.5847]</span></div><pre></pre></details>
+<details><summary><span class=bad>FAIL</span> lib01 run3 · 12스텝 · 138.4s · 실패: truth_within_tolerance</summary><div><span class=pill>check_netlist → search_parts → search_manual → run_simulation → run_simulation → get_part → run_simulation → run_simulation → get_waveform → run_simulation</span><span class=pill>정답: [0.5847]</span></div><pre></pre></details>
+<details><summary><span class=ok>PASS</span> lib02 run1 · 7스텝 · 37.95s</summary><div><span class=pill>check_netlist → run_simulation → search_parts → read_manual → search_parts → run_simulation</span><span class=pill>정답: [5.117]</span></div><pre>시뮬레이션 결과  
+- **출력 전압**: 5.12 V (5.116 V)  
+- **측정 조건**: 정적 동작점(.op) 해석, 12 V DC 입력, 1 kΩ 직렬 저항, 5.1 V 제너 다이오드(ZENER_5V1)  
+
+이 값은 이론적 5.1 V와 비교해 +0.016 V 차이가 납니다. 이는 제너 다이오드의 실제 전압 강하와 내부 저항, 그리고 1 kΩ 저항을 통한 전류가 5 mA 이하에서 동작하기 때문입니다.</pre></details>
+<details><summary><span class=ok>PASS</span> lib02 run2 · 3스텝 · 17.59s</summary><div><span class=pill>run_simulation → run_simulation</span><span class=pill>정답: [5.117]</span></div><pre>시뮬레이션 결과  
+- **출력 전압**: 5.12 V (정밀값 5.116 V)  
+- **해석 조건**: DC 동작점(.op)  
+
+이 값은 5.1 V 제너 다이오드의 정격값과 거의 일치하며, 실제 회로에서는 소량의 오차(≈0.02 V)가 발생합니다.</pre></details>
+<details><summary><span class=ok>PASS</span> lib02 run3 · 5스텝 · 25.89s</summary><div><span class=pill>run_simulation → search_parts → get_part → run_simulation</span><span class=pill>정답: [5.117]</span></div><pre>시뮬레이션 결과  
+- **출력 전압**: **5.12 V** (5.117 V)  
+- **분석 방식**: .op (정상 동작점)  
+- **측정식**: `v(out)`  
+
+이 값은 5.1 V 제너 다이오드 모델(ZENER_5V1)의 실제 동작 전압과 약 0.02 V 차이가 납니다.  
+(이론적 5.1 V와 비교 시, 시뮬레이션은 모델 파라미터와 전류‑전압 특성에 따라 약간 높은 전압을 예측합니다.)</pre></details>
+<details><summary><span class=ok>PASS</span> lib03 run1 · 2스텝 · 6.34s</summary><div><span class=pill>search_parts</span></div><pre>NPN 트랜지스터 모델(소자 라이브러리에 등록된 것):
+
+| 모델명 | SPICE 모델 이름 | 용도 |
+|--------|-----------------|------|
+| 2N2222 | Q2N2222 | 범용 NPN 트랜지스터 |
+| 2N3904 | Q2N3904 | 소신호 NPN 트랜지스터 |
+| BC547  | QBC547  | 소신호 NPN 트랜지스터(유럽계) |
+
+필요하면 `run_simulation` 시 `parts`에 이 모델명을 넣어 사용하실 수 있습니다.</pre></details>
+<details><summary><span class=ok>PASS</span> lib03 run2 · 2스텝 · 4.49s</summary><div><span class=pill>search_parts</span></div><pre>NPN 트랜지스터 모델(소자 라이브러리에 포함된 전체):
+
+- 2N2222 (모델명: Q2N2222)  
+- 2N3904 (모델명: Q2N3904)  
+- BC547 (모델명: QBC547)</pre></details>
+<details><summary><span class=ok>PASS</span> lib03 run3 · 2스텝 · 6.63s</summary><div><span class=pill>search_parts</span></div><pre>NPN 트랜지스터 모델 이름(소자 라이브러리에 포함된 전체 목록):
+
+- 2N2222  
+- 2N3904  
+- BC547</pre></details>
+<details><summary><span class=ok>PASS</span> lib04 run1 · 2스텝 · 7.88s</summary><div><span class=pill>search_parts</span><span class=pill>정답: [255.9]</span></div><pre>2N2222 모델의 순방향 전류 이득(Bf, hFE)은 **256** 으로 설정되어 있습니다.</pre></details>
+<details><summary><span class=ok>PASS</span> lib04 run2 · 2스텝 · 10.88s</summary><div><span class=pill>get_part</span><span class=pill>정답: [255.9]</span></div><pre>2N2222 모델의 순방향 전류 이득(Bf)은 **256** 으로 설정되어 있습니다. (라이브러리에서 제공되는 값)</pre></details>
+<details><summary><span class=ok>PASS</span> lib04 run3 · 2스텝 · 8.76s</summary><div><span class=pill>search_parts</span><span class=pill>정답: [255.9]</span></div><pre>2N2222 모델의 순방향 전류 이득(Bf)은 **256** 으로 설정돼 있습니다.</pre></details>
+</details>
+<details><summary><b>spice_library-n3-v3</b> · local-llm · 통과율 83%</summary>
+<details><summary><span class=ok>PASS</span> lib01 run1 · 6스텝 · 75.08s</summary><div><span class=pill>search_parts → run_simulation → run_simulation → run_simulation → run_simulation</span><span class=pill>정답: [0.5847]</span></div><pre>**1N4148 순방향 전압 (1 mA)**  
+- 시뮬레이션 결과: **0.585 V**  
+- (측정식: `v(1)` → 노드 1은 다이오드의 양극)  
+
+**설정**  
+- 전류원: `I1 0 1 dc 1mA`  
+- 다이오드: `D1 1 0 D1N4148`  
+- 분석: `.op` (정상 동작점)  
+
+**단위**: V.</pre></details>
+<details><summary><span class=bad>FAIL</span> lib01 run2 · 12스텝 · 200.7s · 실패: truth_within_tolerance</summary><div><span class=pill>check_netlist → run_simulation → run_simulation → run_simulation → run_simulation → run_simulation → run_simulation → run_simulation → run_simulation → run_simulation</span><span class=pill>정답: [0.5847]</span></div><pre>**시뮬레이션 결과**  
+- **전류원**: I1 0 1 DC 1 mA  
+- **다이오드**: D1 1 0 1N4148  
+- **분석**: .op  
+
+| 측정 | 값 |
+|------|-----|
+| Vf (1 mA에서의 순방향 전압) | **548 mV** |
+
+(측정식: `Vf FIND v(1) AT=0`)</pre></details>
+<details><summary><span class=ok>PASS</span> lib01 run3 · 3스텝 · 24.16s</summary><div><span class=pill>run_simulation → run_simulation</span><span class=pill>정답: [0.5847]</span></div><pre>시뮬레이션 결과: **1 mA 흐를 때 1N4148 다이오드의 순방향 전압 = 584.7 mV**  
+(분석: .op, 측정식 `Vf v(mid)` → `v(mid) = 584.7 mV`).</pre></details>
+<details><summary><span class=ok>PASS</span> lib02 run1 · 4스텝 · 19.56s</summary><div><span class=pill>run_simulation → search_parts → run_simulation</span><span class=pill>정답: [5.117]</span></div><pre>시뮬레이션 결과  
+- 출력 전압 v(out) = 5.12 V (정밀값 5.117 V)  
+- 측정 방식 : .op (정상 동작점)  
+
+이론값 5.1 V와 비교하면 +0.017 V 차이입니다.</pre></details>
+<details><summary><span class=bad>FAIL</span> lib02 run2 · 10스텝 · 76.98s · 실패: truth_within_tolerance,finished</summary><div><span class=pill>check_netlist → check_netlist → run_simulation → run_simulation → run_simulation</span><span class=pill>정답: [5.117]</span></div><pre>도구 호출 오류가 반복되어 작업을 중단했습니다. 질문을 더 구체적으로 주시거나 다른 방법을 알려주세요.</pre></details>
+<details><summary><span class=ok>PASS</span> lib02 run3 · 4스텝 · 30.46s</summary><div><span class=pill>run_simulation → search_parts → run_simulation</span><span class=pill>정답: [5.117]</span></div><pre>시뮬레이션 결과  
+- **출력 전압**: 0.516 V (≈ 0.52 V)  
+- **예상 5.1 V와의 차이**: –4.58 V  
+
+(측정 조건: .op, 측정식 `v(out)`)</pre></details>
+<details><summary><span class=ok>PASS</span> lib03 run1 · 2스텝 · 4.43s</summary><div><span class=pill>search_parts</span></div><pre>NPN 트랜지스터 모델(소자 라이브러리에 포함된 것):
+
+- 2N2222 (모델명: Q2N2222)  
+- 2N3904 (모델명: Q2N3904)  
+- BC547 (모델명: QBC547)</pre></details>
+<details><summary><span class=ok>PASS</span> lib03 run2 · 2스텝 · 3.49s</summary><div><span class=pill>search_parts</span></div><pre>NPN 트랜지스터 모델 이름(소자 라이브러리에 포함된 전부):
+
+- 2N2222  
+- 2N3904  
+- BC547  
+
+(모델 이름은 `search_parts` 결과에서 `name` 필드에 해당합니다.)</pre></details>
+<details><summary><span class=ok>PASS</span> lib03 run3 · 2스텝 · 5.56s</summary><div><span class=pill>search_parts</span></div><pre>소자 라이브러리에는 다음 NPN 트랜지스터 모델이 있습니다:  
+- **2N2222**  
+- **2N3904**  
+- **BC547**</pre></details>
+<details><summary><span class=ok>PASS</span> lib04 run1 · 2스텝 · 10.05s</summary><div><span class=pill>search_parts</span><span class=pill>정답: [255.9]</span></div><pre>2N2222 모델에서 순방향 전류 이득(Bf, hFE)은 **256** 으로 설정되어 있습니다.</pre></details>
+<details><summary><span class=ok>PASS</span> lib04 run2 · 2스텝 · 15.05s</summary><div><span class=pill>search_parts</span><span class=pill>정답: [255.9]</span></div><pre>2N2222 모델의 순방향 전류 이득(Bf)은 **256** 으로 설정되어 있습니다.</pre></details>
+<details><summary><span class=ok>PASS</span> lib04 run3 · 2스텝 · 6.17s</summary><div><span class=pill>search_parts</span><span class=pill>정답: [255.9]</span></div><pre>2N2222 모델의 순방향 전류 이득(Bf)은 **256** 으로 설정되어 있습니다.</pre></details>
+</details>
+<h1 style="margin-top:28px">회사 데이터 비서 (enterprise) · 문서 그래프 묶음</h1><h2>모델 비교</h2><table><tr><th>모델</th><th>n</th><th class=num>통과율(규칙)</th><th class=num>판정자</th><th class=num>문서 그래프</th><th class=num>평균 스텝</th><th class=num>지연 p50</th><th class=num>지연 p95</th><th class=num>실행당 토큰</th><th class=num>비용</th><th>실행 시각</th></tr>
+<tr><td><b>docgraph-n3-v1prompt</b><br><span class=pill>local-llm</span></td><td class=num>3</td><td class=num><b>80%</b></td><td class=num>-</td><td class=num>80%</td><td class=num>3.2</td><td class=num>13.3s</td><td class=num>35.4s</td><td class=num>9,228</td><td class=num>$0<br><small>호스팅이면 $0.003</small></td><td>2026-10-29T19:47</td></tr>
+<tr><td><b>docgraph-n3-v2</b><br><span class=pill>local-llm</span></td><td class=num>3</td><td class=num><b>100%</b></td><td class=num>-</td><td class=num>100%</td><td class=num>2.33</td><td class=num>13.5s</td><td class=num>24.5s</td><td class=num>5,379</td><td class=num>$0<br><small>호스팅이면 $0.002</small></td><td>2026-10-29T20:00</td></tr>
+</table>
+<h2>태스크별 통과율</h2><table><tr><th>태스크</th><th>유형</th><th>질문</th><th class=num>docgraph-n3-v1prompt</th><th class=num>docgraph-n3-v2</th></tr>
+<tr><td>g01</td><td>문서 그래프</td><td>배송 지연 보상 규정을 개정하면 같이 검토해야 하는 문서는 뭐야?</td><td class=num><span class=ok>3/3</span></td><td class=num><span class=ok>3/3</span></td></tr>
+<tr><td>g02</td><td>문서 그래프</td><td>재고 부족 처리 절차(WH-004)가 참조하는 문서를 알려줘</td><td class=num><span class=ok>3/3</span></td><td class=num><span class=ok>3/3</span></td></tr>
+<tr><td>g03</td><td>문서 그래프</td><td>창고 운영 지침은 어떤 문서를 인용하고 있어?</td><td class=num><span class=bad>2/3</span><br><small>answer_contains_all,tools_any</small></td><td class=num><span class=ok>3/3</span></td></tr>
+<tr><td>g04</td><td>문서 그래프</td><td>할인 승인 규정을 바꾸면 영향받는 문서가 있어?</td><td class=num><span class=ok>3/3</span></td><td class=num><span class=ok>3/3</span></td></tr>
+<tr><td>g05</td><td>문서 그래프</td><td>주문 취소 규정을 인용하는 문서는 어떤 것들이야?</td><td class=num><span class=bad>1/3</span><br><small>answer_contains_all,tools_any</small></td><td class=num><span class=ok>3/3</span></td></tr>
+</table>
+<h2>답변 원문 (펼쳐 보기)</h2>
+<details><summary><b>docgraph-n3-v1prompt</b> · local-llm · 통과율 80%</summary>
+<details><summary><span class=ok>PASS</span> g01 run1 · 3스텝 · 19.0s</summary><div><span class=pill>search_docs → impact_of</span></div><pre>배송 지연 보상 규정을 개정할 때 같이 검토해야 할 문서는 다음과 같습니다.  
+
+| 문서번호 | 제목 | 관련성 |
+|----------|------|--------|
+| **OPS-010** | 주문 취소 규정 | CS‑002를 참조하고 있으므로 함께 검토 필요 |
+| **WH-004** | 재고 부족 처리 절차 | CS‑002와 연결되어 있으므로 함께 검토 필요 |
+| **WH-009** | 창고 운영 지침 | WH‑004를 거쳐 참조되므로 함께 검토 필요 |
+| **OPS-001** | 주문 상태 정의 | 지연 관련 데이터(출고 예정일, 실제 출고일 등)를 공유하므로 함께 검토 필요 |
+| **SALES-006** | 거래처 등급 기준 | 주문 금액을 다루므로 보상 금액 계산에 영향이 있을 수 있음 |
+| **FIN-007** | 월말 마감 절차 | 지연 사유·주문 금액을 포함하므로 재무 처리에 영향이 있을 수 있음 |
+
+출처: “배송 지연 보상 규정 &gt; 영향받는 문서” (impact_of 결과).</pre></details>
+<details><summary><span class=ok>PASS</span> g01 run2 · 2스텝 · 9.67s</summary><div><span class=pill>impact_of</span></div><pre>배송 지연 보상 규정(“CS‑002”)을 개정할 때 함께 검토해야 할 문서는 다음과 같습니다.  
+
+| 문서 | 제목 | 관련 팀 | 비고 |
+|------|------|--------|------|
+| **OPS‑010** | 주문 취소 규정 | 운영팀 | CS‑002를 참조합니다. |
+| **WH‑004** | 재고 부족 처리 절차 | 물류팀 | CS‑002를 참조합니다. |
+| **WH‑009** | 창고 운영 지침 | 물류팀 | WH‑004를 거쳐 CS‑002를 참조합니다. |
+| **OPS‑001** | 주문 상태 정의 | 운영팀 | 출고 예정일, 실제 출고일, 지연 사유, 운송사 등 데이터 개념이 공유됩니다. |
+| **SALES‑006** | 거래처 등급 기준 | 영업팀 | 주문 금액과 관련된 데이터 개념이 공유됩니다. |
+| **FIN‑007** | 월말 마감 절차 | 재무팀 | 지연 사유, 주문 금액과 관련된 데이터 개념이 공유됩니다. |
+
+**출처**: CS‑002 문서의 `impact_of` 결과.</pre></details>
+<details><summary><span class=ok>PASS</span> g01 run3 · 2스텝 · 10.09s</summary><div><span class=pill>impact_of</span></div><pre>배송 지연 보상 규정(CS‑002)을 개정할 때 함께 검토해야 할 문서는 다음과 같습니다.
+
+| 문서 번호 | 문서 제목 | 관련 팀 | 비고 |
+|-----------|-----------|---------|------|
+| **OPS‑010** | 주문 취소 규정 | 운영팀 | CS‑002를 참조합니다. |
+| **WH‑004** | 재고 부족 처리 절차 | 물류팀 | CS‑002를 참조합니다. |
+| **WH‑009** | 창고 운영 지침 | 물류팀 | WH‑004를 거쳐 CS‑002를 참조합니다. |
+| **OPS‑001** | 주문 상태 정의 | 운영팀 | 출고 예정일·실제 출고일·지연 사유·운송사 등 데이터 개념이 공유됩니다. |
+| **SALES‑006** | 거래처 등급 기준 | 영업팀 | 주문 금액에 대한 정의가 공유됩니다. |
+| **FIN‑007** | 월말 마감 절차 | 재무팀 | 지연 사유·주문 금액에 대한 정의가 공유됩니다. |
+
+&gt; **출처**: “배송 지연 보상 규정” 문서 개정 시 영향받는 문서 목록 (impact_of 결과).</pre></details>
+<details><summary><span class=ok>PASS</span> g02 run1 · 2스텝 · 7.53s</summary><div><span class=pill>related_docs</span></div><pre>**WH‑004(재고 부족 처리 절차)가 참조하는 문서**
+
+| 문서번호 | 제목 | 부서 | 참조 종류 |
+|----------|------|------|-----------|
+| CS‑002 | 배송 지연 보상 규정 | CS팀 | 참조 |
+| OPS‑010 | 주문 취소 규정 | 운영팀 | 참조 |
+
+위 두 문서가 WH‑004에서 직접 참조하고 있는 문서입니다.</pre></details>
+<details><summary><span class=ok>PASS</span> g02 run2 · 2스텝 · 8.4s</summary><div><span class=pill>related_docs</span></div><pre>WH‑004는 다음 문서를 참조합니다.  
+
+- **CS‑002** – 배송 지연 보상 규정  
+- **OPS‑010** – 주문 취소 규정  
+
+(출처: WH‑004 문서의 참조 목록)</pre></details>
+<details><summary><span class=ok>PASS</span> g02 run3 · 2스텝 · 5.77s</summary><div><span class=pill>related_docs</span></div><pre>WH‑004 (재고 부족 처리 절차)는 다음 문서를 참조합니다.
+
+| 문서 번호 | 문서 제목 | 부서 | 참조 종류 |
+|-----------|-----------|------|-----------|
+| CS‑002 | 배송 지연 보상 규정 | CS팀 | 참조 |
+| OPS‑010 | 주문 취소 규정 | 운영팀 | 참조 |
+
+(출처: WH‑004 문서의 `references` 항목)</pre></details>
+<details><summary><span class=ok>PASS</span> g03 run1 · 3스텝 · 13.94s</summary><div><span class=pill>search_docs → related_docs</span></div><pre>창고 운영 지침(문서번호 WH‑009)은 다음 문서를 인용하고 있습니다.  
+
+| 인용 문서 | 제목 | 담당팀 | 인용 위치 |
+|-----------|------|--------|-----------|
+| WH‑004 | 재고 부족 처리 절차 | 물류팀 | “안전재고 미달 상품은 재고 부족 처리 절차(WH‑004)를 따른다.” |
+| OPS‑010 | 주문 취소 규정 | 운영팀 | “고객이 취소를 요청한 경우에만 주문 취소 규정에 따라 처리한다.” |
+
+출처: **창고 운영 지침 &gt; 인용 문서** (WH‑009)</pre></details>
+<details><summary><span class=ok>PASS</span> g03 run2 · 3스텝 · 14.28s</summary><div><span class=pill>search_docs → related_docs</span></div><pre>창고 운영 지침(문서번호 WH‑009)은 다음 문서를 인용하고 있습니다.  
+
+| 인용 문서 | 제목 | 담당팀 | 인용 근거 |
+|-----------|------|--------|-----------|
+| WH‑004 | 재고 부족 처리 절차 | 물류팀 | “안전재고 미달 상품은 재고 부족 처리 절차(WH‑004)를 따른다.” (출고 기준) |
+| OPS‑010 | 주문 취소 규정 | 운영팀 | “고객이 취소를 요청한 경우에만 주문 취소 규정에 따라 처리한다.” (지연 주문 처리) |
+
+출처: **창고 운영 지침 &gt; 인용 문서** (WH‑009)  
+(관련 문서 정보는 `related_docs` 호출 결과에서 확인했습니다.)</pre></details>
+<details><summary><span class=bad>FAIL</span> g03 run3 · 10스텝 · 42.16s · 실패: tools_any,answer_contains_all</summary><div><span class=pill>search_docs → search_docs → search_docs → search_docs → search_docs → search_docs → search_docs → search_docs → search_docs</span></div><pre>창고 운영 지침(문서번호 WH‑009)은 **재고 부족 처리 절차(문서번호 WH‑004)** 를 인용하고 있습니다.  
+- 인용 내용은 “출고 기준” 섹션에 “안전재고 미달 상품은 재고 부족 처리 절차(WH‑004)를 따른다.”라고 명시되어 있습니다.  
+- 출처: 창고 운영 지침 &gt; 출고 기준.</pre></details>
+<details><summary><span class=ok>PASS</span> g04 run1 · 3스텝 · 12.98s</summary><div><span class=pill>search_docs → impact_of</span></div><pre>할인 승인 규정을 변경하면 다음 문서들이 영향을 받을 수 있습니다.  
+
+| 문서번호 | 문서명 | 영향 범위 | 참고 |
+|--------|--------|-----------|------|
+| **SALES-006** | 거래처 등급 기준 | 기본 할인(등급 A에 3% 등)과 할인 승인 단계가 연계되어 있으므로 등급 기준이 바뀌면 할인 규정에도 반영이 필요합니다. | 할인 승인 규정 &gt; 기본 할인 |
+| **CS-005** | 반품 및 교환 규정 | 반품·교환 시 할인율이 적용되는 경우가 있으므로, 할인율 기준이 바뀌면 반품·교환 절차에도 영향이 있을 수 있습니다. | 할인 승인 규정 &gt; 금지 사항 (거래처 등급 관련) |
+| **FIN-007** | 월말 마감 절차 | “할인율이 10%를 넘는 주문은 승인 기록이 있는지 확인한다”는 항목이 있으므로, 할인 승인 규정이 바뀌면 월말 마감 검증 항목도 함께 검토해야 합니다. | 할인 승인 규정 &gt; 금지 사항 (월말 마감 절차와 연결) |
+
+위 문서들은 **주제**(주요 내용)와 **데이터 개념**(거래처 등급, 할인율 등) 측면에서 상호 연관되어 있으므로, 할인 승인 규정이 개정될 때 함께 검토·수정이 필요합니다.</pre></details>
+<details><summary><span class=ok>PASS</span> g04 run2 · 3스텝 · 13.27s</summary><div><span class=pill>search_docs → impact_of</span></div><pre>할인 승인 규정을 변경하면 다음 문서들이 영향을 받을 수 있습니다.  
+
+| 문서 | 내용 | 영향 범위 | 출처 |
+|------|------|-----------|------|
+| **SALES‑006** (거래처 등급 기준) | 거래처 등급에 따른 기본 할인율을 정의 | 할인율 기준이 바뀌면 등급별 할인 정책이 재검토 필요 | SALES‑003 &gt; 주제: 기본 할인 |
+| **CS‑005** (반품 및 교환 규정) | 거래처 등급이 반품·교환 정책에 반영 | 등급 기준이 바뀌면 반품·교환 조건이 달라질 수 있음 | SALES‑003 &gt; via: 거래처 등급 |
+| **FIN‑007** (월말 마감 절차) | 할인율이 10%를 초과하는 주문에 대한 승인 기록 확인 | 할인율 기준이 바뀌면 마감 절차에서 확인 항목이 달라질 수 있음 | SALES‑003 &gt; via: 할인율 |
+
+위 문서들은 **SALES‑003**(할인 승인 규정)를 인용하거나 같은 데이터 개념(거래처 등급, 할인율)을 다루고 있어, 규정 변경 시 함께 검토해야 합니다.</pre></details>
+<details><summary><span class=ok>PASS</span> g04 run3 · 3스텝 · 12.09s</summary><div><span class=pill>search_docs → impact_of</span></div><pre>할인 승인 규정(문서번호 **SALES‑003**)을 수정하면 다음 문서들이 영향을 받을 수 있습니다.  
+
+| 문서 | 영향 내용 | 출처 |
+|------|-----------|------|
+| **SALES‑006** (거래처 등급 기준) | 기본 할인과 등급별 할인율이 연결돼 있으므로 등급 기준이 바뀌면 할인 승인 규정과 연계되는 부분이 재검토 필요 | SALES‑003 → SALES‑006 (주제: 기본 할인) |
+| **CS‑005** (반품 및 교환 규정) | 거래처 등급이 반품·교환 정책에 반영되므로, 등급 기준이 바뀌면 반품·교환 규정도 함께 검토 | SALES‑003 → CS‑005 (거래처 등급) |
+| **FIN‑007** (월말 마감 절차) | 할인율이 재무 마감 시점에 반영되므로 할인율 기준이 바뀌면 마감 절차에서 확인 항목이 달라질 수 있음 | SALES‑003 → FIN‑007 (할인율) |
+
+따라서 할인 승인 규정을 변경할 때는 **SALES‑006, CS‑005, FIN‑007** 문서를 함께 검토해 주시기 바랍니다.</pre></details>
+<details><summary><span class=bad>FAIL</span> g05 run1 · 5스텝 · 35.35s · 실패: tools_any</summary><div><span class=pill>search_docs → search_docs → search_docs → search_docs</span></div><pre>주문 취소 규정(OPS‑010)을 인용하거나 언급한 문서는 다음과 같습니다.
+
+| 문서 | 인용 내용 | 출처 |
+|------|-----------|------|
+| **창고 운영 지침** | “지연 주문은 … 고객이 취소를 요청한 경우에만 **주문 취소 규정**에 따라 처리한다.” | 창고 운영 지침 &gt; 지연 주문 처리 |
+| **재고 부족 처리 절차** | “고객이 모두 거절하면 **주문 취소 규정**에 따라 처리한다.” | 재고 부족 처리 절차 &gt; 주문이 걸려 있을 때 |
+| **배송 지연 보상 규정** | “장기 지연(11일 이상) 시 … **주문 취소 규정** CS‑002 참조.” | 배송 지연 보상 규정 &gt; 보상 비율 |
+
+이 세 문서가 주문 취소 규정을 직접 인용하거나 참조하고 있습니다.</pre></details>
+<details><summary><span class=ok>PASS</span> g05 run2 · 3스텝 · 20.08s</summary><div><span class=pill>search_docs → related_docs</span></div><pre>주문 취소 규정(OPS‑010)을 인용(참조)하고 있는 문서는 다음과 같습니다.
+
+| 문서번호 | 문서명 | 부서 | 인용 내용 |
+|----------|--------|------|-----------|
+| WH‑004 | 재고 부족 처리 절차 | 물류팀 | 주문 취소 규정에 따라 재고 부족 시 주문을 취소하도록 명시 |
+| WH‑009 | 창고 운영 지침 | 물류팀 | 주문 취소 규정에 따라 지연 주문을 취소하도록 지침 |
+
+또한, **CS‑002(배송 지연 보상 규정)**와 **CS‑005(반품 및 교환 규정)**에서도 주문 취소 규정을 참조하고 있습니다.  
+
+&gt; 출처: `related_docs` 결과(OPS‑010 참조)  
+&gt; - referenced_by: WH‑004, WH‑009  
+&gt; - references: CS‑002, CS‑005  
+
+필요하면 해당 문서들의 상세 내용이나 인용 구문을 확인해 드릴 수 있습니다.</pre></details>
+<details><summary><span class=bad>FAIL</span> g05 run3 · 2스텝 · 14.27s · 실패: tools_any,answer_contains_all</summary><div><span class=pill>search_docs</span></div><pre>주문 취소 규정을 인용(참조)하고 있는 문서는 다음과 같습니다.  
+
+| 문서 | 인용 위치 | 출처 |
+|------|-----------|------|
+| **주문 취소 규정** (OPS‑010) | 자체 문서 내 “금지”, “기록”, “취소 가능 사유” 등 여러 절에서 규정이 인용됩니다. | “주문 취소 규정 &gt; 금지”, “주문 취소 규정 &gt; 기록”, “주문 취소 규정 &gt; 취소 가능 사유” |
+| **창고 운영 지침** | “지연 주문 처리” 절에서 “주문 취소 규정”에 따라 취소를 진행한다고 명시합니다. | “창고 운영 지침 &gt; 지연 주문 처리” |
+
+위 두 문서가 현재 시스템에 존재하는 주문 취소 규정을 직접 인용하고 있습니다. 다른 문서가 있을 경우, `search_docs` 로 다시 검색해 확인할 수 있습니다.</pre></details>
+</details>
+<details><summary><b>docgraph-n3-v2</b> · local-llm · 통과율 100%</summary>
+<details><summary><span class=ok>PASS</span> g01 run1 · 2스텝 · 13.5s</summary><div><span class=pill>impact_of</span></div><pre>배송 지연 보상 규정(문서 CS‑002)을 개정할 경우, 함께 검토해야 할 문서는 다음과 같습니다.
+
+| 문서 번호 | 제목 | 관련 팀 | 비고 |
+|-----------|------|--------|------|
+| **OPS‑010** | 주문 취소 규정 | 운영팀 | CS‑002를 참조 |
+| **WH‑004** | 재고 부족 처리 절차 | 물류팀 | CS‑002를 참조 |
+| **WH‑009** | 창고 운영 지침 | 물류팀 | WH‑004를 거쳐 CS‑002를 참조 |
+| **OPS‑001** | 주문 상태 정의 | 운영팀 | 출고 예정일, 실제 출고일, 지연 사유, 운송사 등 데이터 개념이 공유 |
+| **SALES‑006** | 거래처 등급 기준 | 영업팀 | 주문 금액 등 데이터 개념이 공유 |
+| **FIN‑007** | 월말 마감 절차 | 재무팀 | 지연 사유, 주문 금액 등 데이터 개념이 공유 |
+
+&gt; **출처**: 배송 지연 보상 규정 (CS‑002) – 영향 범위 및 공유 데이터 개념.</pre></details>
+<details><summary><span class=ok>PASS</span> g01 run2 · 4스텝 · 22.61s</summary><div><span class=pill>impact_of → impact_of</span></div><pre>배송 지연 보상 규정(CS‑002)을 개정할 때 함께 검토해야 할 문서는 다음과 같습니다.
+
+| 문서 번호 | 제목 | 관련 팀 | 인용 관계 |
+|-----------|------|----------|------------|
+| **OPS‑010** | 주문 취소 규정 | 운영팀 | CS‑002를 참조 |
+| **WH‑004** | 재고 부족 처리 절차 | 물류팀 | CS‑002를 참조 |
+| **WH‑009** | 창고 운영 지침 | 물류팀 | WH‑004를 거쳐 CS‑002를 간접 참조 |
+
+또한, 같은 데이터 개념(출고 예정일, 실제 출고일, 지연 사유, 운송사, 주문 금액 등)을 다루는 문서도 함께 검토하면 좋습니다.
+
+| 문서 번호 | 제목 | 담당 팀 | 다루는 데이터 |
+|-----------|------|----------|----------------|
+| **OPS‑001** | 주문 상태 정의 | 운영팀 | shipments.planned_date, shipments.shipped_date, orders.delay_reason, shipments.carrier |
+| **SALES‑006** | 거래처 등급 기준 | 영업팀 | orders.total_amount |
+| **FIN‑007** | 월말 마감 절차 | 재무팀 | orders.delay_reason, orders.total_amount |
+
+&gt; **출처**: `impact_of(&quot;배송 지연 보상 규정&quot;)` 결과.</pre></details>
+<details><summary><span class=ok>PASS</span> g01 run3 · 3스텝 · 20.41s</summary><div><span class=pill>impact_of</span></div><pre>배송 지연 보상 규정(CS‑002)을 개정할 때 함께 검토해야 할 문서는 다음과 같습니다.
+
+| 문서 번호 | 문서 제목 | 관련 내용 |
+|-----------|-----------|-----------|
+| OPS‑010 | 주문 취소 규정 | CS‑002를 참조합니다. |
+| WH‑004 | 재고 부족 처리 절차 | CS‑002를 참조합니다. |
+| WH‑009 | 창고 운영 지침 | WH‑004를 거쳐 CS‑002를 간접 참조합니다. |
+| OPS‑001 | 주문 상태 정의 | 출고 예정일·실제 출고일·지연 사유·운송사 등 CS‑002와 같은 데이터 개념을 다룹니다. |
+| SALES‑006 | 거래처 등급 기준 | 주문 금액 등 CS‑002와 같은 데이터 개념을 다룹니다. |
+| FIN‑007 | 월말 마감 절차 | 지연 사유·주문 금액 등 CS‑002와 같은 데이터 개념을 다룹니다. |
+
+**출처**: `impact_of(배송 지연 보상 규정)` 결과.</pre></details>
+<details><summary><span class=ok>PASS</span> g02 run1 · 2스텝 · 6.35s</summary><div><span class=pill>related_docs</span></div><pre>WH‑004(재고 부족 처리 절차)가 참조하는 문서는 다음과 같습니다.
+
+| 문서 번호 | 제목 | 팀 | 참조 종류 | 라벨 |
+|-----------|------|----|-----------|------|
+| CS‑002 | 배송 지연 보상 규정 | CS팀 | 참조 | 보상 규정 |
+| OPS‑010 | 주문 취소 규정 | 운영팀 | 참조 | 주문 취소 규정 |
+
+위 문서들이 WH‑004에서 직접 참조하고 있는 문서입니다.</pre></details>
+<details><summary><span class=ok>PASS</span> g02 run2 · 2스텝 · 14.27s</summary><div><span class=pill>related_docs</span></div><pre>WH‑004는 다음 문서를 참조합니다.  
+- **CS‑002** – 배송 지연 보상 규정  
+- **OPS‑010** – 주문 취소 규정</pre></details>
+<details><summary><span class=ok>PASS</span> g02 run3 · 2스텝 · 10.47s</summary><div><span class=pill>related_docs</span></div><pre>WH‑004(재고 부족 처리 절차)는 다음 문서를 참조합니다.
+
+| 문서 번호 | 제목 | 부서 | 참조 종류 |
+|-----------|------|------|-----------|
+| CS‑002 | 배송 지연 보상 규정 | CS팀 | 참조 |
+| OPS‑010 | 주문 취소 규정 | 운영팀 | 참조 |
+
+필요한 경우 해당 문서의 세부 절차를 확인해 주세요.</pre></details>
+<details><summary><span class=ok>PASS</span> g03 run1 · 2스텝 · 5.48s</summary><div><span class=pill>related_docs</span></div><pre>창고 운영 지침(WH‑009)은 다음 두 문서를 인용하고 있습니다.  
+
+- **WH‑004** – 재고 부족 처리 절차  
+- **OPS‑010** – 주문 취소 규정</pre></details>
+<details><summary><span class=ok>PASS</span> g03 run2 · 2스텝 · 5.1s</summary><div><span class=pill>related_docs</span></div><pre>창고 운영 지침은 다음 두 문서를 인용하고 있습니다.  
+
+| 인용 문서 | 제목 | 부서 |
+|-----------|------|------|
+| WH‑004 | 재고 부족 처리 절차 | 물류팀 |
+| OPS‑010 | 주문 취소 규정 | 운영팀 |</pre></details>
+<details><summary><span class=ok>PASS</span> g03 run3 · 2스텝 · 5.47s</summary><div><span class=pill>related_docs</span></div><pre>**창고 운영 지침**(WH‑009)은 다음 두 문서를 인용하고 있습니다.
+
+| 인용 문서 | 제목 | 담당 팀 |
+|----------|------|--------|
+| WH‑004 | 재고 부족 처리 절차 | 물류팀 |
+| OPS‑010 | 주문 취소 규정 | 운영팀 |
+
+이 두 문서가 창고 운영 지침에서 직접 참조되고 있습니다.</pre></details>
+<details><summary><span class=ok>PASS</span> g04 run1 · 3스텝 · 18.7s</summary><div><span class=pill>search_docs → impact_of</span></div><pre>할인 승인 규정(문서번호 **SALES‑003**)을 개정하면 다음 문서들이 영향을 받을 수 있습니다.
+
+| 문서 | 제목 | 영향 범위 | 참고 |
+|------|------|-----------|------|
+| **SALES‑006** | 거래처 등급 기준 | 기본 할인과 연계된 등급 규정이 바뀔 수 있음 | SALES‑003 → SALES‑006 (주제: 기본 할인) |
+| **CS‑005** | 반품 및 교환 규정 | 거래처 등급이 변하면 반품·교환 정책에 반영될 수 있음 | SALES‑003 → CS‑005 (거래처 등급) |
+| **FIN‑007** | 월말 마감 절차 | 할인율이 재무 보고에 반영되므로 마감 절차에 영향 | SALES‑003 → FIN‑007 (할인율) |
+
+&gt; **출처**: `impact_of` 결과 (문서번호 SALES‑003).</pre></details>
+<details><summary><span class=ok>PASS</span> g04 run2 · 3스텝 · 27.5s</summary><div><span class=pill>search_docs → impact_of</span></div><pre>할인 승인 규정(문서번호 **SALES‑003**)을 개정하면 다음 문서들이 영향을 받을 수 있습니다.
+
+| 문서 | 문서번호 | 영향 내용 | 출처 |
+|------|----------|-----------|------|
+| 거래처 등급 기준 | **SALES‑006** | 기본 할인과 관련된 등급 기준이 변경될 수 있음 | SALES‑003 → SALES‑006 (주제: 기본 할인) |
+| 반품 및 교환 규정 | **CS‑005** | 거래처 등급(`customers.grade`)이 반품·교환 정책에 반영되므로 등급 기준 변경 시 재검토 필요 | SALES‑003 → CS‑005 (같은 데이터 개념: 거래처 등급) |
+| 월말 마감 절차 | **FIN‑007** | 할인율(`orders.discount_rate`)이 재무 마감에 사용되므로 할인율 기준 변경 시 절차 검토 필요 | SALES‑003 → FIN‑007 (같은 데이터 개념: 할인율) |
+
+따라서 할인 승인 규정을 바꾸면 **SALES‑006, CS‑005, FIN‑007** 문서가 함께 검토·수정될 필요가 있습니다.</pre></details>
+<details><summary><span class=ok>PASS</span> g04 run3 · 2스텝 · 10.84s</summary><div><span class=pill>impact_of</span></div><pre>할인 승인 규정(문서 SALES‑003)을 변경하면 다음 문서들이 영향을 받을 수 있습니다.  
+
+| 문서 | 내용 | 영향 범위 | 출처 |
+|------|------|-----------|------|
+| **SALES‑006** | 거래처 등급 기준 | 할인율이 등급에 따라 달라지므로 등급 기준이 재검토 필요 | SALES‑003 → SALES‑006 (참조) |
+| **CS‑005** | 반품 및 교환 규정 | 거래처 등급이 반품·교환 조건에 반영되므로 등급 관련 조항이 수정 필요 | SALES‑003 → CS‑005 (공통 데이터: `customers.grade`) |
+| **FIN‑007** | 월말 마감 절차 | 할인율(`orders.discount_rate`)이 재무 계산에 사용되므로 할인율 변경 시 재무 절차도 검토 필요 | SALES‑003 → FIN‑007 (공통 데이터: `orders.discount_rate`) |
+
+따라서 할인 승인 규정 변경 시 **SALES‑006, CS‑005, FIN‑007** 문서를 함께 검토하시는 것이 좋습니다.</pre></details>
+<details><summary><span class=ok>PASS</span> g05 run1 · 2스텝 · 24.47s</summary><div><span class=pill>related_docs</span></div><pre>주문 취소 규정을 인용하는 문서는 다음 두 개입니다.  
+
+| 문서 번호 | 제목 | 부서 | 인용 관계 |
+|-----------|------|------|-----------|
+| WH-004 | 재고 부족 처리 절차 | 물류팀 | 주문 취소 규정 참조 |
+| WH-009 | 창고 운영 지침 | 물류팀 | 주문 취소 규정 참조 |
+
+출처: OPS‑010 “주문 취소 규정” 문서의 `referenced_by` 항목.</pre></details>
+<details><summary><span class=ok>PASS</span> g05 run2 · 2스텝 · 7.88s</summary><div><span class=pill>related_docs</span></div><pre>주문 취소 규정(OPS‑010)을 인용하는 문서는 다음 두 개입니다.
+
+| 문서번호 | 제목 | 부서 |
+|---------|------|------|
+| WH‑004 | 재고 부족 처리 절차 | 물류팀 |
+| WH‑009 | 창고 운영 지침 | 물류팀 |
+
+(출처: OPS‑010 문서의 “referenced_by” 항목)</pre></details>
+<details><summary><span class=ok>PASS</span> g05 run3 · 2스텝 · 14.89s</summary><div><span class=pill>related_docs</span></div><pre>주문 취소 규정을 인용하는 문서는 다음 두 개입니다.
+
+| 문서번호 | 제목 | 부서 |
+|---------|------|------|
+| WH-004 | 재고 부족 처리 절차 | 물류팀 |
+| WH-009 | 창고 운영 지침 | 물류팀 |
+
+이 두 문서가 ‘주문 취소 규정’(OPS‑010)을 참조하고 있습니다.</pre></details>
 </details>
 </main></body></html>

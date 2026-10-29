@@ -154,7 +154,7 @@ def reg(tmp_path):
 def test_tool_registry_shape(reg):
     names = reg.names()
     assert (
-        len(names) == 15
+        len(names) == 17
         and "run_simulation" in names
         and reg.get("save_circuit").tier == "write"
         and reg.get("delete_circuit").tier == "destructive"
@@ -203,7 +203,7 @@ def test_samples_all_run_and_match_physics():
     )["measurements"]
     assert abs(tau["tau"] - 1e-4) / 1e-4 < 0.01 and abs(tau["trise"] - math.log(9) * 1e-4) / 2.197e-4 < 0.01
     op = simulate((CIRCUITS_DIR / "voltage_divider.cir").read_text())["measurements"]
-    assert op["out"] == 3.0 and abs(op["v1#branch"] + 0.003) < 1e-9
+    assert op["v(out)"] == 3.0 and abs(op["v1#branch"] + 0.003) < 1e-9  # .op 노드 전압은 v(노드) 로 통일
     rlc = simulate((CIRCUITS_DIR / "rlc_bandpass.cir").read_text(), ["f0 MAX_AT vdb(out)"])["measurements"]
     assert abs(rlc["f0"] - 5032.9) / 5032.9 < 0.02
     inv = simulate((CIRCUITS_DIR / "cmos_inverter.cir").read_text(), ["vm WHEN v(out)=1.65"])["measurements"]
@@ -267,7 +267,7 @@ def test_op_ignores_measurements_with_warning(reg):
     r = reg.get("run_simulation").run(
         {"netlist": "* div\nV1 in 0 dc 12\nR1 in out 3k\nR2 out 0 1k\n.op", "measurements": ["v(out)", "i(V1)"]}
     )
-    assert r["measurements"]["out"] == 3.0 and any("무시" in w for w in r["warnings"])
+    assert r["measurements"]["v(out)"] == 3.0 and any("무시" in w for w in r["warnings"])
 
 
 def test_prompt_v2_differs():
@@ -282,7 +282,7 @@ def test_get_waveform_on_op_returns_values(reg):
         {"netlist": "* div\nV1 in 0 dc 12\nR1 in out 3k\nR2 out 0 1k\n.op", "measurements": []}
     )
     w = reg.get("get_waveform").run({"run_id": r["run_id"]})
-    assert w["values"]["out"] == 3.0 and "동작점" in w["note"]
+    assert w["values"]["v(out)"] == 3.0 and "동작점" in w["note"]
 
 
 def test_measurement_name_only_duplicate_of_inline_is_ignored():
@@ -297,3 +297,39 @@ def test_measurement_name_only_duplicate_of_inline_is_ignored():
     assert abs(r["measurements"]["tau"] - 1e-4) / 1e-4 < 0.01 and any("한 번만" in w for w in r["warnings"])
     with pytest.raises(NetlistError, match="이름만"):
         simulate(text.replace(".measure tran tau WHEN v(out)=0.632", ""), ["tau"])
+
+
+def test_parse_output_keeps_op_node_voltages_and_single_vector_name():
+    """`.op` 의 print all 은 "v(1) = …" 꼴(괄호 이름)이고 벡터가 하나면 "all = …" 로 찍힌다. 둘 다 노드 이름으로 돌아와야 한다."""
+    from harness.packs.spice.simulator import parse_output
+
+    out = parse_output(
+        "Doing analysis at TEMP = 27.000000 and TNOM = 27.000000\nNo. of Data Rows : 1\n"
+        "    V(1)                : voltage, real, 1 long [default scale]\n    v1#branch           : current, real, 1 long\n"
+        "v(1) = 0.000000e+00\nv1#branch = -1.00000e-03\nfc = 1.59155e+03\n"
+    )
+    assert out["results"] == {"v(1)": 0.0, "v1#branch": -0.001, "fc": 1591.55}
+    assert [v["name"] for v in out["vectors"]] == ["V(1)", "v1#branch"]
+
+
+@pytest.mark.skipif(not ngspice_available(), reason="ngspice 없음")
+def test_op_returns_node_voltage_for_single_node_circuit(tmp_path):
+    from harness.packs.spice.library import LIBRARY
+    from harness.packs.spice.simulator import simulate
+
+    nl, _ = LIBRARY.apply_parts("* d\nI1 0 1 1m\nD1 1 0 D1N4148\n.op\n", ["1N4148"])
+    r = simulate(nl, [], [], runs_dir=tmp_path, timeout_s=20)
+    assert set(r["measurements"]) == {"v(1)"} and abs(r["measurements"]["v(1)"] - 0.5847) < 0.002
+
+
+def test_zero_volt_source_across_a_device_is_flagged():
+    """V1 a 0 0 이 다이오드와 병렬이면(소형 모델이 전류계로 쓰려다 하는 실수) 단락 경고가 붙는다. 직렬이면 조용하다."""
+    from harness.packs.spice.simulator import _short_circuit_warnings
+
+    nl = parse_netlist("* d\nV1 1 0 dc 0\nI1 0 1 1m\nD1 1 0 D1N4148\n.model D1N4148 D\n.op")
+    w = _short_circuit_warnings(nl)
+    assert len(w) == 1 and "V1" in w[0] and "D1" in w[0] and "단락" in w[0]
+    assert (
+        _short_circuit_warnings(parse_netlist("* s\nV1 1 2 0\nI1 0 1 1m\nD1 2 0 D1N4148\n.model D1N4148 D\n.op")) == []
+    )
+    assert _short_circuit_warnings(parse_netlist("* v\nV1 1 0 5\nR1 1 0 1k\n.op")) == []

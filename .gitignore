@@ -35,7 +35,8 @@ data/*.db
 data/*.db-journal
 data/*.db-wal
 data/*.db-shm
-harness/evals/results/traces/   # 평가 결과(json·md·채점·report.html)는 공개한다. 트레이스(343개)만 제외
+# 평가 결과(json·md·채점·report.html)는 공개한다. 트레이스만 제외(gitignore 는 줄 끝 주석을 못 읽으므로 주석은 윗줄에)
+harness/evals/results/traces/
 
 # ---- 모델 가중치 / 캐시 (수 GB) ----
 *.gguf
@@ -91,4 +92,6 @@ data/spice_doc_embeddings.json
 # 지식 베이스 원본(매뉴얼 PDF)과 색인
 data/kb/
 data/factory_runs/
+# 데이터 탭이 그린 규정 문서 관계도(SVG)
+data/enterprise_files/
 data/factory_doc_embeddings.json

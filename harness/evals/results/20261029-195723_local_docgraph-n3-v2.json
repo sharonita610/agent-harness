@@ -1,0 +1,757 @@
+{
+  "summary": {
+    "provider": "local",
+    "model": "local-llm",
+    "n": 3,
+    "tag": "docgraph-n3-v2",
+    "prompt_version": "v1",
+    "pack": "enterprise",
+    "tasks": 5,
+    "runs": 15,
+    "cost_usd": 0.0,
+    "cost_usd_if_hosted": 0.00227,
+    "pass_rate": 1.0,
+    "by_type": {
+      "graph": 1.0
+    },
+    "avg_steps": 2.33,
+    "p50_latency_s": 13.5,
+    "p95_latency_s": 24.5,
+    "tokens_per_run": 5379,
+    "generated_at": "2026-10-29T20:00:51"
+  },
+  "tasks": [
+    {
+      "id": "g01",
+      "type": "graph",
+      "question": "배송 지연 보상 규정을 개정하면 같이 검토해야 하는 문서는 뭐야?",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "impact_of"
+          ],
+          "approvals": [],
+          "answer": "배송 지연 보상 규정(문서 CS‑002)을 개정할 경우, 함께 검토해야 할 문서는 다음과 같습니다.\n\n| 문서 번호 | 제목 | 관련 팀 | 비고 |\n|-----------|------|--------|------|\n| **OPS‑010** | 주문 취소 규정 | 운영팀 | CS‑002를 참조 |\n| **WH‑004** | 재고 부족 처리 절차 | 물류팀 | CS‑002를 참조 |\n| **WH‑009** | 창고 운영 지침 | 물류팀 | WH‑004를 거쳐 CS‑002를 참조 |\n| **OPS‑001** | 주문 상태 정의 | 운영팀 | 출고 예정일, 실제 출고일, 지연 사유, 운송사 등 데이터 개념이 공유 |\n| **SALES‑006** | 거래처 등급 기준 | 영업팀 | 주문 금액 등 데이터 개념이 공유 |\n| **FIN‑007** | 월말 마감 절차 | 재무팀 | 지연 사유, 주문 금액 등 데이터 개념이 공유 |\n\n> **출처**: 배송 지연 보상 규정 (CS‑002) – 영향 범위 및 공유 데이터 개념.",
+          "steps": 2,
+          "latency_s": 13.5,
+          "prompt_tokens": 3736,
+          "completion_tokens": 625,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "impact_of",
+              "arguments": {
+                "name": "배송 지연 보상 규정"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"CS-002\", \"title\": \"배송 지연 보상 규정\", \"impacted\": [{\"doc\": \"OPS-010\", \"title\": \"주문 취소 규정\", \"team\": \"운영팀\", \"via\": \"참조: CS-002\", \"depth\": 1}, {\"doc\": \"WH-004\", \"title\": \"재고 부족 처리 절차\", \"team\": \"물류팀\", \"via\": \"참조: 보상 규정\", \"depth\": 1}, {\"doc\": \"WH-009\", \"title\": \"창고 운영 지침\", \"team\": \"물류팀\", \"via\": \"재고 부"
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g01_run1.jsonl",
+          "trace_summary": {
+            "run_id": "g01_run1",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 13500,
+            "tool_ms": 1,
+            "human_ms": 0,
+            "total_ms": 13504
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "impact_of",
+            "impact_of"
+          ],
+          "approvals": [],
+          "answer": "배송 지연 보상 규정(CS‑002)을 개정할 때 함께 검토해야 할 문서는 다음과 같습니다.\n\n| 문서 번호 | 제목 | 관련 팀 | 인용 관계 |\n|-----------|------|----------|------------|\n| **OPS‑010** | 주문 취소 규정 | 운영팀 | CS‑002를 참조 |\n| **WH‑004** | 재고 부족 처리 절차 | 물류팀 | CS‑002를 참조 |\n| **WH‑009** | 창고 운영 지침 | 물류팀 | WH‑004를 거쳐 CS‑002를 간접 참조 |\n\n또한, 같은 데이터 개념(출고 예정일, 실제 출고일, 지연 사유, 운송사, 주문 금액 등)을 다루는 문서도 함께 검토하면 좋습니다.\n\n| 문서 번호 | 제목 | 담당 팀 | 다루는 데이터 |\n|-----------|------|----------|----------------|\n| **OPS‑001** | 주문 상태 정의 | 운영팀 | shipments.planned_date, shipments.shipped_date, orders.delay_reason, shipments.carrier |\n| **SALES‑006** | 거래처 등급 기준 | 영업팀 | orders.total_amount |\n| **FIN‑007** | 월말 마감 절차 | 재무팀 | orders.delay_reason, orders.total_amount |\n\n> **출처**: `impact_of(\"배송 지연 보상 규정\")` 결과.",
+          "steps": 4,
+          "latency_s": 22.61,
+          "prompt_tokens": 9070,
+          "completion_tokens": 1194,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "impact_of",
+              "arguments": {
+                "name": "배송 지연 보상 규정"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"CS-002\", \"title\": \"배송 지연 보상 규정\", \"impacted\": [{\"doc\": \"OPS-010\", \"title\": \"주문 취소 규정\", \"team\": \"운영팀\", \"via\": \"참조: CS-002\", \"depth\": 1}, {\"doc\": \"WH-004\", \"title\": \"재고 부족 처리 절차\", \"team\": \"물류팀\", \"via\": \"참조: 보상 규정\", \"depth\": 1}, {\"doc\": \"WH-009\", \"title\": \"창고 운영 지침\", \"team\": \"물류팀\", \"via\": \"재고 부"
+            },
+            {
+              "step": 3,
+              "name": "impact_of",
+              "arguments": {
+                "name": "배송 지연 보상 규정"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"CS-002\", \"title\": \"배송 지연 보상 규정\", \"impacted\": [{\"doc\": \"OPS-010\", \"title\": \"주문 취소 규정\", \"team\": \"운영팀\", \"via\": \"참조: CS-002\", \"depth\": 1}, {\"doc\": \"WH-004\", \"title\": \"재고 부족 처리 절차\", \"team\": \"물류팀\", \"via\": \"참조: 보상 규정\", \"depth\": 1}, {\"doc\": \"WH-009\", \"title\": \"창고 운영 지침\", \"team\": \"물류팀\", \"via\": \"재고 부"
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g01_run2.jsonl",
+          "trace_summary": {
+            "run_id": "g01_run2",
+            "spans": 8,
+            "llm_calls": 4,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 22600,
+            "tool_ms": 1,
+            "human_ms": 0,
+            "total_ms": 22605
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "impact_of"
+          ],
+          "approvals": [],
+          "answer": "배송 지연 보상 규정(CS‑002)을 개정할 때 함께 검토해야 할 문서는 다음과 같습니다.\n\n| 문서 번호 | 문서 제목 | 관련 내용 |\n|-----------|-----------|-----------|\n| OPS‑010 | 주문 취소 규정 | CS‑002를 참조합니다. |\n| WH‑004 | 재고 부족 처리 절차 | CS‑002를 참조합니다. |\n| WH‑009 | 창고 운영 지침 | WH‑004를 거쳐 CS‑002를 간접 참조합니다. |\n| OPS‑001 | 주문 상태 정의 | 출고 예정일·실제 출고일·지연 사유·운송사 등 CS‑002와 같은 데이터 개념을 다룹니다. |\n| SALES‑006 | 거래처 등급 기준 | 주문 금액 등 CS‑002와 같은 데이터 개념을 다룹니다. |\n| FIN‑007 | 월말 마감 절차 | 지연 사유·주문 금액 등 CS‑002와 같은 데이터 개념을 다룹니다. |\n\n**출처**: `impact_of(배송 지연 보상 규정)` 결과.",
+          "steps": 3,
+          "latency_s": 20.41,
+          "prompt_tokens": 6131,
+          "completion_tokens": 1112,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "impact_of",
+              "arguments": {
+                "name": "배송 지연 보상 규정"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"CS-002\", \"title\": \"배송 지연 보상 규정\", \"impacted\": [{\"doc\": \"OPS-010\", \"title\": \"주문 취소 규정\", \"team\": \"운영팀\", \"via\": \"참조: CS-002\", \"depth\": 1}, {\"doc\": \"WH-004\", \"title\": \"재고 부족 처리 절차\", \"team\": \"물류팀\", \"via\": \"참조: 보상 규정\", \"depth\": 1}, {\"doc\": \"WH-009\", \"title\": \"창고 운영 지침\", \"team\": \"물류팀\", \"via\": \"재고 부"
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g01_run3.jsonl",
+          "trace_summary": {
+            "run_id": "g01_run3",
+            "spans": 6,
+            "llm_calls": 3,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 20410,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 20413
+          }
+        }
+      ]
+    },
+    {
+      "id": "g02",
+      "type": "graph",
+      "question": "재고 부족 처리 절차(WH-004)가 참조하는 문서를 알려줘",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "related_docs"
+          ],
+          "approvals": [],
+          "answer": "WH‑004(재고 부족 처리 절차)가 참조하는 문서는 다음과 같습니다.\n\n| 문서 번호 | 제목 | 팀 | 참조 종류 | 라벨 |\n|-----------|------|----|-----------|------|\n| CS‑002 | 배송 지연 보상 규정 | CS팀 | 참조 | 보상 규정 |\n| OPS‑010 | 주문 취소 규정 | 운영팀 | 참조 | 주문 취소 규정 |\n\n위 문서들이 WH‑004에서 직접 참조하고 있는 문서입니다.",
+          "steps": 2,
+          "latency_s": 6.35,
+          "prompt_tokens": 3775,
+          "completion_tokens": 323,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "related_docs",
+              "arguments": {
+                "name": "WH-004"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"WH-004\", \"title\": \"재고 부족 처리 절차\", \"team\": \"물류팀\", \"revised\": \"2026-04-20\", \"sections\": [\"안전재고 미달 감지\", \"주문이 걸려 있을 때\", \"기록\"], \"concepts\": [{\"name\": \"안전재고\", \"data\": \"inventory.safety_stock\"}, {\"name\": \"지연 사유\", \"data\": \"orders.delay_reason\"}, {\"name\": \"주문 메모\", \"data\": \"order_notes\"}], \"references"
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g02_run1.jsonl",
+          "trace_summary": {
+            "run_id": "g02_run1",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 6340,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 6351
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "related_docs"
+          ],
+          "approvals": [],
+          "answer": "WH‑004는 다음 문서를 참조합니다.  \n- **CS‑002** – 배송 지연 보상 규정  \n- **OPS‑010** – 주문 취소 규정",
+          "steps": 2,
+          "latency_s": 14.27,
+          "prompt_tokens": 3775,
+          "completion_tokens": 814,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "related_docs",
+              "arguments": {
+                "name": "WH-004"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"WH-004\", \"title\": \"재고 부족 처리 절차\", \"team\": \"물류팀\", \"revised\": \"2026-04-20\", \"sections\": [\"안전재고 미달 감지\", \"주문이 걸려 있을 때\", \"기록\"], \"concepts\": [{\"name\": \"안전재고\", \"data\": \"inventory.safety_stock\"}, {\"name\": \"지연 사유\", \"data\": \"orders.delay_reason\"}, {\"name\": \"주문 메모\", \"data\": \"order_notes\"}], \"references"
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g02_run2.jsonl",
+          "trace_summary": {
+            "run_id": "g02_run2",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 14270,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 14270
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "related_docs"
+          ],
+          "approvals": [],
+          "answer": "WH‑004(재고 부족 처리 절차)는 다음 문서를 참조합니다.\n\n| 문서 번호 | 제목 | 부서 | 참조 종류 |\n|-----------|------|------|-----------|\n| CS‑002 | 배송 지연 보상 규정 | CS팀 | 참조 |\n| OPS‑010 | 주문 취소 규정 | 운영팀 | 참조 |\n\n필요한 경우 해당 문서의 세부 절차를 확인해 주세요.",
+          "steps": 2,
+          "latency_s": 10.47,
+          "prompt_tokens": 3775,
+          "completion_tokens": 574,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "related_docs",
+              "arguments": {
+                "name": "WH-004"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"WH-004\", \"title\": \"재고 부족 처리 절차\", \"team\": \"물류팀\", \"revised\": \"2026-04-20\", \"sections\": [\"안전재고 미달 감지\", \"주문이 걸려 있을 때\", \"기록\"], \"concepts\": [{\"name\": \"안전재고\", \"data\": \"inventory.safety_stock\"}, {\"name\": \"지연 사유\", \"data\": \"orders.delay_reason\"}, {\"name\": \"주문 메모\", \"data\": \"order_notes\"}], \"references"
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g02_run3.jsonl",
+          "trace_summary": {
+            "run_id": "g02_run3",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 10470,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 10472
+          }
+        }
+      ]
+    },
+    {
+      "id": "g03",
+      "type": "graph",
+      "question": "창고 운영 지침은 어떤 문서를 인용하고 있어?",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "related_docs"
+          ],
+          "approvals": [],
+          "answer": "창고 운영 지침(WH‑009)은 다음 두 문서를 인용하고 있습니다.  \n\n- **WH‑004** – 재고 부족 처리 절차  \n- **OPS‑010** – 주문 취소 규정",
+          "steps": 2,
+          "latency_s": 5.48,
+          "prompt_tokens": 3754,
+          "completion_tokens": 279,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "related_docs",
+              "arguments": {
+                "name": "창고 운영 지침"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"WH-009\", \"title\": \"창고 운영 지침\", \"team\": \"물류팀\", \"revised\": \"2026-07-14\", \"sections\": [\"창고 구성\", \"출고 기준\", \"지연 주문 처리\", \"운송사\"], \"concepts\": [{\"name\": \"안전재고\", \"data\": \"inventory.safety_stock\"}, {\"name\": \"출고 예정일\", \"data\": \"shipments.planned_date\"}, {\"name\": \"상태 이력\", \"data\": \"order_status_history\"}, "
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g03_run1.jsonl",
+          "trace_summary": {
+            "run_id": "g03_run1",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 5470,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 5479
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "related_docs"
+          ],
+          "approvals": [],
+          "answer": "창고 운영 지침은 다음 두 문서를 인용하고 있습니다.  \n\n| 인용 문서 | 제목 | 부서 |\n|-----------|------|------|\n| WH‑004 | 재고 부족 처리 절차 | 물류팀 |\n| OPS‑010 | 주문 취소 규정 | 운영팀 |",
+          "steps": 2,
+          "latency_s": 5.1,
+          "prompt_tokens": 3754,
+          "completion_tokens": 268,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "related_docs",
+              "arguments": {
+                "name": "창고 운영 지침"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"WH-009\", \"title\": \"창고 운영 지침\", \"team\": \"물류팀\", \"revised\": \"2026-07-14\", \"sections\": [\"창고 구성\", \"출고 기준\", \"지연 주문 처리\", \"운송사\"], \"concepts\": [{\"name\": \"안전재고\", \"data\": \"inventory.safety_stock\"}, {\"name\": \"출고 예정일\", \"data\": \"shipments.planned_date\"}, {\"name\": \"상태 이력\", \"data\": \"order_status_history\"}, "
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g03_run2.jsonl",
+          "trace_summary": {
+            "run_id": "g03_run2",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 5100,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 5101
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "related_docs"
+          ],
+          "approvals": [],
+          "answer": "**창고 운영 지침**(WH‑009)은 다음 두 문서를 인용하고 있습니다.\n\n| 인용 문서 | 제목 | 담당 팀 |\n|----------|------|--------|\n| WH‑004 | 재고 부족 처리 절차 | 물류팀 |\n| OPS‑010 | 주문 취소 규정 | 운영팀 |\n\n이 두 문서가 창고 운영 지침에서 직접 참조되고 있습니다.",
+          "steps": 2,
+          "latency_s": 5.47,
+          "prompt_tokens": 3754,
+          "completion_tokens": 284,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "related_docs",
+              "arguments": {
+                "name": "창고 운영 지침"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"WH-009\", \"title\": \"창고 운영 지침\", \"team\": \"물류팀\", \"revised\": \"2026-07-14\", \"sections\": [\"창고 구성\", \"출고 기준\", \"지연 주문 처리\", \"운송사\"], \"concepts\": [{\"name\": \"안전재고\", \"data\": \"inventory.safety_stock\"}, {\"name\": \"출고 예정일\", \"data\": \"shipments.planned_date\"}, {\"name\": \"상태 이력\", \"data\": \"order_status_history\"}, "
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g03_run3.jsonl",
+          "trace_summary": {
+            "run_id": "g03_run3",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 5470,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 5468
+          }
+        }
+      ]
+    },
+    {
+      "id": "g04",
+      "type": "graph",
+      "question": "할인 승인 규정을 바꾸면 영향받는 문서가 있어?",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "search_docs",
+            "impact_of"
+          ],
+          "approvals": [],
+          "answer": "할인 승인 규정(문서번호 **SALES‑003**)을 개정하면 다음 문서들이 영향을 받을 수 있습니다.\n\n| 문서 | 제목 | 영향 범위 | 참고 |\n|------|------|-----------|------|\n| **SALES‑006** | 거래처 등급 기준 | 기본 할인과 연계된 등급 규정이 바뀔 수 있음 | SALES‑003 → SALES‑006 (주제: 기본 할인) |\n| **CS‑005** | 반품 및 교환 규정 | 거래처 등급이 변하면 반품·교환 정책에 반영될 수 있음 | SALES‑003 → CS‑005 (거래처 등급) |\n| **FIN‑007** | 월말 마감 절차 | 할인율이 재무 보고에 반영되므로 마감 절차에 영향 | SALES‑003 → FIN‑007 (할인율) |\n\n> **출처**: `impact_of` 결과 (문서번호 SALES‑003).",
+          "steps": 3,
+          "latency_s": 18.7,
+          "prompt_tokens": 6541,
+          "completion_tokens": 1014,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "search_docs",
+              "arguments": {
+                "query": "할인 승인 규정",
+                "k": 5
+              },
+              "status": "ok",
+              "result_preview": "{\"query\": \"할인 승인 규정\", \"mode\": \"bm25\", \"hits\": [{\"doc\": \"할인 승인 규정\", \"section\": \"추가 할인 승인자\", \"text\": \"할인율과 할인 금액 중 더 높은 단계의 승인자가 승인한다.\\n\\n| 조건 | 승인자 |\\n|---|---|\\n| 할인율 5% 이하 그리고 할인 금액 30만 원 이하 | 영업 담당자 본인 |\\n| 할인율 10% 이하 또는 할인 금액 100만 원 이하 | 영업팀장 |\\n| 할인율 20% 이하 또는 할인 금액 500만 원 이하 | 영업부서장 |\\n| 할인율 20"
+            },
+            {
+              "step": 2,
+              "name": "impact_of",
+              "arguments": {
+                "name": "할인 승인 규정"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"SALES-003\", \"title\": \"할인 승인 규정\", \"impacted\": [{\"doc\": \"SALES-006\", \"title\": \"거래처 등급 기준\", \"team\": \"영업팀\", \"via\": \"주제: 기본 할인\", \"depth\": 1}], \"shares_data\": [{\"doc\": \"CS-005\", \"title\": \"반품 및 교환 규정\", \"team\": \"CS팀\", \"concepts\": \"거래처 등급\", \"data\": \"customers.grade\"}, {\"doc\": \"FIN-007\", \"title\": \"월말"
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g04_run1.jsonl",
+          "trace_summary": {
+            "run_id": "g04_run1",
+            "spans": 6,
+            "llm_calls": 3,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 18690,
+            "tool_ms": 4,
+            "human_ms": 0,
+            "total_ms": 18698
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "search_docs",
+            "impact_of"
+          ],
+          "approvals": [],
+          "answer": "할인 승인 규정(문서번호 **SALES‑003**)을 개정하면 다음 문서들이 영향을 받을 수 있습니다.\n\n| 문서 | 문서번호 | 영향 내용 | 출처 |\n|------|----------|-----------|------|\n| 거래처 등급 기준 | **SALES‑006** | 기본 할인과 관련된 등급 기준이 변경될 수 있음 | SALES‑003 → SALES‑006 (주제: 기본 할인) |\n| 반품 및 교환 규정 | **CS‑005** | 거래처 등급(`customers.grade`)이 반품·교환 정책에 반영되므로 등급 기준 변경 시 재검토 필요 | SALES‑003 → CS‑005 (같은 데이터 개념: 거래처 등급) |\n| 월말 마감 절차 | **FIN‑007** | 할인율(`orders.discount_rate`)이 재무 마감에 사용되므로 할인율 기준 변경 시 절차 검토 필요 | SALES‑003 → FIN‑007 (같은 데이터 개념: 할인율) |\n\n따라서 할인 승인 규정을 바꾸면 **SALES‑006, CS‑005, FIN‑007** 문서가 함께 검토·수정될 필요가 있습니다.",
+          "steps": 3,
+          "latency_s": 27.5,
+          "prompt_tokens": 6541,
+          "completion_tokens": 1526,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "search_docs",
+              "arguments": {
+                "query": "할인 승인 규정",
+                "k": 5
+              },
+              "status": "ok",
+              "result_preview": "{\"query\": \"할인 승인 규정\", \"mode\": \"bm25\", \"hits\": [{\"doc\": \"할인 승인 규정\", \"section\": \"추가 할인 승인자\", \"text\": \"할인율과 할인 금액 중 더 높은 단계의 승인자가 승인한다.\\n\\n| 조건 | 승인자 |\\n|---|---|\\n| 할인율 5% 이하 그리고 할인 금액 30만 원 이하 | 영업 담당자 본인 |\\n| 할인율 10% 이하 또는 할인 금액 100만 원 이하 | 영업팀장 |\\n| 할인율 20% 이하 또는 할인 금액 500만 원 이하 | 영업부서장 |\\n| 할인율 20"
+            },
+            {
+              "step": 2,
+              "name": "impact_of",
+              "arguments": {
+                "name": "할인 승인 규정"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"SALES-003\", \"title\": \"할인 승인 규정\", \"impacted\": [{\"doc\": \"SALES-006\", \"title\": \"거래처 등급 기준\", \"team\": \"영업팀\", \"via\": \"주제: 기본 할인\", \"depth\": 1}], \"shares_data\": [{\"doc\": \"CS-005\", \"title\": \"반품 및 교환 규정\", \"team\": \"CS팀\", \"concepts\": \"거래처 등급\", \"data\": \"customers.grade\"}, {\"doc\": \"FIN-007\", \"title\": \"월말"
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g04_run2.jsonl",
+          "trace_summary": {
+            "run_id": "g04_run2",
+            "spans": 6,
+            "llm_calls": 3,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 27490,
+            "tool_ms": 2,
+            "human_ms": 0,
+            "total_ms": 27495
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "impact_of"
+          ],
+          "approvals": [],
+          "answer": "할인 승인 규정(문서 SALES‑003)을 변경하면 다음 문서들이 영향을 받을 수 있습니다.  \n\n| 문서 | 내용 | 영향 범위 | 출처 |\n|------|------|-----------|------|\n| **SALES‑006** | 거래처 등급 기준 | 할인율이 등급에 따라 달라지므로 등급 기준이 재검토 필요 | SALES‑003 → SALES‑006 (참조) |\n| **CS‑005** | 반품 및 교환 규정 | 거래처 등급이 반품·교환 조건에 반영되므로 등급 관련 조항이 수정 필요 | SALES‑003 → CS‑005 (공통 데이터: `customers.grade`) |\n| **FIN‑007** | 월말 마감 절차 | 할인율(`orders.discount_rate`)이 재무 계산에 사용되므로 할인율 변경 시 재무 절차도 검토 필요 | SALES‑003 → FIN‑007 (공통 데이터: `orders.discount_rate`) |\n\n따라서 할인 승인 규정 변경 시 **SALES‑006, CS‑005, FIN‑007** 문서를 함께 검토하시는 것이 좋습니다.",
+          "steps": 2,
+          "latency_s": 10.84,
+          "prompt_tokens": 3540,
+          "completion_tokens": 621,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "impact_of",
+              "arguments": {
+                "name": "할인 승인 규정"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"SALES-003\", \"title\": \"할인 승인 규정\", \"impacted\": [{\"doc\": \"SALES-006\", \"title\": \"거래처 등급 기준\", \"team\": \"영업팀\", \"via\": \"주제: 기본 할인\", \"depth\": 1}], \"shares_data\": [{\"doc\": \"CS-005\", \"title\": \"반품 및 교환 규정\", \"team\": \"CS팀\", \"concepts\": \"거래처 등급\", \"data\": \"customers.grade\"}, {\"doc\": \"FIN-007\", \"title\": \"월말"
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g04_run3.jsonl",
+          "trace_summary": {
+            "run_id": "g04_run3",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 10830,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 10836
+          }
+        }
+      ]
+    },
+    {
+      "id": "g05",
+      "type": "graph",
+      "question": "주문 취소 규정을 인용하는 문서는 어떤 것들이야?",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "related_docs"
+          ],
+          "approvals": [],
+          "answer": "주문 취소 규정을 인용하는 문서는 다음 두 개입니다.  \n\n| 문서 번호 | 제목 | 부서 | 인용 관계 |\n|-----------|------|------|-----------|\n| WH-004 | 재고 부족 처리 절차 | 물류팀 | 주문 취소 규정 참조 |\n| WH-009 | 창고 운영 지침 | 물류팀 | 주문 취소 규정 참조 |\n\n출처: OPS‑010 “주문 취소 규정” 문서의 `referenced_by` 항목.",
+          "steps": 2,
+          "latency_s": 24.47,
+          "prompt_tokens": 3742,
+          "completion_tokens": 1414,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "related_docs",
+              "arguments": {
+                "name": "주문 취소 규정"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"OPS-010\", \"title\": \"주문 취소 규정\", \"team\": \"운영팀\", \"revised\": \"2026-03-02\", \"sections\": [\"취소 가능 사유\", \"금지\", \"기록\"], \"concepts\": [{\"name\": \"결제 조건\", \"data\": \"customers.payment_terms\"}, {\"name\": \"상태 이력\", \"data\": \"order_status_history\"}], \"references\": [{\"doc\": \"CS-002\", \"title\": \"배송 지연 보상 규정\", \"team\""
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g05_run1.jsonl",
+          "trace_summary": {
+            "run_id": "g05_run1",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 24470,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 24472
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "related_docs"
+          ],
+          "approvals": [],
+          "answer": "주문 취소 규정(OPS‑010)을 인용하는 문서는 다음 두 개입니다.\n\n| 문서번호 | 제목 | 부서 |\n|---------|------|------|\n| WH‑004 | 재고 부족 처리 절차 | 물류팀 |\n| WH‑009 | 창고 운영 지침 | 물류팀 |\n\n(출처: OPS‑010 문서의 “referenced_by” 항목)",
+          "steps": 2,
+          "latency_s": 7.88,
+          "prompt_tokens": 3742,
+          "completion_tokens": 418,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "related_docs",
+              "arguments": {
+                "name": "주문 취소 규정"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"OPS-010\", \"title\": \"주문 취소 규정\", \"team\": \"운영팀\", \"revised\": \"2026-03-02\", \"sections\": [\"취소 가능 사유\", \"금지\", \"기록\"], \"concepts\": [{\"name\": \"결제 조건\", \"data\": \"customers.payment_terms\"}, {\"name\": \"상태 이력\", \"data\": \"order_status_history\"}], \"references\": [{\"doc\": \"CS-002\", \"title\": \"배송 지연 보상 규정\", \"team\""
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g05_run2.jsonl",
+          "trace_summary": {
+            "run_id": "g05_run2",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 7870,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 7877
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "related_docs"
+          ],
+          "approvals": [],
+          "answer": "주문 취소 규정을 인용하는 문서는 다음 두 개입니다.\n\n| 문서번호 | 제목 | 부서 |\n|---------|------|------|\n| WH-004 | 재고 부족 처리 절차 | 물류팀 |\n| WH-009 | 창고 운영 지침 | 물류팀 |\n\n이 두 문서가 ‘주문 취소 규정’(OPS‑010)을 참조하고 있습니다.",
+          "steps": 2,
+          "latency_s": 14.89,
+          "prompt_tokens": 3742,
+          "completion_tokens": 854,
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "related_docs",
+              "arguments": {
+                "name": "주문 취소 규정"
+              },
+              "status": "ok",
+              "result_preview": "{\"doc\": \"OPS-010\", \"title\": \"주문 취소 규정\", \"team\": \"운영팀\", \"revised\": \"2026-03-02\", \"sections\": [\"취소 가능 사유\", \"금지\", \"기록\"], \"concepts\": [{\"name\": \"결제 조건\", \"data\": \"customers.payment_terms\"}, {\"name\": \"상태 이력\", \"data\": \"order_status_history\"}], \"references\": [{\"doc\": \"CS-002\", \"title\": \"배송 지연 보상 규정\", \"team\""
+            }
+          ],
+          "trace": "traces/20261029-195723_local_docgraph-n3-v2/g05_run3.jsonl",
+          "trace_summary": {
+            "run_id": "g05_run3",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 14890,
+            "tool_ms": 0,
+            "human_ms": 0,
+            "total_ms": 14889
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -17,6 +17,7 @@ from ...retrieval import DocIndex, OpenAIEmbedder, embedder_available
 from ...retrieval.kb import KnowledgeBase
 from ...tools.registry import Tier, Tool
 from .graph import GRAPH_PATH, ExperimentGraph
+from .library import KINDS, LIBRARY
 from .netlist import NetlistError, format_si, parse_netlist
 from .plot import Marker, figure_from_columns, render_svg
 from .simulator import (
@@ -48,6 +49,15 @@ class NoArgs(BaseModel):
     pass
 
 
+class PartSearchArgs(BaseModel):
+    query: str = Field("", description="찾을 말(이름·종류·용도). 예: '다이오드', 'NPN', '제너', '2N2222'")
+    kind: str | None = Field(None, description=f"종류로 좁히기: {', '.join(KINDS)}")
+
+
+class PartNameArgs(BaseModel):
+    name: str = Field(description="소자 이름(search_parts 의 name 또는 model)")
+
+
 class CircuitNameArgs(BaseModel):
     name: str = Field(description="회로 이름(list_circuits 의 name)")
 
@@ -60,6 +70,10 @@ class NetlistArgs(BaseModel):
 
 class SimulateArgs(BaseModel):
     netlist: str = Field(description="SPICE 넷리스트 전문(해석 지시문 포함). 샘플은 get_circuit 으로 가져온다")
+    parts: list[str] = Field(
+        default_factory=list,
+        description="소자 라이브러리에서 붙일 모델 이름(예: ['1N4148', '2N2222']). search_parts 로 찾는다. 넷리스트에서는 그 model 이름(D1N4148 등)을 쓴다",
+    )
     measurements: list[str] = Field(
         default_factory=list,
         description=(
@@ -92,6 +106,9 @@ class PlotArgs(BaseModel):
 
 class SweepArgs(BaseModel):
     netlist: str = Field(description="SPICE 넷리스트 전문(해석 지시문 포함)")
+    parts: list[str] = Field(
+        default_factory=list, description="소자 라이브러리에서 붙일 모델 이름 목록(search_parts 참고)"
+    )
     component: str = Field(description="값을 바꿀 소자 이름(R/L/C 또는 DC 전원). 예: 'R1'")
     measurement: str = Field(description="각 점에서 잴 측정식 하나. 예: 'fc WHEN vdb(out)=-3'")
     values: list[float] = Field(
@@ -222,6 +239,20 @@ def build_tools(
         return d
 
     # ---- read
+    def search_parts(a: PartSearchArgs) -> Any:
+        hits = LIBRARY.search(a.query, a.kind)
+        return {
+            "parts": hits,
+            "count": len(hits),
+            "note": LIBRARY.note + " 쓰려면 run_simulation 의 parts 에 이름을 넣고 넷리스트에서 model 이름을 쓴다.",
+        }
+
+    def get_part(a: PartNameArgs) -> Any:
+        p = LIBRARY.get(a.name)
+        if p is None:
+            raise ValueError(f"라이브러리에 없는 소자: {a.name!r}. search_parts 로 찾으세요.")
+        return {**LIBRARY.summary(p), "card": p["card"], "element_example": p["element"], "note": LIBRARY.note}
+
     def list_circuits(_: NoArgs) -> Any:
         out = [_circuit_meta(p, "sample") for p in sorted(circuits_dir.glob("*.cir"))]
         if library_dir.exists():
@@ -246,12 +277,13 @@ def build_tools(
     def run_simulation(a: SimulateArgs) -> Any:
         if not ngspice_available():
             raise RuntimeError("ngspice 가 설치되어 있지 않습니다(brew install ngspice).")
-        r = simulate(a.netlist, a.measurements, a.save_vectors, runs_dir=runs_dir, timeout_s=timeout_s)
+        netlist, part_notes = LIBRARY.apply_parts(a.netlist, a.parts)
+        r = simulate(netlist, a.measurements, a.save_vectors, runs_dir=runs_dir, timeout_s=timeout_s)
         pretty = {
             k: (format_si(v, _unit_for(k, r["analysis_kind"])) if isinstance(v, float) else v)
             for k, v in r["measurements"].items()
         }
-        rec = graph.record_simulation(parse_netlist(a.netlist), r)
+        rec = graph.record_simulation(parse_netlist(netlist), r)
         history = {
             "circuit_id": rec["circuit_id"],
             "variants_of_same_topology": len(rec["variants"]),
@@ -263,6 +295,7 @@ def build_tools(
             **r,
             "measurements_readable": pretty,
             "history": history,
+            **({"parts_applied": part_notes} if part_notes else {}),
             "next": "그래프가 필요하면 plot_waveform(run_id), 데이터를 직접 보려면 get_waveform(run_id)",
         }
 
@@ -334,11 +367,16 @@ def build_tools(
         if not ngspice_available():
             raise RuntimeError("ngspice 가 설치되어 있지 않습니다(brew install ngspice).")
         values = sweep_values(a.start, a.stop, a.points, a.log, a.values)
+        netlist, part_notes = LIBRARY.apply_parts(a.netlist, a.parts)
         r = sweep(
-            a.netlist, a.component, values, a.measurement, runs_dir=runs_dir, timeout_s_total=max(timeout_s * 3, 60)
+            netlist, a.component, values, a.measurement, runs_dir=runs_dir, timeout_s_total=max(timeout_s * 3, 60)
         )
-        graph.record_sweep(parse_netlist(a.netlist), r)
-        return {**r, "next": "표가 길면 plot_waveform(run_id) 로 그래프를 만든다"}
+        graph.record_sweep(parse_netlist(netlist), r)
+        return {
+            **r,
+            **({"parts_applied": part_notes} if part_notes else {}),
+            "next": "표가 길면 plot_waveform(run_id) 로 그래프를 만든다",
+        }
 
     # ---- 실험 추적 그래프
     def query_history(a: HistoryArgs) -> Any:
@@ -417,6 +455,13 @@ def build_tools(
         return {"deleted": a.name}
 
     return [
+        Tool(
+            "search_parts",
+            "소자 라이브러리 검색(다이오드·트랜지스터·MOSFET·연산증폭기 모델 카드)",
+            PartSearchArgs,
+            search_parts,
+        ),
+        Tool("get_part", "소자 모델 카드와 연결 예시 가져오기", PartNameArgs, get_part),
         Tool(
             "list_circuits",
             "샘플 회로와 저장된 회로 목록을 본다. 회로를 새로 쓰기 전에 먼저 호출해 비슷한 샘플이 있는지 확인한다.",
@@ -557,6 +602,8 @@ assert SYSTEM_PROMPT_V2 != SYSTEM_PROMPT
 SYSTEM_PROMPTS = {"v1": SYSTEM_PROMPT, "v2": SYSTEM_PROMPT_V2}
 
 TOOL_LABELS = {
+    "search_parts": "소자 라이브러리 검색",
+    "get_part": "소자 모델 가져오기",
     "list_circuits": "회로 목록 확인",
     "get_circuit": "회로 가져오기",
     "check_netlist": "넷리스트 검사",
