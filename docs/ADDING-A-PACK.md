@@ -70,3 +70,7 @@ PACK = Pack(
 - `uv run python scripts/mcp_check.py mypack` (스모크를 팩에 맞게 고친다)
 - 테스트: 가드·도구·팩 로딩 (`tests/test_packs.py` 에 한 줄 추가)
 - README 의 증명 표에 "무엇을 증명하는가" 한 줄, 설계 결정은 `docs/decisions/0NN-*.md`
+
+## 기존 DB 를 붙일 때
+
+운영 중인 DB(예: HR)를 붙일 때의 권장 구성(스냅샷 SQLite + 선별 뷰 + 정식 절차 쓰기 + 로컬 모델 고정)과 "팩으로 되는 것 / 플랫폼을 손대야 하는 것" 은 README 의 [기존 DB 를 붙일 때](../README.md#기존-db-를-붙일-때-예-hr-팩) 절에 있다. 요점: 데이터가 SQLite 파일로 들어오면 팩 폴더 하나로 끝나고, 라이브 복제본에 직접 붙이면 `harness/tools/sql.py` 의 어댑터와 평가 러너의 연결이 방언을 알아야 한다.
