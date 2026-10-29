@@ -21,7 +21,7 @@ def test_service_with_spice_pack(tmp_path, monkeypatch):
     app = create_app(db_path=tmp_path / "svc.db", pack="spice")
     with TestClient(app) as c:
         h = c.get("/health").json()
-        assert h["pack"]["name"] == "spice" and h["tools"] == 17 and "run_simulation" in h["pack"]["tool_labels"]
+        assert h["pack"]["name"] == "spice" and h["tools"] == 18 and "run_simulation" in h["pack"]["tool_labels"]
         tools = c.get("/tools").json()
         assert {t["name"] for t in tools} >= {"run_simulation", "run_sweep", "plot_waveform"} and tools[0]["label"]
         assert c.get("/me").json()["pack"] == "spice"

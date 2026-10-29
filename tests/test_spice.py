@@ -154,7 +154,7 @@ def reg(tmp_path):
 def test_tool_registry_shape(reg):
     names = reg.names()
     assert (
-        len(names) == 17
+        len(names) == 18
         and "run_simulation" in names
         and reg.get("save_circuit").tier == "write"
         and reg.get("delete_circuit").tier == "destructive"

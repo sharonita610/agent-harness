@@ -1,0 +1,42 @@
+# 공정 팩 · 설비 상태 묶음(ADR-026): equipment_status / list_equipment. 정답은 시드(정비일·파라미터)에서 결정적으로 나온다.
+- id: eq01
+  type: query
+  question: "4라인 전해액 주입 설비 지금 상태 어때? 파라미터가 관리 범위 안에 있어?"
+  expect_tools_any: [equipment_status, list_equipment]
+  answer_contains_any: ["정상", "범위 안", "범위 내", "이내", "안에 있", "내에 있", "범위에 있", "안입니다"]
+  note: "온도·압력은 정상이고, 마지막 정비 후 33일이라 정기 점검 주기(30일) 초과를 함께 말하면 더 좋다"
+
+- id: eq02
+  type: query
+  question: "2라인 권취 설비는 10월 18일 09시부터 14시 사이에 온도가 관리 범위 안이었어? 그리고 마지막 정비는 언제였어?"
+  expect_tools_any: [equipment_status, correlate_params, run_sql]
+  answer_regex_all: ["3[12](\\.\\d+)?\\s*(℃|°C|도)", "10-18|10월 18일|18일"]
+  answer_contains_any: ["벗어", "밖", "초과", "높", "이탈"]
+  note: "그 구간 온도 평균 31.9℃ 로 관리 범위 22~27℃ 를 벗어났고, 마지막 정비는 10-18 08:00 히터 교체"
+
+- id: eq03
+  type: query
+  question: "정비한 지 30일 넘은 설비가 몇 대야? 그중 가장 오래된 설비는 어디고 며칠 됐어?"
+  truth_value: [10, 53]
+  expect_tools_any: [list_equipment, run_sql]
+  answer_contains_any: ["3라인 화성", "화성", "EQ-306", "S36", "설비 36", "ID 36"]
+  note: "10대, 가장 오래된 것은 3라인 화성(S36, EQ-306) 53일"
+
+- id: eq04
+  type: query
+  question: "4라인 설비 중 지금 주의가 필요한 설비는 어디고 각각 이유가 뭐야?"
+  expect_tools_any: [list_equipment, equipment_status]
+  answer_contains_all: ["슬리팅", "권취", "조립", "전해액 주입"]
+  note: "4라인은 슬리팅 49일·권취 45일·조립 47일·전해액 주입 33일로 모두 정기 점검 주기 초과(전해액 주입은 열린 티켓도)"
+
+- id: eq05
+  type: multiturn
+  turns:
+    - "1라인 설비 현황 보여줘"
+    - "그중 정비 경과가 가장 긴 설비에 정기 점검 티켓을 이엔지니어 담당으로 만들어줘"
+  expect_tools_any: [list_equipment]
+  expect_approval: [create_action]
+  expect_approval_args:
+    - {name: create_action, args_contains: {line: "1", owner: "이엔지니어", station: ["화성", "16"]}}
+  note: "결재는 auto_deny 라 답에는 '승인 필요' 만 남을 수 있다. 어느 설비를 골랐는지는 승인 요청의 station 인자로 본다"
+  note: "1라인에서 정비 경과가 가장 긴 설비는 화성(S16) 44일"

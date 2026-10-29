@@ -1,0 +1,1152 @@
+{
+  "summary": {
+    "provider": "local",
+    "model": "local-llm",
+    "n": 3,
+    "tag": "equipment-n3",
+    "prompt_version": "v1",
+    "pack": "factory",
+    "tasks_file": "tasks_factory_equipment",
+    "tasks": 5,
+    "runs": 15,
+    "cost_usd": 0.0,
+    "cost_usd_if_hosted": 0.00408,
+    "pass_rate": 0.6,
+    "by_type": {
+      "query": 0.75,
+      "multiturn": 0.0
+    },
+    "avg_steps": 3,
+    "p50_latency_s": 13.5,
+    "p95_latency_s": 21.5,
+    "tokens_per_run": 12342,
+    "generated_at": "2026-10-30T02:28:03",
+    "judge": {
+      "model": "local-llm",
+      "judged": 15,
+      "agree_with_rules": 0.867,
+      "pass_rate": 0.733,
+      "judged_at": "2026-10-30T02:33:21"
+    }
+  },
+  "tasks": [
+    {
+      "id": "eq01",
+      "type": "query",
+      "question": "4라인 전해액 주입 설비 지금 상태 어때? 파라미터가 관리 범위 안에 있어?",
+      "pass_rate": 0.6666666666666666,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "equipment_status"
+          ],
+          "approvals": [],
+          "answer": "4라인 전해액 주입 설비(스테이션 45)는 **주의** 상태입니다.  \n- **파라미터**: 온도 21.87 ℃(20–25 ℃ 범위 안), 압력 95.56 kPa(90–100 kPa 범위 안) 모두 정상.  \n- **최근 24시간 NG율**: 0.95 % (인스펙션 6 866건 중 65건).  \n- **문제점**: 마지막 정비가 33일 전(2026‑09‑24)으로 정기 점검 주기(30일)를 초과하고, “야간 주입 노즐 이물 점검” 티켓이 아직 열려 있음.  \n\n> **출처**: `equipment_status` 조회 결과.",
+          "steps": 2,
+          "latency_s": 10.74,
+          "prompt_tokens": 6695,
+          "completion_tokens": 531,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 6695,
+              "completion_tokens": 531,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "equipment_status",
+              "arguments": {
+                "station": "45",
+                "line": 4
+              },
+              "status": "ok",
+              "result_preview": "{\"station\": \"4라인 전해액 주입(S45)\", \"line\": 4, \"process\": \"전해액 주입\", \"equipment\": {\"id\": 45, \"code\": \"EQ-405\", \"model\": \"FILLING-A2\", \"installed_at\": \"2025-05-26\", \"last_maintenance_at\": \"2026-09-24\", \"days_since_maintenance\": 33}, \"window\": [\"2026-10-27 00:00:00\", \"2026-10-28 00:00:00\"], \"params\": [{\"par"
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq01_run1.jsonl",
+          "trace_summary": {
+            "run_id": "eq01_run1",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 10720,
+            "tool_ms": 14,
+            "human_ms": 0,
+            "total_ms": 10741
+          },
+          "judge": {
+            "pass": true,
+            "reason": "답변에 ‘정상’과 ‘범위 안’이 포함되어 있고 정기 점검 주기 초과도 언급되어 있어 기준을 충족합니다.",
+            "judge_model": "local-llm",
+            "tokens": 841
+          }
+        },
+        {
+          "run": 2,
+          "pass": false,
+          "checks": {
+            "tools_any": true,
+            "answer_contains": false,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "equipment_status"
+          ],
+          "approvals": [],
+          "answer": "4라인 전해액 주입 설비는 **주의** 상태이며, 현재 온도(21.87 ℃)와 압력(95.56 kPa)이 모두 관리 범위(20–25 ℃, 90–100 kPa) 내에 있습니다.  \n- 최근 24시간 NG율: 0.95 % (검사 6,866건 중 65건)  \n- 마지막 정비: 2026‑09‑24 (33일 경과, 30일 주기 초과)  \n- 열린 조치 티켓: 1건 (야간 주입 노즐 이물 점검)  \n(출처: `equipment_status` 결과)",
+          "steps": 2,
+          "latency_s": 9.43,
+          "prompt_tokens": 6689,
+          "completion_tokens": 452,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 6689,
+              "completion_tokens": 452,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "equipment_status",
+              "arguments": {
+                "station": "45"
+              },
+              "status": "ok",
+              "result_preview": "{\"station\": \"4라인 전해액 주입(S45)\", \"line\": 4, \"process\": \"전해액 주입\", \"equipment\": {\"id\": 45, \"code\": \"EQ-405\", \"model\": \"FILLING-A2\", \"installed_at\": \"2025-05-26\", \"last_maintenance_at\": \"2026-09-24\", \"days_since_maintenance\": 33}, \"window\": [\"2026-10-27 00:00:00\", \"2026-10-28 00:00:00\"], \"params\": [{\"par"
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq01_run2.jsonl",
+          "trace_summary": {
+            "run_id": "eq01_run2",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 9420,
+            "tool_ms": 5,
+            "human_ms": 0,
+            "total_ms": 9426
+          },
+          "judge": {
+            "pass": false,
+            "reason": "답변에 ‘정상’이 없고 상태가 ‘주의’로 표시되어 기준을 충족하지 못했습니다",
+            "judge_model": "local-llm",
+            "tokens": 787
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "equipment_status"
+          ],
+          "approvals": [],
+          "answer": "4라인 전해액 주입 설비(스테이션 45)는 최근 24시간 기준으로 **정상** 범위 내에 있습니다.  \n- **압력**: 평균 94.96 kPa, 최신 95.56 kPa (범위 90–100 kPa) → 정상  \n- **온도**: 평균 21.98 °C, 최신 21.87 °C (범위 20–25 °C) → 정상  \n\n하지만 **마지막 정비가 33일 전**(2026‑09‑24)으로 정기 점검 주기 30일을 초과하고, **열린 조치 티켓(이물 점검)** 이 하나 남아 있어 주의가 필요합니다.  \n\n> **결론**: 파라미터는 관리 범위 안에 있지만, 정비 주기 초과와 열린 티켓으로 인해 주의가 필요합니다.",
+          "steps": 2,
+          "latency_s": 15.52,
+          "prompt_tokens": 6689,
+          "completion_tokens": 787,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 6689,
+              "completion_tokens": 787,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "equipment_status",
+              "arguments": {
+                "station": "45"
+              },
+              "status": "ok",
+              "result_preview": "{\"station\": \"4라인 전해액 주입(S45)\", \"line\": 4, \"process\": \"전해액 주입\", \"equipment\": {\"id\": 45, \"code\": \"EQ-405\", \"model\": \"FILLING-A2\", \"installed_at\": \"2025-05-26\", \"last_maintenance_at\": \"2026-09-24\", \"days_since_maintenance\": 33}, \"window\": [\"2026-10-27 00:00:00\", \"2026-10-28 00:00:00\"], \"params\": [{\"par"
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq01_run3.jsonl",
+          "trace_summary": {
+            "run_id": "eq01_run3",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 15510,
+            "tool_ms": 4,
+            "human_ms": 0,
+            "total_ms": 15518
+          },
+          "judge": {
+            "pass": true,
+            "reason": "답변에 '정상'과 '범위 내'가 포함되어 있고 정비 주기 초과 언급이 있어 기준 충족",
+            "judge_model": "local-llm",
+            "tokens": 783
+          }
+        }
+      ]
+    },
+    {
+      "id": "eq02",
+      "type": "query",
+      "question": "2라인 권취 설비는 10월 18일 09시부터 14시 사이에 온도가 관리 범위 안이었어? 그리고 마지막 정비는 언제였어?",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains": true,
+            "answer_patterns": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "equipment_status"
+          ],
+          "approvals": [],
+          "answer": "**결론**  \n- 10월 18일 09:00 ~ 14:00 간 2라인 권취 설비의 온도는 평균 31.94 ℃로 관리 범위 22 ~ 27 ℃를 초과했습니다.  \n- 마지막 정비는 **2026‑10‑18 08:00**에 히터 교체가 이루어졌으며, 이후 9일이 경과했습니다.  \n\n**근거**  \n- `equipment_status` 호출 결과:  \n  - `temp_c` 평균 31.94 ℃ (범위 22–27 ℃ → “높음”)  \n  - `last_maintenance_at`: 2026‑10‑18 (9일 경과)  \n- 해당 구간에 열려 있는 조치 티켓이 5건 존재합니다.",
+          "steps": 2,
+          "latency_s": 10.52,
+          "prompt_tokens": 7024,
+          "completion_tokens": 463,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 7024,
+              "completion_tokens": 463,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "equipment_status",
+              "arguments": {
+                "station": "2라인 권취",
+                "line": 2,
+                "from_ts": "2026-10-18 09:00",
+                "to_ts": "2026-10-18 14:00"
+              },
+              "status": "ok",
+              "result_preview": "{\"station\": \"2라인 권취(S23)\", \"line\": 2, \"process\": \"권취\", \"equipment\": {\"id\": 23, \"code\": \"EQ-203\", \"model\": \"WINDING-C3\", \"installed_at\": \"2025-11-22\", \"last_maintenance_at\": \"2026-10-18\", \"days_since_maintenance\": 9}, \"window\": [\"2026-10-18 09:00:00\", \"2026-10-18 14:00:00\"], \"params\": [{\"param\": \"tem"
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq02_run1.jsonl",
+          "trace_summary": {
+            "run_id": "eq02_run1",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 10510,
+            "tool_ms": 10,
+            "human_ms": 0,
+            "total_ms": 10521
+          },
+          "judge": {
+            "pass": true,
+            "reason": "답변에 ‘초과’와 ‘높음’이 포함되어 관리 범위 벗어남을 명시하고, 마지막 정비 시각이 정확히 언급되어 기준을 충족했습니다.",
+            "judge_model": "local-llm",
+            "tokens": 799
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains": true,
+            "answer_patterns": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "equipment_status"
+          ],
+          "approvals": [],
+          "answer": "온도가 관리 범위 안이 아니었고, 마지막 정비는 2026-10-18에 수행되었습니다.  \n\n- **온도 상태**: 2026‑10‑18 09:00 ~ 14:00 동안 평균 온도 31.94 ℃(최신 31.87 ℃)로 관리 범위 22 ~ 27 ℃를 초과(“높음”).  \n- **마지막 정비**: 2026‑10‑18 08:00 에 “히터 교체” 정비가 진행되었으며, 이후 9일이 경과했습니다.  \n- **추가 정보**: 해당 구간에 1,737건 검사 중 113건 NG(6.51 %) 발생, 열려 있는 조치 티켓 5건이 존재합니다.",
+          "steps": 2,
+          "latency_s": 11.04,
+          "prompt_tokens": 7024,
+          "completion_tokens": 515,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 7024,
+              "completion_tokens": 515,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "equipment_status",
+              "arguments": {
+                "station": "2라인 권취",
+                "line": 2,
+                "from_ts": "2026-10-18 09:00",
+                "to_ts": "2026-10-18 14:00"
+              },
+              "status": "ok",
+              "result_preview": "{\"station\": \"2라인 권취(S23)\", \"line\": 2, \"process\": \"권취\", \"equipment\": {\"id\": 23, \"code\": \"EQ-203\", \"model\": \"WINDING-C3\", \"installed_at\": \"2025-11-22\", \"last_maintenance_at\": \"2026-10-18\", \"days_since_maintenance\": 9}, \"window\": [\"2026-10-18 09:00:00\", \"2026-10-18 14:00:00\"], \"params\": [{\"param\": \"tem"
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq02_run2.jsonl",
+          "trace_summary": {
+            "run_id": "eq02_run2",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 11030,
+            "tool_ms": 3,
+            "human_ms": 0,
+            "total_ms": 11038
+          },
+          "judge": {
+            "pass": true,
+            "reason": "답변에 ‘초과’와 ‘높음’이 포함되어 있고, 마지막 정비 시각이 기준과 일치합니다.",
+            "judge_model": "local-llm",
+            "tokens": 844
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains": true,
+            "answer_patterns": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "equipment_status"
+          ],
+          "approvals": [],
+          "answer": "**결론**  \n2라인 권취(스테이션 23)에서 2026‑10‑18 09:00 ~ 14:00 사이 온도는 관리 범위(22 ~ 27 ℃)를 초과했습니다. 마지막 정비는 2026‑10‑18 08:00 에 히터 교체가 이루어졌습니다.  \n\n**근거**  \n- `equipment_status` 결과:  \n  - `temp_c` 평균 31.94 ℃ (범위 22 ~ 27 ℃ → **높음**)  \n  - `last_maintenance_at`: 2026‑10‑18 (9 일 전)  \n  - 정비 기록: 2026‑10‑18 08:00 히터 교체.",
+          "steps": 2,
+          "latency_s": 14.91,
+          "prompt_tokens": 7021,
+          "completion_tokens": 714,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 7021,
+              "completion_tokens": 714,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "equipment_status",
+              "arguments": {
+                "station": "23",
+                "line": 2,
+                "from_ts": "2026-10-18 09:00",
+                "to_ts": "2026-10-18 14:00"
+              },
+              "status": "ok",
+              "result_preview": "{\"station\": \"2라인 권취(S23)\", \"line\": 2, \"process\": \"권취\", \"equipment\": {\"id\": 23, \"code\": \"EQ-203\", \"model\": \"WINDING-C3\", \"installed_at\": \"2025-11-22\", \"last_maintenance_at\": \"2026-10-18\", \"days_since_maintenance\": 9}, \"window\": [\"2026-10-18 09:00:00\", \"2026-10-18 14:00:00\"], \"params\": [{\"param\": \"tem"
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq02_run3.jsonl",
+          "trace_summary": {
+            "run_id": "eq02_run3",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 14900,
+            "tool_ms": 6,
+            "human_ms": 0,
+            "total_ms": 14909
+          },
+          "judge": {
+            "pass": true,
+            "reason": "답변에 온도 이탈과 마지막 정비 시각이 모두 포함되어 있습니다.",
+            "judge_model": "local-llm",
+            "tokens": 763
+          }
+        }
+      ]
+    },
+    {
+      "id": "eq03",
+      "type": "query",
+      "question": "정비한 지 30일 넘은 설비가 몇 대야? 그중 가장 오래된 설비는 어디고 며칠 됐어?",
+      "pass_rate": 0.3333333333333333,
+      "runs": [
+        {
+          "run": 1,
+          "pass": false,
+          "checks": {
+            "truth_in_answer": false,
+            "tools_any": true,
+            "answer_contains": true,
+            "finished": true
+          },
+          "truth": [
+            10,
+            53
+          ],
+          "executed_tools": [
+            "list_equipment"
+          ],
+          "approvals": [],
+          "answer": "**정비 후 30일 초과 설비 수**: 6대  \n**가장 오래된 설비**: 3라인 화성(S36) – 마지막 정비 이후 53일이 지났습니다.  \n\n(데이터는 `list_equipment` 호출 결과에서 `days_since_maintenance` 값이 30을 초과한 항목을 기준으로 계산했습니다.)",
+          "steps": 2,
+          "latency_s": 10.18,
+          "prompt_tokens": 7986,
+          "completion_tokens": 364,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 7986,
+              "completion_tokens": 364,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_equipment",
+              "arguments": {
+                "line": null
+              },
+              "status": "ok",
+              "result_preview": "{\"window\": [\"2026-10-27 00:00:00\", \"2026-10-28 00:00:00\"], \"count\": 24, \"attention\": [\"1라인 화성(S16)\", \"2라인 권취(S23)\", \"2라인 전해액 주입(S25)\", \"3라인 전극 코팅(S31)\", \"3라인 슬리팅(S32)\", \"3라인 권취(S33)\", \"3라인 화성(S36)\", \"4라인 슬리팅(S42)\", \"4라인 권취(S43)\", \"4라인 조립(S44)\", \"4라인 전해액 주입(S45)\"], \"equipment\": [{\"station\": \"1라인 전극 코"
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq03_run1.jsonl",
+          "trace_summary": {
+            "run_id": "eq03_run1",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 10140,
+            "tool_ms": 41,
+            "human_ms": 0,
+            "total_ms": 10181
+          },
+          "judge": {
+            "pass": false,
+            "reason": "정비 후 30일 초과 설비 수가 10이 아니라 6으로 잘못 기재되었습니다.",
+            "judge_model": "local-llm",
+            "tokens": 666
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "truth_in_answer": true,
+            "tools_any": true,
+            "answer_contains": true,
+            "finished": true
+          },
+          "truth": [
+            10,
+            53
+          ],
+          "executed_tools": [
+            "list_equipment",
+            "list_equipment",
+            "describe_table",
+            "describe_table",
+            "run_sql"
+          ],
+          "approvals": [],
+          "answer": "- **정비한 지 30일 넘은 설비 수**: 10대  \n- **가장 오래된 설비**: 3라인 화성(S36, EQ‑306) – 53일 전 정비  \n\n(데이터는 2026‑10‑27 기준, `equipment` 테이블의 `last_maintenance_at` 를 기준으로 계산했습니다.)",
+          "steps": 6,
+          "latency_s": 41.59,
+          "prompt_tokens": 37670,
+          "completion_tokens": 1621,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 37670,
+              "completion_tokens": 1621,
+              "calls": 6
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_equipment",
+              "arguments": {
+                "line": null
+              },
+              "status": "ok",
+              "result_preview": "{\"window\": [\"2026-10-27 00:00:00\", \"2026-10-28 00:00:00\"], \"count\": 24, \"attention\": [\"1라인 화성(S16)\", \"2라인 권취(S23)\", \"2라인 전해액 주입(S25)\", \"3라인 전극 코팅(S31)\", \"3라인 슬리팅(S32)\", \"3라인 권취(S33)\", \"3라인 화성(S36)\", \"4라인 슬리팅(S42)\", \"4라인 권취(S43)\", \"4라인 조립(S44)\", \"4라인 전해액 주입(S45)\"], \"equipment\": [{\"station\": \"1라인 전극 코"
+            },
+            {
+              "step": 2,
+              "name": "list_equipment",
+              "arguments": {
+                "line": null
+              },
+              "status": "ok",
+              "result_preview": "{\"window\": [\"2026-10-27 00:00:00\", \"2026-10-28 00:00:00\"], \"count\": 24, \"attention\": [\"1라인 화성(S16)\", \"2라인 권취(S23)\", \"2라인 전해액 주입(S25)\", \"3라인 전극 코팅(S31)\", \"3라인 슬리팅(S32)\", \"3라인 권취(S33)\", \"3라인 화성(S36)\", \"4라인 슬리팅(S42)\", \"4라인 권취(S43)\", \"4라인 조립(S44)\", \"4라인 전해액 주입(S45)\"], \"equipment\": [{\"station\": \"1라인 전극 코"
+            },
+            {
+              "step": 3,
+              "name": "describe_table",
+              "arguments": {
+                "table": "equipment"
+              },
+              "status": "ok",
+              "result_preview": "{\"table\": \"equipment\", \"columns\": [{\"name\": \"id\", \"type\": \"INTEGER\"}, {\"name\": \"station_id\", \"type\": \"INTEGER\"}, {\"name\": \"code\", \"type\": \"TEXT\"}, {\"name\": \"model\", \"type\": \"TEXT\"}, {\"name\": \"installed_at\", \"type\": \"TEXT\"}, {\"name\": \"last_maintenance_at\", \"type\": \"TEXT\"}], \"sample_rows\": [{\"id\": 11,"
+            },
+            {
+              "step": 4,
+              "name": "describe_table",
+              "arguments": {
+                "table": "maintenance"
+              },
+              "status": "ok",
+              "result_preview": "{\"table\": \"maintenance\", \"columns\": [{\"name\": \"id\", \"type\": \"INTEGER\"}, {\"name\": \"equipment_id\", \"type\": \"INTEGER\"}, {\"name\": \"ts\", \"type\": \"TEXT\"}, {\"name\": \"kind\", \"type\": \"TEXT\"}, {\"name\": \"note\", \"type\": \"TEXT\"}], \"sample_rows\": [{\"id\": 1, \"equipment_id\": 23, \"ts\": \"2026-10-18 08:00:00\", \"kind\":"
+            },
+            {
+              "step": 5,
+              "name": "run_sql",
+              "arguments": {
+                "sql": "SELECT e.id, e.code, e.station_id, e.last_maintenance_at, julianday('2026-10-27') - julianday(e.last_maintenance_at) AS days_since_maintenance FROM equipment e ORDER BY days_since_maintenance DESC LIMIT 100",
+                "limit": 100
+              },
+              "status": "ok",
+              "result_preview": "{\"columns\": [\"id\", \"code\", \"station_id\", \"last_maintenance_at\", \"days_since_maintenance\"], \"rows\": [{\"id\": 36, \"code\": \"EQ-306\", \"station_id\": 36, \"last_maintenance_at\": \"2026-09-04\", \"days_since_maintenance\": 53.0}, {\"id\": 32, \"code\": \"EQ-302\", \"station_id\": 32, \"last_maintenance_at\": \"2026-09-05\","
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq03_run2.jsonl",
+          "trace_summary": {
+            "run_id": "eq03_run2",
+            "spans": 12,
+            "llm_calls": 6,
+            "tool_calls": 5,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 41490,
+            "tool_ms": 88,
+            "human_ms": 0,
+            "total_ms": 41590
+          },
+          "judge": {
+            "pass": true,
+            "reason": "답변에 정비한 지 30일 넘은 설비 수 10대와 가장 오래된 설비 3라인 화성(S36) 53일이 모두 포함되어 있어 기준을 충족합니다.",
+            "judge_model": "local-llm",
+            "tokens": 706
+          }
+        },
+        {
+          "run": 3,
+          "pass": false,
+          "checks": {
+            "truth_in_answer": true,
+            "tools_any": true,
+            "answer_contains": false,
+            "finished": true
+          },
+          "truth": [
+            10,
+            53
+          ],
+          "executed_tools": [
+            "list_tables",
+            "describe_table",
+            "describe_table",
+            "run_sql",
+            "run_sql",
+            "run_sql"
+          ],
+          "approvals": [],
+          "answer": "정비가 30일 이상 지난 설비는 **10대**입니다.  \n가장 오래된 설비는 **EQ‑306**(설비 ID 36)이며, 마지막 정비는 **2026‑09‑04**에 수행되어 **53일**이 지났습니다.",
+          "steps": 7,
+          "latency_s": 21.51,
+          "prompt_tokens": 26634,
+          "completion_tokens": 1004,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 26634,
+              "completion_tokens": 1004,
+              "calls": 7
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_tables",
+              "arguments": {},
+              "status": "ok",
+              "result_preview": "[{\"table\": \"actions\", \"rows\": 7}, {\"table\": \"alert_rules\", \"rows\": 2}, {\"table\": \"equipment\", \"rows\": 24}, {\"table\": \"inspections\", \"rows\": 8064}, {\"table\": \"lines\", \"rows\": 4}, {\"table\": \"lots\", \"rows\": 168}, {\"table\": \"maintenance\", \"rows\": 4}, {\"table\": \"ng_events\", \"rows\": 24542}, {\"table\": \"par"
+            },
+            {
+              "step": 2,
+              "name": "describe_table",
+              "arguments": {
+                "table": "maintenance"
+              },
+              "status": "ok",
+              "result_preview": "{\"table\": \"maintenance\", \"columns\": [{\"name\": \"id\", \"type\": \"INTEGER\"}, {\"name\": \"equipment_id\", \"type\": \"INTEGER\"}, {\"name\": \"ts\", \"type\": \"TEXT\"}, {\"name\": \"kind\", \"type\": \"TEXT\"}, {\"name\": \"note\", \"type\": \"TEXT\"}], \"sample_rows\": [{\"id\": 1, \"equipment_id\": 23, \"ts\": \"2026-10-18 08:00:00\", \"kind\":"
+            },
+            {
+              "step": 3,
+              "name": "describe_table",
+              "arguments": {
+                "table": "equipment"
+              },
+              "status": "ok",
+              "result_preview": "{\"table\": \"equipment\", \"columns\": [{\"name\": \"id\", \"type\": \"INTEGER\"}, {\"name\": \"station_id\", \"type\": \"INTEGER\"}, {\"name\": \"code\", \"type\": \"TEXT\"}, {\"name\": \"model\", \"type\": \"TEXT\"}, {\"name\": \"installed_at\", \"type\": \"TEXT\"}, {\"name\": \"last_maintenance_at\", \"type\": \"TEXT\"}], \"sample_rows\": [{\"id\": 11,"
+            },
+            {
+              "step": 4,
+              "name": "run_sql",
+              "arguments": {
+                "sql": "SELECT id, code, last_maintenance_at, julianday('2026-10-27') - julianday(last_maintenance_at) AS days_since FROM equipment WHERE julianday('2026-10-27') - julianday(last_maintenance_at) > 30 ORDER BY days_since DESC LIMIT 1;",
+                "limit": 10
+              },
+              "status": "ok",
+              "result_preview": "{\"columns\": [\"id\", \"code\", \"last_maintenance_at\", \"days_since\"], \"rows\": [{\"id\": 36, \"code\": \"EQ-306\", \"last_maintenance_at\": \"2026-09-04\", \"days_since\": 53.0}], \"row_count\": 1, \"truncated\": false, \"sql_executed\": \"SELECT id, code, last_maintenance_at, julianday('2026-10-27') - julianday(last_mainte"
+            },
+            {
+              "step": 5,
+              "name": "run_sql",
+              "arguments": {
+                "sql": "SELECT COUNT(*) AS cnt FROM equipment WHERE julianday('2026-10-27') - julianday(last_maintenance_at) > 30;",
+                "limit": 10
+              },
+              "status": "ok",
+              "result_preview": "{\"columns\": [\"cnt\"], \"rows\": [{\"cnt\": 10}], \"row_count\": 1, \"truncated\": false, \"sql_executed\": \"SELECT COUNT(*) AS cnt FROM equipment WHERE julianday('2026-10-27') - julianday(last_maintenance_at) > 30 LIMIT 10\"}"
+            },
+            {
+              "step": 6,
+              "name": "run_sql",
+              "arguments": {
+                "sql": "SELECT id, code, last_maintenance_at, julianday('2026-10-27') - julianday(last_maintenance_at) AS days_since FROM equipment WHERE julianday('2026-10-27') - julianday(last_maintenance_at) > 30 ORDER BY days_since DESC LIMIT 5;",
+                "limit": 10
+              },
+              "status": "ok",
+              "result_preview": "{\"columns\": [\"id\", \"code\", \"last_maintenance_at\", \"days_since\"], \"rows\": [{\"id\": 36, \"code\": \"EQ-306\", \"last_maintenance_at\": \"2026-09-04\", \"days_since\": 53.0}, {\"id\": 32, \"code\": \"EQ-302\", \"last_maintenance_at\": \"2026-09-05\", \"days_since\": 52.0}, {\"id\": 42, \"code\": \"EQ-402\", \"last_maintenance_at\": "
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq03_run3.jsonl",
+          "trace_summary": {
+            "run_id": "eq03_run3",
+            "spans": 14,
+            "llm_calls": 7,
+            "tool_calls": 6,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 21440,
+            "tool_ms": 47,
+            "human_ms": 0,
+            "total_ms": 21509
+          },
+          "judge": {
+            "pass": false,
+            "reason": "답변에 '3라인 화성'이 포함되지 않아 기준을 충족하지 못했습니다",
+            "judge_model": "local-llm",
+            "tokens": 709
+          }
+        }
+      ]
+    },
+    {
+      "id": "eq04",
+      "type": "query",
+      "question": "4라인 설비 중 지금 주의가 필요한 설비는 어디고 각각 이유가 뭐야?",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "list_equipment"
+          ],
+          "approvals": [],
+          "answer": "**4라인에서 주의가 필요한 설비**\n\n| 설비 | 이유 |\n|------|------|\n| 슬리팅(S42) | 마지막 정비 이후 49일이 지나 정기 점검 주기(30일)를 초과 |\n| 권취(S43) | 마지막 정비 이후 45일이 지나 정기 점검 주기(30일)를 초과 |\n| 조립(S44) | 마지막 정비 이후 47일이 지나 정기 점검 주기(30일)를 초과 |\n| 전해액 주입(S45) | 마지막 정비 이후 33일이 지나 정기 점검 주기(30일)를 초과하고, 현재 열려 있는 조치 티켓이 1건 존재 |\n\n> **주의** : 정기 점검 주기 초과(30일) 또는 열린 티켓이 있는 설비는 ‘주의’ 상태로 표시됩니다.",
+          "steps": 2,
+          "latency_s": 11.03,
+          "prompt_tokens": 6903,
+          "completion_tokens": 509,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 6903,
+              "completion_tokens": 509,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_equipment",
+              "arguments": {
+                "line": 4
+              },
+              "status": "ok",
+              "result_preview": "{\"window\": [\"2026-10-27 00:00:00\", \"2026-10-28 00:00:00\"], \"count\": 6, \"attention\": [\"4라인 슬리팅(S42)\", \"4라인 권취(S43)\", \"4라인 조립(S44)\", \"4라인 전해액 주입(S45)\"], \"equipment\": [{\"station\": \"4라인 전극 코팅(S41)\", \"line\": 4, \"process\": \"전극 코팅\", \"code\": \"EQ-401\", \"days_since_maintenance\": 21, \"out_of_range\": [], \"open_"
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq04_run1.jsonl",
+          "trace_summary": {
+            "run_id": "eq04_run1",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 11010,
+            "tool_ms": 19,
+            "human_ms": 0,
+            "total_ms": 11027
+          },
+          "judge": {
+            "pass": true,
+            "reason": "답변에 슬리팅, 권취, 조립, 전해액 주입이 모두 포함되고, 각 설비의 정기 점검 주기 초과 이유가 명시되어 있어 기준을 충족합니다.",
+            "judge_model": "local-llm",
+            "tokens": 813
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "list_equipment"
+          ],
+          "approvals": [],
+          "answer": "**주의가 필요한 4라인 설비**\n\n| 설비 | 이유 |\n|------|------|\n| 4라인 슬리팅(S42) | 마지막 정비 이후 49일이 지나 정기 점검 주기(30일)를 초과 |\n| 4라인 권취(S43) | 마지막 정비 이후 45일이 지나 정기 점검 주기(30일)를 초과 |\n| 4라인 조립(S44) | 마지막 정비 이후 47일이 지나 정기 점검 주기(30일)를 초과 |\n| 4라인 전해액 주입(S45) | 마지막 정비 이후 33일이 지나 정기 점검 주기(30일)를 초과하고, 현재 열려 있는 조치 티켓 1건이 있음 |\n\n> **근거**: `list_equipment` 결과에서 `verdict`가 “주의”인 설비는 정기 점검 주기 초과(>30일) 또는 열려 있는 티켓이 있는 경우를 표시합니다. 4라인 전해액 주입은 두 가지 모두 충족합니다.",
+          "steps": 2,
+          "latency_s": 13.53,
+          "prompt_tokens": 6903,
+          "completion_tokens": 681,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 6903,
+              "completion_tokens": 681,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_equipment",
+              "arguments": {
+                "line": 4
+              },
+              "status": "ok",
+              "result_preview": "{\"window\": [\"2026-10-27 00:00:00\", \"2026-10-28 00:00:00\"], \"count\": 6, \"attention\": [\"4라인 슬리팅(S42)\", \"4라인 권취(S43)\", \"4라인 조립(S44)\", \"4라인 전해액 주입(S45)\"], \"equipment\": [{\"station\": \"4라인 전극 코팅(S41)\", \"line\": 4, \"process\": \"전극 코팅\", \"code\": \"EQ-401\", \"days_since_maintenance\": 21, \"out_of_range\": [], \"open_"
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq04_run2.jsonl",
+          "trace_summary": {
+            "run_id": "eq04_run2",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 13520,
+            "tool_ms": 6,
+            "human_ms": 0,
+            "total_ms": 13531
+          },
+          "judge": {
+            "pass": true,
+            "reason": "답변에 요구된 모든 설비명과 초과 이유가 포함되어 있으며, 승인 요청이 필요 없으므로 통과",
+            "judge_model": "local-llm",
+            "tokens": 868
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "tools_any": true,
+            "answer_contains_all": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "list_equipment"
+          ],
+          "approvals": [],
+          "answer": "**주의가 필요한 설비 (4라인)**  \n\n| 설비 | 최근 정비 경과 | 주의 사유 |\n|------|---------------|-----------|\n| 4라인 슬리팅 (S42) | 49일 | 정기 점검 주기(30일) 초과 |\n| 4라인 권취 (S43) | 45일 | 정기 점검 주기(30일) 초과 |\n| 4라인 조립 (S44) | 47일 | 정기 점검 주기(30일) 초과 |\n| 4라인 전해액 주입 (S45) | 33일 | 정기 점검 주기(30일) 초과 + 열린 조치 티켓 1건 |\n\n> **근거**: `list_equipment` 결과에 따르면, 위 설비들은 “주의” 판정이며, 주된 원인은 정기 점검 주기 초과(>30일)이며, 전해액 주입 설비는 추가로 열린 티켓이 존재합니다.",
+          "steps": 2,
+          "latency_s": 9.95,
+          "prompt_tokens": 6903,
+          "completion_tokens": 486,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 6903,
+              "completion_tokens": 486,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_equipment",
+              "arguments": {
+                "line": 4
+              },
+              "status": "ok",
+              "result_preview": "{\"window\": [\"2026-10-27 00:00:00\", \"2026-10-28 00:00:00\"], \"count\": 6, \"attention\": [\"4라인 슬리팅(S42)\", \"4라인 권취(S43)\", \"4라인 조립(S44)\", \"4라인 전해액 주입(S45)\"], \"equipment\": [{\"station\": \"4라인 전극 코팅(S41)\", \"line\": 4, \"process\": \"전극 코팅\", \"code\": \"EQ-401\", \"days_since_maintenance\": 21, \"out_of_range\": [], \"open_"
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq04_run3.jsonl",
+          "trace_summary": {
+            "run_id": "eq04_run3",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 9930,
+            "tool_ms": 6,
+            "human_ms": 0,
+            "total_ms": 9947
+          },
+          "judge": {
+            "pass": true,
+            "reason": "답변에 요구된 모든 설비와 초과 점검 사유가 포함되어 있습니다.",
+            "judge_model": "local-llm",
+            "tokens": 846
+          }
+        }
+      ]
+    },
+    {
+      "id": "eq05",
+      "type": "multiturn",
+      "question": "1라인 설비 현황 보여줘 → 그중 정비 경과가 가장 긴 설비에 정기 점검 티켓을 이엔지니어 담당으로 만들어줘",
+      "pass_rate": 0.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": false,
+          "checks": {
+            "tools_any": true,
+            "approval_requested": true,
+            "approval_args": true,
+            "answer_contains": false,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "list_equipment"
+          ],
+          "approvals": [
+            "create_action"
+          ],
+          "answer": "정기 점검 티켓을 생성하려면 **공정 엔지니어(이엔지니어) 결재**가 필요합니다.  \n현재 승인 절차가 완료되지 않았으므로 티켓은 생성되지 않았습니다.  \n\n**다음 단계**  \n1. 이엔지니어에게 티켓 생성 요청을 전달하고 결재를 받으세요.  \n2. 결재가 완료되면 `create_action` 함수를 다시 호출해 티켓을 생성할 수 있습니다.  \n\n필요한 문서나 승인 절차가 궁금하시면 알려 주세요.",
+          "steps": 4,
+          "latency_s": 17.54,
+          "prompt_tokens": 13681,
+          "completion_tokens": 785,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 13681,
+              "completion_tokens": 785,
+              "calls": 4
+            }
+          },
+          "routes": [],
+          "turns": [
+            {
+              "question": "1라인 설비 현황 보여줘",
+              "answer": "**1라인 설비 현황 (2026‑10‑27 기준)**  \n\n| 스테이션 | 설비 코드 | 정비 경과(일) | NG율(%) | 상태 | 주요 이슈 |\n|----------|-----------|--------------|--------|------|-----------|\n| 전극 코팅(S11) | EQ‑101 | 27 | 1.21 | 정상 | – |\n| 슬리팅(S12) | EQ‑102 | 21 | 1.04 | 정상 | – |\n| 권취(S13) | EQ‑103 | 24 | 1.39 | 정상 | – |\n| 조립(S14) | EQ‑104 | 21 | 1.08 | 정상 | – |\n| 전해액 주입(S15) | EQ‑105 | 20 | 0.90 | 정상 | – |\n| 화성(S16) | EQ‑106 | 44 | 0.80 | **주의** | 정기 점검 주기 30일 초과 (마지막 정비 후 44일) |\n\n- **정상** 설비는 모두 관리 범위 이탈이 없으며, 최근 24시간 NG율이 1.5% 이하입니다.  \n- **주의** 설비는 화성(S16)으로, 정기 점검 주기가 초과되어 점검을 권고합니다.  \n- 현재 열려 있는 티켓은 없으며, 모든 설비의 파라미터는 관리 범위 내에 있습니다.",
+              "steps": 2,
+              "latency_s": 10.99,
+              "stopped": "final"
+            },
+            {
+              "question": "그중 정비 경과가 가장 긴 설비에 정기 점검 티켓을 이엔지니어 담당으로 만들어줘",
+              "answer": "정기 점검 티켓을 생성하려면 **공정 엔지니어(이엔지니어) 결재**가 필요합니다.  \n현재 승인 절차가 완료되지 않았으므로 티켓은 생성되지 않았습니다.  \n\n**다음 단계**  \n1. 이엔지니어에게 티켓 생성 요청을 전달하고 결재를 받으세요.  \n2. 결재가 완료되면 `create_action` 함수를 다시 호출해 티켓을 생성할 수 있습니다.  \n\n필요한 문서나 승인 절차가 궁금하시면 알려 주세요.",
+              "steps": 2,
+              "latency_s": 6.55,
+              "stopped": "final"
+            }
+          ],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_equipment",
+              "arguments": {
+                "line": 1
+              },
+              "status": "ok",
+              "result_preview": "{\"window\": [\"2026-10-27 00:00:00\", \"2026-10-28 00:00:00\"], \"count\": 6, \"attention\": [\"1라인 화성(S16)\"], \"equipment\": [{\"station\": \"1라인 전극 코팅(S11)\", \"line\": 1, \"process\": \"전극 코팅\", \"code\": \"EQ-101\", \"days_since_maintenance\": 27, \"out_of_range\": [], \"open_tickets\": 0, \"ng_rate_pct\": 1.21, \"verdict\": \"정상\","
+            },
+            {
+              "step": 1,
+              "name": "create_action",
+              "arguments": {
+                "line": 1,
+                "station": "화성",
+                "owner": "이엔지니어"
+              },
+              "status": "not_approved"
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq05_run1.jsonl",
+          "trace_summary": {
+            "run_id": "eq05_run1",
+            "spans": 8,
+            "llm_calls": 4,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 1,
+            "llm_ms": 17510,
+            "tool_ms": 17,
+            "human_ms": 0,
+            "total_ms": 10989
+          },
+          "judge": {
+            "pass": false,
+            "reason": "답변에 '화성'이 포함되지 않아 기준을 충족하지 못했습니다",
+            "judge_model": "local-llm",
+            "tokens": 919
+          }
+        },
+        {
+          "run": 2,
+          "pass": false,
+          "checks": {
+            "tools_any": true,
+            "approval_requested": true,
+            "approval_args": true,
+            "answer_contains": false,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "list_equipment"
+          ],
+          "approvals": [
+            "create_action"
+          ],
+          "answer": "죄송합니다. 정기 점검 티켓 생성은 엔지니어 결재가 필요한 작업이므로, 현재 승인되지 않았습니다.  \n**대안**  \n1. **승인 요청**: 이엔지니어에게 티켓 생성 요청을 전달해 결재를 받으세요.  \n2. **수동 생성**: 승인 후 `create_action`을 다시 호출해 티켓을 생성합니다.  \n\n필요하신 절차나 문서가 있으면 알려드리겠습니다.",
+          "steps": 4,
+          "latency_s": 13.98,
+          "prompt_tokens": 13419,
+          "completion_tokens": 665,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 13419,
+              "completion_tokens": 665,
+              "calls": 4
+            }
+          },
+          "routes": [],
+          "turns": [
+            {
+              "question": "1라인 설비 현황 보여줘",
+              "answer": "**1라인 설비 현황**  \n- **화성(S16)**: **주의** (마지막 정비 이후 44일, 정기 점검 주기 30일 초과)  \n- 나머지 5개 설비(전극 코팅, 슬리팅, 권취, 조립, 전해액 주입): 정상  \n\n**근거**  \n- `list_equipment` 결과:  \n  - `station: \"1라인 화성(S16)\"`, `days_since_maintenance: 44`, `verdict: \"주의\"`, `issues: [\"정기 점검 주기 30일 초과(마지막 정비 후 44일)\"]`  \n  - 다른 설비는 `verdict: \"정상\"`이며 `days_since_maintenance`가 20–27일 사이.",
+              "steps": 2,
+              "latency_s": 7.21,
+              "stopped": "final"
+            },
+            {
+              "question": "그중 정비 경과가 가장 긴 설비에 정기 점검 티켓을 이엔지니어 담당으로 만들어줘",
+              "answer": "죄송합니다. 정기 점검 티켓 생성은 엔지니어 결재가 필요한 작업이므로, 현재 승인되지 않았습니다.  \n**대안**  \n1. **승인 요청**: 이엔지니어에게 티켓 생성 요청을 전달해 결재를 받으세요.  \n2. **수동 생성**: 승인 후 `create_action`을 다시 호출해 티켓을 생성합니다.  \n\n필요하신 절차나 문서가 있으면 알려드리겠습니다.",
+              "steps": 2,
+              "latency_s": 6.77,
+              "stopped": "final"
+            }
+          ],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_equipment",
+              "arguments": {
+                "line": 1
+              },
+              "status": "ok",
+              "result_preview": "{\"window\": [\"2026-10-27 00:00:00\", \"2026-10-28 00:00:00\"], \"count\": 6, \"attention\": [\"1라인 화성(S16)\"], \"equipment\": [{\"station\": \"1라인 전극 코팅(S11)\", \"line\": 1, \"process\": \"전극 코팅\", \"code\": \"EQ-101\", \"days_since_maintenance\": 27, \"out_of_range\": [], \"open_tickets\": 0, \"ng_rate_pct\": 1.21, \"verdict\": \"정상\","
+            },
+            {
+              "step": 1,
+              "name": "create_action",
+              "arguments": {
+                "line": 1,
+                "station": "화성(S16)",
+                "owner": "이엔지니어",
+                "description": "정기 점검 티켓 생성"
+              },
+              "status": "not_approved"
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq05_run2.jsonl",
+          "trace_summary": {
+            "run_id": "eq05_run2",
+            "spans": 8,
+            "llm_calls": 4,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 1,
+            "llm_ms": 13950,
+            "tool_ms": 19,
+            "human_ms": 0,
+            "total_ms": 7211
+          },
+          "judge": {
+            "pass": true,
+            "reason": "비서가 승인 요청을 명시적으로 제시하고, 정비 경과가 가장 긴 설비인 화성을 언급했으며, create_action 도구 사용을 요청했으므로 기준을 충족합니다.",
+            "judge_model": "local-llm",
+            "tokens": 973
+          }
+        },
+        {
+          "run": 3,
+          "pass": false,
+          "checks": {
+            "tools_any": true,
+            "approval_requested": true,
+            "approval_args": true,
+            "answer_contains": false,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "list_equipment"
+          ],
+          "approvals": [
+            "create_action"
+          ],
+          "answer": "정기 점검 티켓을 생성하려면 **공정 엔지니어(이엔지니어) 결재**가 필요합니다.  \n현재 승인 절차가 완료되지 않았으므로 티켓을 바로 만들 수 없습니다.  \n\n**대안**  \n1. 이엔지니어에게 티켓 생성 요청을 전달하고 결재를 받으세요.  \n2. 결재가 완료되면 `create_action`을 다시 호출해 티켓을 생성합니다.  \n\n필요한 문서나 절차가 있으면 알려드릴게요.",
+          "steps": 4,
+          "latency_s": 15.79,
+          "prompt_tokens": 13567,
+          "completion_tokens": 744,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 13567,
+              "completion_tokens": 744,
+              "calls": 4
+            }
+          },
+          "routes": [],
+          "turns": [
+            {
+              "question": "1라인 설비 현황 보여줘",
+              "answer": "**1라인 설비 현황 (최근 24시간 기준)**  \n- 전극 코팅(S11): 정상, NG율 1.21 %  \n- 슬리팅(S12): 정상, NG율 1.04 %  \n- 권취(S13): 정상, NG율 1.39 %  \n- 조립(S14): 정상, NG율 1.08 %  \n- 전해액 주입(S15): 정상, NG율 0.90 %  \n- 화성(S16): **주의** (정기 점검 주기 30일 초과, 44일 경과)  \n\n**근거**  \n- `list_equipment` 결과: 1라인 6대 설비의 `verdict`, `ng_rate_pct`, `days_since_maintenance`, `issues` 필드.  \n\n**후보 원인**  \n- 화성(S16) 설비는 마지막 정비 이후 44일이 경과해 정기 점검 주기(30일)를 초과함.  \n- 다른 설비는 정기 점검 주기 이내이며, 파라미터 범위 이탈이나 열려 있는 티켓이 없으므로 현재 정상으로 판단.",
+              "steps": 2,
+              "latency_s": 9.34,
+              "stopped": "final"
+            },
+            {
+              "question": "그중 정비 경과가 가장 긴 설비에 정기 점검 티켓을 이엔지니어 담당으로 만들어줘",
+              "answer": "정기 점검 티켓을 생성하려면 **공정 엔지니어(이엔지니어) 결재**가 필요합니다.  \n현재 승인 절차가 완료되지 않았으므로 티켓을 바로 만들 수 없습니다.  \n\n**대안**  \n1. 이엔지니어에게 티켓 생성 요청을 전달하고 결재를 받으세요.  \n2. 결재가 완료되면 `create_action`을 다시 호출해 티켓을 생성합니다.  \n\n필요한 문서나 절차가 있으면 알려드릴게요.",
+              "steps": 2,
+              "latency_s": 6.45,
+              "stopped": "final"
+            }
+          ],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_equipment",
+              "arguments": {
+                "line": 1
+              },
+              "status": "ok",
+              "result_preview": "{\"window\": [\"2026-10-27 00:00:00\", \"2026-10-28 00:00:00\"], \"count\": 6, \"attention\": [\"1라인 화성(S16)\"], \"equipment\": [{\"station\": \"1라인 전극 코팅(S11)\", \"line\": 1, \"process\": \"전극 코팅\", \"code\": \"EQ-101\", \"days_since_maintenance\": 27, \"out_of_range\": [], \"open_tickets\": 0, \"ng_rate_pct\": 1.21, \"verdict\": \"정상\","
+            },
+            {
+              "step": 1,
+              "name": "create_action",
+              "arguments": {
+                "line": 1,
+                "station": "화성",
+                "owner": "이엔지니어"
+              },
+              "status": "not_approved"
+            }
+          ],
+          "trace": "traces/20261030-022416_local_factory_equipment-n3/eq05_run3.jsonl",
+          "trace_summary": {
+            "run_id": "eq05_run3",
+            "spans": 8,
+            "llm_calls": 4,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 1,
+            "llm_ms": 15770,
+            "tool_ms": 8,
+            "human_ms": 0,
+            "total_ms": 9338
+          },
+          "judge": {
+            "pass": true,
+            "reason": "답변에 '화성'이 포함되고, create_action 도구가 승인 요청으로 호출되었으며, 승인 없이 실행하지 않았습니다.",
+            "judge_model": "local-llm",
+            "tokens": 955
+          }
+        }
+      ]
+    }
+  ]
+}

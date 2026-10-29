@@ -1,0 +1,23 @@
+# 회로 팩 · 시뮬레이터 상태 묶음(ADR-026): engine_status. 실행 수는 서버 상태에 따라 달라지므로 형식만 본다.
+- id: en01
+  type: query
+  question: "지금 시뮬레이터 상태 어때? ngspice 버전이랑 최근 24시간 실행 수를 알려줘"
+  expect_tools_any: [engine_status]
+  answer_contains_any: ["ngspice-47", "47"]
+  answer_regex_all: ["\\d+\\s*(건|개|번|회)"]
+
+- id: en02
+  type: query
+  question: "최근 24시간 동안 실패한 시뮬레이션이 있어? 몇 건이고 전체 실행 중 비율은 얼마야?"
+  expect_tools_any: [engine_status]
+  answer_regex_all: ["\\d+\\s*(건|개|번|회)", "\\d+(\\.\\d+)?\\s*%"]
+  note: "engine_status 의 last_24h.failed 와 runs 로 비율을 계산해야 한다"
+
+- id: en03
+  type: multiturn
+  turns:
+    - "시뮬레이터 상태부터 확인해줘"
+    - "괜찮으면 저항 1kΩ, 커패시터 100nF RC 저역통과 필터의 차단 주파수를 한 번만 시뮬레이션해줘"
+  truth_expr: "1/(2*pi*1e3*100e-9)"
+  tolerance_pct: 3
+  expect_tools_all: [engine_status, run_simulation]

@@ -18,7 +18,7 @@ def _seed():
 PACK = Pack(
     name="spice",
     title="회로 시뮬레이션 비서",
-    description="ngspice 위의 에이전트. 넷리스트 가드, 1회 해석·측정, 파라미터 스윕(긴 작업), SVG 그래프, 매뉴얼 지식 베이스(PDF 765쪽, 책갈피 절 단위 청킹) 검색·읽기, 실험 추적 그래프(실행 기록 질의·비교). 도구 17개(소자 라이브러리 포함).",
+    description="ngspice 위의 에이전트. 넷리스트 가드, 1회 해석·측정, 파라미터 스윕(긴 작업), SVG 그래프, 매뉴얼 지식 베이스(PDF 765쪽, 책갈피 절 단위 청킹) 검색·읽기, 실험 추적 그래프(실행 기록 질의·비교). 도구 18개(소자 라이브러리·시뮬레이터 상태 포함).",
     build_tools=build_tools,
     system_prompts=SYSTEM_PROMPTS,
     parse_scope=lambda spec: None,

@@ -5,6 +5,9 @@ type Row = Record<string, unknown>;
 const isPrimitive = (v: unknown) => v === null || ["string", "number", "boolean"].includes(typeof v);
 const isFlatRow = (v: unknown): v is Row =>
   !!v && typeof v === "object" && !Array.isArray(v) && Object.values(v as Row).every(isPrimitive);
+/** 식별자 열(주문 번호, id, 로트 …)은 숫자여도 수량이 아니다: 천 단위 쉼표를 붙이지 않고 왼쪽 정렬한다. */
+const ID_COLUMN = /^(id|.*_id|.*id|주문|번호|주문\s*번호|이벤트|로트|티켓|실행|문서)$/i;
+export const isIdColumn = (name: string) => ID_COLUMN.test(name.trim());
 const formatValue = (v: unknown): string => {
   if (v === null || v === undefined) return "";
   if (typeof v === "number") return Number.isInteger(v) ? v.toLocaleString("ko-KR") : String(+v.toFixed(4));
@@ -136,13 +139,15 @@ export function Table({ rows, max = 12 }: { rows: Row[]; max?: number }) {
     }, new Set<string>()),
   );
   const shown = rows.slice(0, max);
+  const idCols = new Set(cols.filter(isIdColumn));
+  const numClass = (c: string, v: unknown) => (!idCols.has(c) && typeof v === "number" ? "num" : "");
   return (
     <div className="tablewrap">
       <table className="data">
         <thead>
           <tr>
             {cols.map((c) => (
-              <th key={c} className={typeof shown[0]?.[c] === "number" ? "num" : ""}>
+              <th key={c} className={numClass(c, shown[0]?.[c])}>
                 {labelOf(c)}
               </th>
             ))}
@@ -152,8 +157,8 @@ export function Table({ rows, max = 12 }: { rows: Row[]; max?: number }) {
           {shown.map((r, i) => (
             <tr key={i}>
               {cols.map((c) => (
-                <td key={c} className={typeof r[c] === "number" ? "num" : ""}>
-                  {formatValue(r[c])}
+                <td key={c} className={numClass(c, r[c])}>
+                  {idCols.has(c) ? String(r[c] ?? "") : formatValue(r[c])}
                 </td>
               ))}
             </tr>

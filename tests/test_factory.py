@@ -24,7 +24,7 @@ def test_seed_is_deterministic(tmp_path):
 
 
 def test_tool_shape_and_policy(reg):
-    assert len(reg.names()) == 16
+    assert len(reg.names()) == 18
     pol = Policy()
     assert (
         pol.decide(reg.get("confirm_label")) == Decision.REQUIRE_APPROVAL

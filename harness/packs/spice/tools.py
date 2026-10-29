@@ -6,6 +6,7 @@ enterprise 팩과 같은 인터페이스(build_tools / SYSTEM_PROMPTS / scope_no
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from pathlib import Path
@@ -253,6 +254,51 @@ def build_tools(
             raise ValueError(f"라이브러리에 없는 소자: {a.name!r}. search_parts 로 찾으세요.")
         return {**LIBRARY.summary(p), "card": p["card"], "element_example": p["element"], "note": LIBRARY.note}
 
+    def engine_status(_: NoArgs) -> Any:
+        """시뮬레이터(ngspice)와 이 서버의 실행 폴더 상태. 대기 중인 잡(큐)은 서비스가 관리하므로 화면의 큐 보드에서 본다."""
+        import time
+        from collections import Counter
+
+        now = time.time()
+        metas = sorted(runs_dir.glob("*/meta.json"), key=lambda m: m.stat().st_mtime)
+        kinds: Counter[str] = Counter()
+        failed = 0
+        elapsed: list[float] = []
+        last_run = None
+        for m in metas:
+            if now - m.stat().st_mtime > 86400:
+                continue
+            try:
+                d = json.loads(m.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            kind = "sweep" if "rows" in d else "simulation"
+            kinds[kind] += 1
+            if d.get("errors") or (kind == "sweep" and d.get("failed")):
+                failed += 1
+            elapsed.append(float(d.get("elapsed_ms") or 0))
+            last_run = {
+                "run_id": d.get("run_id", m.parent.name),
+                "title": (d.get("title") or "").lstrip("* "),
+                "kind": kind,
+            }
+        saved = len(list(library_dir.glob("*.cir"))) if library_dir.exists() else 0
+        return {
+            "ngspice": {"available": ngspice_available(), "version": ngspice_version() or "설치되지 않음"},
+            "runs_total": len(metas),
+            "last_24h": {
+                "runs": sum(kinds.values()),
+                "simulations": kinds["simulation"],
+                "sweeps": kinds["sweep"],
+                "failed": failed,
+                "avg_elapsed_ms": round(sum(elapsed) / len(elapsed)) if elapsed else None,
+                "last_run": last_run,
+            },
+            "saved_circuits": saved,
+            "history_graph": graph.stats()["nodes"],
+            "note": "실패 = 결과 없이 오류로 끝난 실행(스윕은 한 점이라도 측정 실패). 대기·실행 중인 잡은 화면의 '맡긴 작업' 큐 보드에서 본다.",
+        }
+
     def list_circuits(_: NoArgs) -> Any:
         out = [_circuit_meta(p, "sample") for p in sorted(circuits_dir.glob("*.cir"))]
         if library_dir.exists():
@@ -463,6 +509,13 @@ def build_tools(
         ),
         Tool("get_part", "소자 모델 카드와 연결 예시 가져오기", PartNameArgs, get_part),
         Tool(
+            "engine_status",
+            "시뮬레이터 상태: ngspice 설치·버전, 최근 24시간 실행 수·스윕 수·실패 수·평균 소요 시간, 저장 회로 수, 실험 기록 수. "
+            "'시뮬레이터 괜찮아', '오늘 몇 번 돌렸어', '실패한 실행 있어' 질문에 쓴다.",
+            NoArgs,
+            engine_status,
+        ),
+        Tool(
             "list_circuits",
             "샘플 회로와 저장된 회로 목록을 본다. 회로를 새로 쓰기 전에 먼저 호출해 비슷한 샘플이 있는지 확인한다.",
             NoArgs,
@@ -604,6 +657,7 @@ SYSTEM_PROMPTS = {"v1": SYSTEM_PROMPT, "v2": SYSTEM_PROMPT_V2}
 TOOL_LABELS = {
     "search_parts": "소자 라이브러리 검색",
     "get_part": "소자 모델 가져오기",
+    "engine_status": "시뮬레이터 상태 확인",
     "list_circuits": "회로 목록 확인",
     "get_circuit": "회로 가져오기",
     "check_netlist": "넷리스트 검사",

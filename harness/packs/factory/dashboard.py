@@ -9,7 +9,7 @@ from typing import Any
 
 from ...tools.sql import connect_readonly, rows
 from .seed import DEFAULT_DB, REFERENCE_DATE
-from .tools import _shift
+from .tools import PERIOD_END, _shift, equipment_rows
 
 WINDOW_DAYS = 14
 
@@ -119,7 +119,10 @@ def dashboard(scope: Any = None, db_path: Path = DEFAULT_DB) -> list[dict[str, A
         "SELECT a.id AS 번호, substr(a.created_at,1,16) AS 생성, (s.line_id || '라인 ' || s.name) AS 스테이션, COALESCE(NULLIF(a.title,''), a.description) AS 내용, a.owner AS 담당, a.status AS 상태 "
         "FROM actions a JOIN stations s ON s.id=a.station_id ORDER BY a.status='open' DESC, a.created_at DESC LIMIT 8"
     )
-    return [
+    day_ago = (datetime.strptime(PERIOD_END, "%Y-%m-%d %H:%M:%S") - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+    equipment = equipment_rows(query, day_ago, PERIOD_END)
+    attention = [e for e in equipment if e["verdict"] != "정상"]
+    panels = [
         {
             "id": "stats",
             "title": f"최근 {WINDOW_DAYS}일 한눈에 ({f:%m-%d} ~ {REFERENCE_DATE:%m-%d})",
@@ -137,6 +140,7 @@ def dashboard(scope: Any = None, db_path: Path = DEFAULT_DB) -> list[dict[str, A
                 },
                 {"label": "미확정 라벨", "value": unlabeled, "unit": "건"},
                 {"label": "켜진 경보 규칙", "value": rules, "unit": "개"},
+                {"label": "주의 설비", "value": len(attention), "unit": "대", "tone": "warn" if attention else "ok"},
             ],
         },
         {
@@ -187,3 +191,29 @@ def dashboard(scope: Any = None, db_path: Path = DEFAULT_DB) -> list[dict[str, A
             "data": {"columns": ["번호", "생성", "스테이션", "내용", "담당", "상태"], "rows": tickets},
         },
     ]
+    panels.append(
+        {
+            "id": "equipment",
+            "title": "설비 현황판 (최근 24시간, 관리 범위 PE-003 대조)",
+            "kind": "table",
+            "span": 2,
+            "data": {
+                "columns": ["라인", "공정", "설비", "정비 경과(일)", "이탈 파라미터", "열린 티켓", "NG율(%)", "상태"],
+                "rows": [
+                    {
+                        "라인": f"{e['line']}라인",
+                        "공정": e["process"],
+                        "설비": e["code"],
+                        "정비 경과(일)": e["days_since_maintenance"],
+                        "이탈 파라미터": ", ".join(e["out_of_range"]) or "-",
+                        "열린 티켓": e["open_tickets"],
+                        "NG율(%)": e["ng_rate_pct"],
+                        "상태": e["verdict"],
+                    }
+                    for e in sorted(equipment, key=lambda e: (e["verdict"] == "정상", e["line"], e["station"]))
+                ],
+            },
+            "note": "'주의' 는 관리 범위 이탈·정기 점검 30일 초과·열린 티켓 중 하나라도 있는 설비. 비서의 equipment_status·list_equipment 와 같은 계산이다.",
+        }
+    )
+    return panels
