@@ -31,6 +31,7 @@
 
 **직접 돌려 보려면 (개발자)**
 - [10분 안에 돌려보기](#10분-안에-돌려보기): 설치부터 첫 질문까지
+- [전체 점검 (스모크)](#전체-점검-스모크): 띄워 놓고 21개 항목을 한 번에 눌러 보는 스크립트
 - [한 명령으로 띄우기 (Docker)](#한-명령으로-띄우기-docker)
 - [서비스로 쓰기 (API)](#서비스로-쓰기-api): 화면과 API 로 쓰는 법
 - [MCP로 쓰기](#mcp로-쓰기): 다른 AI 에이전트에서 같은 도구를 쓰는 법
@@ -326,6 +327,27 @@ uv run harness eval --n 1            # 평가 → harness/evals/results/*.md
 | Hermes-4-14B Q4_K_M (9GB) | `scripts/serve_llm.sh` | ~24 tok/s | 하네스 비교군. 64K 는 YaRN 자동 적용 |
 | gpt-oss-20b MXFP4 (12GB) | `LLM_MODEL_PATH=~/.cache/local-agent-lab/models/gpt-oss-20b-MXFP4.gguf scripts/serve_llm.sh` | ~65 tok/s | 추천. 네이티브 128K, 툴콜 안정, Hermes Agent 에서도 동작 |
 gpt-oss-20b 파일은 `curl -L -C - -o ~/.cache/local-agent-lab/models/gpt-oss-20b-MXFP4.gguf https://huggingface.co/ggml-org/gpt-oss-20b-GGUF/resolve/main/gpt-oss-20b-MXFP4.gguf` 로 받는다.
+
+## 전체 점검 (스모크)
+
+테스트(파이썬 196 · 화면 20)와 별개로, 네 서비스와 모델 서버를 실제로 띄워 놓고 기능 전반을 한 번에 눌러 보는 스크립트가 있다. 기능을 더하거나 고친 뒤 "다른 건 다 멀쩡한가" 를 5분 안에 확인하는 용도다.
+
+```bash
+uv run python scripts/smoke.py --quick   # 모델 없이: health·데이터 탭·글꼴·A2A 카드·MCP 도구 목록 (10초)
+uv run python scripts/smoke.py           # 전부: 비서 질문 5개·결재 흐름·함정·잡 큐까지 (5분, 모델 서버 필요)
+```
+
+| 보는 것 | 어떻게 |
+|---|---|
+| 네 비서 `/health`·`/dashboard` | 도구 수(12·18·18·4), offline 플래그, 모델 연결, 패널 목록 |
+| 화면 | 글꼴이 동봉돼 서빙되고 index 에 CDN 주소가 없음 |
+| 연동 면 | A2A agent card, MCP(HTTP) `tools/list` 에 읽기·변경 도구는 있고 파괴 도구는 없음 |
+| 비서 질문 | 회사 "지연 몇 건"(255), 문서 그래프(`impact_of`), 회로 RC 차단 주파수(≈1.59 kHz), 시뮬레이터 상태(ngspice-47), 설비 상태(10-18 온도 이탈), 총괄 비서 A2A 위임(둘 다 합산) |
+| 결재 흐름 | 메모 요청 → 대기 전표 → `POST /approvals/{id}` 승인 → 실행된 답 |
+| 함정 | 연락처 일괄 요청을 거절하고 전화번호가 답에 없음 |
+| 잡 큐 | 스윕을 `/jobs` 로 맡기고 `done` 까지 |
+
+마지막 실행(2026-10-30, 오프라인 모드 커밋 직후, 로컬 gpt-oss-20b): **21/21 통과**. 첫 실행에서 "실패" 2건은 기능이 아니라 점검 기준이었다(총괄 비서의 데이터 탭은 패널 2개가 전부, 함정 거절 문구에 "위배" 가 없었음). 기준을 고쳐 다시 돌린 결과다.
 
 ## 한 명령으로 띄우기 (Docker)
 ```bash
@@ -693,4 +715,4 @@ _출처: [20261029-014321_local_supervisor_n3.json](harness/evals/results/202610
 - 3주차: ~~React UI~~ ~~README 상단 재정리~~ ~~2차 도메인 팩(`spice`)~~ ~~LLM 판정자 vs 사람 채점 대조~~ ~~매뉴얼 지식 베이스~~ ~~실험 추적 그래프~~ ~~3차 팩(`factory`)~~ ~~A2A·총괄 비서~~ ~~LangGraph 비교 실험~~ ~~업무 데스크 화면·데이터 탭·큐 보드~~ ~~MCP over HTTP~~ ~~데모 영상(녹화 스크립트)~~ 완료 → 평가 결과 공개, Electron 셸, 판정자 전 팩 적용, 인젝션 문제 확대, CI 평가 스모크, ~~소자 라이브러리~~ ~~문서 그래프~~ ~~모델 라우팅~~ ~~오프라인(에어갭) 모드~~ GPU 배포·양자화 비교
 
 ## 문서
-`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정 27편, 최근: ADR-025 요청 다양화, ADR-026 설비·시뮬레이터 상태, ADR-027 오프라인 모드) · `docs/ADDING-A-PACK.md`(팩 추가) · `docs/demo-script.md`(데모 대본) · `docs/VERIFY-day1-3.md`(검증 절차) · `scripts/capture_ui.py`(README 화면 캡처, 실제 실행)
+`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정 27편, 최근: ADR-025 요청 다양화, ADR-026 설비·시뮬레이터 상태, ADR-027 오프라인 모드) · `docs/ADDING-A-PACK.md`(팩 추가) · `docs/demo-script.md`(데모 대본) · `docs/VERIFY-day1-3.md`(검증 절차) · `scripts/capture_ui.py`(README 화면 캡처, 실제 실행) · `scripts/smoke.py`(전체 점검)
