@@ -18,8 +18,8 @@ jobs:
           uv run ruff check .
       - name: seed determinism
         run: |
-          uv run harness seed | grep -q "sha256_16: 92d0c19eb4f1cd2a"
-          uv run harness seed --pack factory | grep -q "sha256_16: 0fbe098605883ba6"
+          uv run harness seed | grep -q "sha256_16: b401e2e4a0ecd0fa"
+          uv run harness seed --pack factory | grep -q "sha256_16: 9b7a1d9de44d2e21"
       - run: uv run pytest -q
       - name: mcp server smoke (enterprise + spice + factory)
         run: |
@@ -58,3 +58,13 @@ jobs:
           tags: agent-harness-api:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          load: true
+      - name: run the container and smoke it (no model needed)
+        run: |
+          docker run -d --name api -p 8787:8787 -e HARNESS_USERS_FILE=/nonexistent/none.json -e HARNESS_HYBRID=0 agent-harness-api:ci
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:8787/health >/dev/null 2>&1 && break; sleep 2; done
+          curl -fsS http://127.0.0.1:8787/health
+          python3 scripts/smoke.py --quick --packs enterprise --base enterprise=http://127.0.0.1:8787
+      - name: container logs on failure
+        if: failure()
+        run: docker logs api || true

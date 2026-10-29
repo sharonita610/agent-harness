@@ -20,6 +20,9 @@ import urllib.request
 ap = argparse.ArgumentParser()
 ap.add_argument("--quick", action="store_true", help="모델 서버 없이 되는 항목만")
 ap.add_argument("--base", action="append", default=[], help="팩=주소 (예: enterprise=http://10.0.0.5:8786)")
+ap.add_argument(
+    "--packs", default="enterprise,spice,factory,supervisor", help="점검할 팩(쉼표). CI 처럼 하나만 떠 있을 때 줄인다"
+)
 args = ap.parse_args()
 BASES = {
     "enterprise": "http://127.0.0.1:8786",
@@ -30,6 +33,9 @@ BASES = {
 for item in args.base:
     k, _, v = item.partition("=")
     BASES[k] = v
+PACKS = [x.strip() for x in args.packs.split(",") if x.strip()]
+BASES = {k: v for k, v in BASES.items() if k in PACKS}
+FIRST = BASES[PACKS[0]]
 rows = []
 
 
@@ -97,9 +103,9 @@ for pack, base in BASES.items():
     except Exception as e:
         check(f"{pack} /health|/dashboard", False, repr(e))
 try:
-    s, b = get(BASES["enterprise"] + "/app/fonts/PretendardVariable.woff2")
+    s, b = get(FIRST + "/app/fonts/PretendardVariable.woff2")
     check("UI 글꼴 동봉(/app/fonts)", s == 200 and b[:4] == b"wOF2", f"{len(b)} bytes")
-    s, b = get(BASES["enterprise"] + "/app/")
+    s, b = get(FIRST + "/app/")
     check("UI index 에 CDN 없음", b"cdn." not in b, "")
 except Exception as e:
     check("UI 글꼴", False, repr(e))
@@ -139,7 +145,7 @@ try:
 except Exception as e:
     check("MCP(HTTP) tools/list", False, repr(e))
 
-# 3. 실제 질문(모델 필요)
+# 3. 실제 질문(모델 필요, 네 팩이 모두 떠 있어야 한다)
 if args.quick:
     print("\n| 항목 | 결과 | 비고 |\n|---|---|---|")
     for n, ok, d in rows:
