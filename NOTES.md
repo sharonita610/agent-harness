@@ -299,4 +299,6 @@ uv run harness eval --n 1            # 평가 16개
 - 통과율(회사 16문제): MLX 62.5%(n=1, 벌점 없음) · 75%(n=1, 1.1) · 52%(n=3, 1.1) vs llama.cpp 98%(n=3, 10-29) · 100% (16/16)(n=1, 11-01). 실패 유형은 ADR-029 결과 4.
 - 두 파일은 같은 모델이 아님: GGUF 는 전문가 MXFP4 + 어텐션·임베딩·출력 Q8_0(1.9GB), MLX 변환본은 어텐션·임베딩까지 4비트 affine(config.json `quantization`). 10.5 vs 12.1GB 차이가 여기서 남.
 - 결과 파일 이름 버그: `with_suffix` 가 모델 이름의 점(`MXFP4-Q4` 앞의 `.`)에서 잘라 `…mlx-community/gpt-oss-20b-MXFP4-Q4_mlx-n1` → `_provider_slug`(모델 마지막 조각, `.`→`_`, `->`→`-to-`) + 문자열 결합으로 수정.
-- 다음: `MXFP4-Q8`(12.1GB)로 양자화 요인 분리, mlx-lm 에 harmony 파서가 들어오면 재측정.
+- 요인 분리(같은 날 새벽, 사용자 요청): `mlx-community/gpt-oss-20b-MXFP4-Q8`(12.1GB, 어텐션·임베딩·출력 8비트 affine = GGUF 와 같은 구성) 받아(`hf download`, 19분) 같은 서버로. 디코드 66 tok/s(Q4 75, llama.cpp 67) · 첫 토큰 0.04s · footprint 12GB. **벌점 없이 n=1 100%(p50 6.4s, p95 12.2s, 4,682 토큰/실행)**, n=3 **98%** (47/48), 벌점 1.1 n=3 **98%** (47/48, 실패 1건은 t02 거절 문구 불일치). 루프 없음, 한국어 깨짐 없음.
+- 결론 수정: Q4 의 루프·오답은 엔진·서버 탓이 아니라 어텐션·임베딩 4비트 양자화 탓. 하네스의 harmony 건지기로 충분, 벌점은 Q4 에서만. `serve_mlx.sh` 기본 모델을 Q8 로 바꿈. 교훈: "같은 모델" 을 믿지 말고 `quantization` 구성을 읽고, 같은 평가를 돌려 본 뒤 고른다.
+- 다음: mlx-lm 에 harmony 파서가 들어오면 parse_harmony 는 예비 경로로. GPU 서버에서 vLLM 은 같은 한 줄.
