@@ -22,6 +22,8 @@ All data is synthetic. Personal project, Oct 2026, MIT.
 
 한 화면에서 비서 네 개를 전환하고, 답은 표·숫자·출처 카드로 읽고, 어느 비서가 올린 결재든 오른쪽 결재함에서 처리한다. 화면 설계: ADR-018.
 
+**데모 영상(2분, 자막, 실제 실행 녹화):** [releases/demo-2026-10-30](https://github.com/sharonita610/agent-harness/releases/tag/demo-2026-10-30) · 대본은 `docs/demo-script.md`, 녹화는 `scripts/record_demo.py`(헤드리스 Chrome 이 대본 순서로 화면을 돌리고 자막을 입힌다). 질문 → 근거 카드 → 결재 전표·도장 → 함정 거절 → 트레이스 → 회로 스윕 → 데이터 탭 → 평가 표 순.
+
 **쉽게 말하면.** 회사 직원이 "지연된 주문 몇 건이야?" 라고 물으면 AI 비서가 직접 데이터를 찾아 근거와 함께 답한다. 데이터를 바꾸는 일은 담당자 결재를 받은 뒤에만 하고, 삭제는 아예 못 한다. 이 비서가 얼마나 믿을 만한지는 같은 문제 16개를 모델별로 세 번씩 풀게 해 점수로 낸다. 같은 뼈대 위에 회로 시뮬레이션 비서도 올려서 "분야가 바뀌어도 뼈대는 그대로" 를 보였다. 모델은 내 노트북에서 돌아가는 공개 모델이라 비용이 0 이다.
 
 ## 목차
@@ -738,7 +740,7 @@ _출처: [20261029-014321_local_supervisor_n3.json](harness/evals/results/202610
 
 ## 로드맵
 - 2주차: ~~FastAPI 서비스~~ ~~트레이싱(JSONL·OTLP)~~ ~~하이브리드 검색~~ 완료 → 상용 모델 비교 행 추가(API 키 필요)
-- 3주차: ~~React UI~~ ~~README 상단 재정리~~ ~~2차 도메인 팩(`spice`)~~ ~~LLM 판정자 vs 사람 채점 대조~~ ~~매뉴얼 지식 베이스~~ ~~실험 추적 그래프~~ ~~3차 팩(`factory`)~~ ~~A2A·총괄 비서~~ ~~LangGraph 비교 실험~~ ~~업무 데스크 화면·데이터 탭·큐 보드~~ ~~MCP over HTTP~~ ~~데모 영상(녹화 스크립트)~~ 완료 → 평가 결과 공개, Electron 셸, 판정자 전 팩 적용, 인젝션 문제 확대, CI 평가 스모크, ~~소자 라이브러리~~ ~~문서 그래프~~ ~~모델 라우팅~~ ~~오프라인(에어갭) 모드~~ GPU 배포·양자화 비교
+- 3주차: ~~React UI~~ ~~README 상단 재정리~~ ~~2차 도메인 팩(`spice`)~~ ~~LLM 판정자 vs 사람 채점 대조~~ ~~매뉴얼 지식 베이스~~ ~~실험 추적 그래프~~ ~~3차 팩(`factory`)~~ ~~A2A·총괄 비서~~ ~~LangGraph 비교 실험~~ ~~업무 데스크 화면·데이터 탭·큐 보드~~ ~~MCP over HTTP~~ ~~데모 영상(녹화 스크립트)~~ 완료 → ~~평가 결과 공개~~ ~~데모 영상 공개~~ ~~판정자 전 팩 적용~~ ~~인젝션 문제 확대~~ ~~CI 스모크~~ Electron 셸, ~~소자 라이브러리~~ ~~문서 그래프~~ ~~모델 라우팅~~ ~~오프라인(에어갭) 모드~~ GPU 배포·양자화 비교
 
 ## 문서
-`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정 28편, 최근: ADR-026 설비·시뮬레이터 상태, ADR-027 오프라인 모드, ADR-028 기록 가리기와 안전 마무리) · `docs/ADDING-A-PACK.md`(팩 추가) · `docs/demo-script.md`(데모 대본) · `docs/VERIFY-day1-3.md`(검증 절차) · `scripts/capture_ui.py`(README 화면 캡처, 실제 실행) · `scripts/smoke.py`(전체 점검)
+`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정 28편, 최근: ADR-026 설비·시뮬레이터 상태, ADR-027 오프라인 모드, ADR-028 기록 가리기와 안전 마무리) · `docs/ADDING-A-PACK.md`(팩 추가) · `docs/demo-script.md`(데모 대본, 영상은 [releases/demo-2026-10-30](https://github.com/sharonita610/agent-harness/releases/tag/demo-2026-10-30)) · `docs/VERIFY-day1-3.md`(검증 절차) · `scripts/capture_ui.py`(README 화면 캡처, 실제 실행) · `scripts/smoke.py`(전체 점검)

@@ -560,7 +560,7 @@ def main() -> None:
             hold=7.0,
         )
         rec.say(
-            "채점기 결함을 잡아 재채점한 기록, 설계 결정 문서 21편과 코드는 github.com/sharonita610/agent-harness 에 있습니다.",
+            "채점기 결함을 잡아 재채점한 기록, 설계 결정 문서 27편과 코드는 github.com/sharonita610/agent-harness 에 있습니다.",
             hold=5.0,
         )
         c.send("Page.stopScreencast")
