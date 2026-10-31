@@ -1,0 +1,1281 @@
+{
+  "pack": "spice",
+  "index": "kb",
+  "queries": 32,
+  "embed_model": "local-embed",
+  "embed_base_url": "http://127.0.0.1:8092/v1",
+  "chunk_chars": null,
+  "chunks": 1178,
+  "kb": "data/kb/ngspice-manual-c1800.sqlite",
+  "fusion": {
+    "rrf_k": 60,
+    "bm25_weight": 1.0,
+    "vector_weight": 1.0
+  },
+  "tag": "c1800",
+  "results": [
+    {
+      "mode": "bm25",
+      "n": 32,
+      "hit@1": 0.844,
+      "hit@3": 1.0,
+      "mrr": 0.922,
+      "rows": [
+        {
+          "q": "교류 소신호 해석 .ac 문법",
+          "expected": [
+            "11.3.1",
+            "해석 종류와 결과 벡터 > .ac 교류 소신호 해석"
+          ],
+          "got": [
+            "전원과 파형 > 직류·교류 지정",
+            "해석 종류와 결과 벡터 > .ac 교류 소신호 해석",
+            "측정식(meas) 문법 > 흔한 실수"
+          ],
+          "rank": 2
+        },
+        {
+          "q": ".AC dec oct lin points fstart fstop",
+          "expected": [
+            "11.3.1"
+          ],
+          "got": [
+            "ngspice manual > 11.3.1 .AC: Small-Signal AC Analysis (p.329)",
+            "ngspice manual > 13.5.88 Sp: S-Parameter Analysis (p.444)",
+            "ngspice manual > 13.5.1 Ac: Perform an AC, small-signal frequency response analysis (p.399)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "과도 해석 .tran 시간 간격과 끝 시간",
+          "expected": [
+            "11.3.10",
+            "해석 종류와 결과 벡터 > .tran 과도 해석"
+          ],
+          "got": [
+            "해석 종류와 결과 벡터 > .tran 과도 해석",
+            "자주 쓰는 해석 공식 > RC 계단 응답",
+            "전원과 파형 > PULSE 계단·펄스"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".TRAN TSTEP TSTOP TSTART TMAX uic",
+          "expected": [
+            "11.3.10"
+          ],
+          "got": [
+            "ngspice manual > 11.3.10 .TRAN: Transient Analysis (p.337)",
+            "ngspice manual > 13.5.99 Tran: Perform a transient analysis (p.448)",
+            "ngspice manual > 13.5.45 Linearize: Interpolate to a linear scale (p.423)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "직류 스윕 .dc 소스 시작 끝 간격",
+          "expected": [
+            "11.3.2",
+            "해석 종류와 결과 벡터 > .dc 직류 스윕"
+          ],
+          "got": [
+            "해석 종류와 결과 벡터 > .dc 직류 스윕",
+            "해석 종류와 결과 벡터 > .tran 과도 해석",
+            "전원과 파형 > 직류·교류 지정"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "동작점 해석 .op",
+          "expected": [
+            "11.3.5",
+            "해석 종류와 결과 벡터 > .op 동작점 해석"
+          ],
+          "got": [
+            "해석 종류와 결과 벡터 > .op 동작점 해석",
+            "측정식(meas) 문법 > 흔한 실수",
+            "전원과 파형 > 직류·교류 지정"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".meas TRIG TARG rise time measurement",
+          "expected": [
+            "11.4*",
+            "측정식(meas) 문법 > 두 시점 사이: TRIG"
+          ],
+          "got": [
+            "ngspice manual > 11.4.5 Trig Targ (p.343)",
+            "ngspice manual > 13.5.49 Meas: Measurements on simulation data (p.425)",
+            "ngspice manual > 11.4.12 More examples (p.348)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "measure WHEN FIND AT syntax",
+          "expected": [
+            "11.4*",
+            "측정식(meas) 문법 > 교차점: WHEN",
+            "측정식(meas) 문법 > 특정 점의 값: FIND"
+          ],
+          "got": [
+            "ngspice manual > 11.4.6 Find ... When (p.345)",
+            "ngspice manual > 11.4.6 Find ... When (p.345)",
+            "ngspice manual > 11.4.12 More examples (p.348)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "PULSE 전원 파형 인자 V1 V2 TD TR TF PW PER",
+          "expected": [
+            "4.1.1",
+            "전원과 파형 > PULSE 계단·펄스"
+          ],
+          "got": [
+            "전원과 파형 > PULSE 계단·펄스",
+            "ngspice manual > 4.1.1 Pulse (p.96)",
+            "전원과 파형 > PWL 구간 선형"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "SIN sinusoidal source VO VA FREQ",
+          "expected": [
+            "4.1.2",
+            "전원과 파형 > SIN 정현파"
+          ],
+          "got": [
+            "ngspice manual > 4.1.2 Sinusoidal (p.97)",
+            "ngspice manual > 27.3.3 Vsource - Independent voltage source (p.696)",
+            "ngspice manual > 27.3.2 Isource - Independent current source (p.695)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "independent voltage source dc ac value syntax",
+          "expected": [
+            "4.1",
+            "전원과 파형 > 직류·교류 지정"
+          ],
+          "got": [
+            "ngspice manual > 4.1 Independent Sources for Voltage or Current (p.95)",
+            "ngspice manual > 4.1 Independent Sources for Voltage or Current (p.95)",
+            "ngspice manual > 11.4.4 Input (p.343)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "저항 소자 줄 형식 Rname n+ n- value",
+          "expected": [
+            "3.3.1",
+            "넷리스트 기본 문법 > 소자 줄 형식"
+          ],
+          "got": [
+            "넷리스트 기본 문법 > 소자 줄 형식",
+            "자주 쓰는 해석 공식 > 저항 분압기와 전력",
+            "넷리스트 기본 문법 > 파일 구조"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "capacitor element line initial condition",
+          "expected": [
+            "3.3.6"
+          ],
+          "got": [
+            "ngspice manual > 3.3.6 Capacitors (p.83)",
+            "ngspice manual > 3.3.14 Capacitor or inductor with initial conditions (p.91)",
+            "ngspice manual > 22.2.1 XSPICE Syntax Extensions (p.585)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "inductor element syntax",
+          "expected": [
+            "3.3.10"
+          ],
+          "got": [
+            "ngspice manual > 22.2.1 XSPICE Syntax Extensions (p.585)",
+            "ngspice manual > 3.3.10 Inductors (p.87)",
+            "ngspice manual > 3.3.12 Coupled (Mutual) Inductors (p.89)"
+          ],
+          "rank": 2
+        },
+        {
+          "q": "coupled mutual inductors K coefficient",
+          "expected": [
+            "3.3.12"
+          ],
+          "got": [
+            "ngspice manual > 3.3.12 Coupled (Mutual) Inductors (p.89)",
+            "ngspice manual > 27.2.4 Mutual - Mutual Inductor (p.693)",
+            "ngspice manual > 2.3 Circuit elements (device instances) (p.51)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".MODEL device model card syntax",
+          "expected": [
+            "2.5",
+            "8.1.1"
+          ],
+          "got": [
+            "ngspice manual > 8.1.1 Syntax (p.179)",
+            "ngspice manual > 12.3 Command line options for starting ngspice (p.364)",
+            "ngspice manual > 26.1 SPECIFICATION (p.653)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "subcircuit .SUBCKT .ENDS definition and call X",
+          "expected": [
+            "2.6",
+            "2.6.1",
+            "2.6.3"
+          ],
+          "got": [
+            "ngspice manual > 2.6.1 .SUBCKT Line (p.56)",
+            "ngspice manual > 2.6.2 .ENDS Line (p.57)",
+            "ngspice manual > 2.6 .SUBCKT Subcircuits (p.56)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".INCLUDE file",
+          "expected": [
+            "2.8"
+          ],
+          "got": [
+            "ngspice manual > 2.8 .INCLUDE (p.58)",
+            "ngspice manual > 2.10 .LIB (p.59)",
+            "ngspice manual > 2.1.1 Input file structure (p.47)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".param parametric netlist brace expressions",
+          "expected": [
+            "2.11",
+            "2.11.1",
+            "2.11.2"
+          ],
+          "got": [
+            "ngspice manual > 2.11.2 Brace expressions in circuit elements: (p.60)",
+            "ngspice manual > 2.11.7 A word of caution on the three ngspice expression parsers (p.66)",
+            "ngspice manual > 2.11.1 .param line (p.59)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "title line first line of input file",
+          "expected": [
+            "2.4.1",
+            "넷리스트 기본 문법 > 파일 구조",
+            "2.1.1"
+          ],
+          "got": [
+            "ngspice manual > 2.4.1 .TITLE line (p.53)",
+            "ngspice manual > 22.1.1 Describing the Circuit (p.579)",
+            "ngspice manual > 13.5.14 Circbyline: Enter a circuit line by line (p.406)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".END line last line",
+          "expected": [
+            "2.4.2",
+            "넷리스트 기본 문법 > 파일 구조"
+          ],
+          "got": [
+            "ngspice manual > 2.4.2 .END Line (p.53)",
+            "ngspice manual > 2.6.2 .ENDS Line (p.57)",
+            "ngspice manual > 13.5.41 History: Review previous commands (p.419)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "comments in netlist asterisk",
+          "expected": [
+            "2.4.3",
+            "2.4.4",
+            "넷리스트 기본 문법 > 파일 구조"
+          ],
+          "got": [
+            "ngspice manual > 2.4.3 Comments (p.54)",
+            "ngspice manual > 12.5 Standard configuration file spinit (p.368)",
+            "ngspice manual > 22.1.1 Describing the Circuit (p.579)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "접미사 M 밀리 meg 메가 1M 뜻",
+          "expected": [
+            "넷리스트 기본 문법 > 값과 접미사",
+            "오류 메시지와 해결 > 1M 이 1 밀리로 읽힘",
+            "2.1.3"
+          ],
+          "got": [
+            "넷리스트 기본 문법 > 값과 접미사",
+            "오류 메시지와 해결 > 1M 이 1 밀리로 읽힘",
+            "ngspice manual > 12.11.6 LTSPICE Compatibility mode (p.381)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "convergence failure singular matrix",
+          "expected": [
+            "1.4.3",
+            "오류 메시지와 해결 > singular matrix / DC solution failed"
+          ],
+          "got": [
+            "ngspice manual > 1.4.3 Convergence failure (p.46)",
+            "ngspice manual > 11.1.2 OP and DC Solution Options (p.323)",
+            "ngspice manual > 26.17.5 BUGS (p.680)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "timestep too small 오류 해결",
+          "expected": [
+            "오류 메시지와 해결 > timestep too small",
+            "1.4.3",
+            "11.1.4"
+          ],
+          "got": [
+            "오류 메시지와 해결 > timestep too small",
+            "오류 메시지와 해결 > singular matrix / DC solution failed",
+            "오류 메시지와 해결 > (서문)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "diode model parameters IS N RS",
+          "expected": [
+            "7.2*"
+          ],
+          "got": [
+            "ngspice manual > 11.1.5 ELEMENT Specific options (p.326)",
+            "ngspice manual > 7.2.2 Diode Equations (p.138)",
+            "ngspice manual > 7.2.1 Diode Model (D) (p.134)"
+          ],
+          "rank": 2
+        },
+        {
+          "q": "MOSFET instance line W L model NMOS PMOS",
+          "expected": [
+            "7.6*"
+          ],
+          "got": [
+            "ngspice manual > 27.6.7 BSIM2 - Berkeley Short Channel IGFET Model (p.732)",
+            "ngspice manual > 7.6.2 MOSFET models (NMOS/PMOS) (p.162)",
+            "ngspice manual > 7.6.2 MOSFET models (NMOS/PMOS) (p.162)"
+          ],
+          "rank": 2
+        },
+        {
+          "q": "BJT NPN PNP model",
+          "expected": [
+            "7.3*"
+          ],
+          "got": [
+            "ngspice manual > 7.3.2 BJT Models (NPN/PNP) (p.144)",
+            "ngspice manual > 27.5.1 BJT - Bipolar Junction Transistor (p.704)",
+            "ngspice manual > 2.5 .MODEL Device Models (p.55)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".NODESET .IC initial conditions",
+          "expected": [
+            "11.2.1",
+            "11.2.2"
+          ],
+          "got": [
+            "ngspice manual > 11.2.2 .IC: Set Initial Conditions (p.328)",
+            "ngspice manual > 3.2.4 Initial conditions (p.77)",
+            "ngspice manual > 11.2.1 .NODESET: Specify Initial Node Voltage Guesses (p.327)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".FOUR Fourier analysis of transient output",
+          "expected": [
+            "11.6.4"
+          ],
+          "got": [
+            "ngspice manual > 11.6.4 .FOUR: Fourier Analysis of Transient Analysis Output (p.355)",
+            "ngspice manual > 13.5.35 Fourier: Perform a Fourier transform (p.416)",
+            "ngspice manual > 13.5.35 Fourier: Perform a Fourier transform (p.416)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "RC 저역통과 필터 차단 주파수 공식",
+          "expected": [
+            "자주 쓰는 해석 공식 > 1차 RC 필터"
+          ],
+          "got": [
+            "자주 쓰는 해석 공식 > 1차 RC 필터",
+            "측정식(meas) 문법 > 교차점: WHEN",
+            "자주 쓰는 해석 공식 > 직렬 RLC"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".options simulator variables reltol abstol",
+          "expected": [
+            "11.1"
+          ],
+          "got": [
+            "ngspice manual > 13.5.24 Diff: Compare vectors (p.412)",
+            "ngspice manual > 11.1 Simulator Variables (.options) (p.321)",
+            "ngspice manual > 11.1.2 OP and DC Solution Options (p.323)"
+          ],
+          "rank": 2
+        }
+      ],
+      "embed_model": null
+    },
+    {
+      "mode": "vector",
+      "n": 32,
+      "hit@1": 0.688,
+      "hit@3": 0.906,
+      "mrr": 0.786,
+      "rows": [
+        {
+          "q": "교류 소신호 해석 .ac 문법",
+          "expected": [
+            "11.3.1",
+            "해석 종류와 결과 벡터 > .ac 교류 소신호 해석"
+          ],
+          "got": [
+            "전원과 파형 > 직류·교류 지정",
+            "해석 종류와 결과 벡터 > .ac 교류 소신호 해석",
+            "ngspice manual > 13.5.1 Ac: Perform an AC, small-signal frequency response analysis (p.399)"
+          ],
+          "rank": 2
+        },
+        {
+          "q": ".AC dec oct lin points fstart fstop",
+          "expected": [
+            "11.3.1"
+          ],
+          "got": [
+            "ngspice manual > 13.5.1 Ac: Perform an AC, small-signal frequency response analysis (p.399)",
+            "ngspice manual > 13.5.45 Linearize: Interpolate to a linear scale (p.423)",
+            "ngspice manual > 11.3.1 .AC: Small-Signal AC Analysis (p.329)"
+          ],
+          "rank": 3
+        },
+        {
+          "q": "과도 해석 .tran 시간 간격과 끝 시간",
+          "expected": [
+            "11.3.10",
+            "해석 종류와 결과 벡터 > .tran 과도 해석"
+          ],
+          "got": [
+            "해석 종류와 결과 벡터 > .tran 과도 해석",
+            "ngspice manual > 13.5.99 Tran: Perform a transient analysis (p.448)",
+            "ngspice manual > 1.2.3 Transient Analysis (p.40)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".TRAN TSTEP TSTOP TSTART TMAX uic",
+          "expected": [
+            "11.3.10"
+          ],
+          "got": [
+            "ngspice manual > 13.5.99 Tran: Perform a transient analysis (p.448)",
+            "ngspice manual > 11.3.10 .TRAN: Transient Analysis (p.337)",
+            "ngspice manual > 13.5.91 Step: Run a fixed number of time-points (p.445)"
+          ],
+          "rank": 2
+        },
+        {
+          "q": "직류 스윕 .dc 소스 시작 끝 간격",
+          "expected": [
+            "11.3.2",
+            "해석 종류와 결과 벡터 > .dc 직류 스윕"
+          ],
+          "got": [
+            "해석 종류와 결과 벡터 > .dc 직류 스윕",
+            "ngspice manual > 13.5.18 Dc: Perform a DC-sweep analysis (p.409)",
+            "ngspice manual > 11.3.2 .DC: DC Transfer Function (p.330)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "동작점 해석 .op",
+          "expected": [
+            "11.3.5",
+            "해석 종류와 결과 벡터 > .op 동작점 해석"
+          ],
+          "got": [
+            "ngspice manual > 13.5.53 Op: Perform an operating point analysis (p.427)",
+            "해석 종류와 결과 벡터 > .op 동작점 해석",
+            "ngspice manual > 11.3.5 .OP: Operating Point Analysis (p.333)"
+          ],
+          "rank": 2
+        },
+        {
+          "q": ".meas TRIG TARG rise time measurement",
+          "expected": [
+            "11.4*",
+            "측정식(meas) 문법 > 두 시점 사이: TRIG"
+          ],
+          "got": [
+            "측정식(meas) 문법 > 두 시점 사이: TRIG … TARG",
+            "ngspice manual > 11.4.5 Trig Targ (p.343)",
+            "ngspice manual > 11.4.5 Trig Targ (p.343)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "measure WHEN FIND AT syntax",
+          "expected": [
+            "11.4*",
+            "측정식(meas) 문법 > 교차점: WHEN",
+            "측정식(meas) 문법 > 특정 점의 값: FIND"
+          ],
+          "got": [
+            "측정식(meas) 문법 > 특정 점의 값: FIND … AT",
+            "ngspice manual > 11.4.6 Find ... When (p.345)",
+            "ngspice manual > 11.4.6 Find ... When (p.345)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "PULSE 전원 파형 인자 V1 V2 TD TR TF PW PER",
+          "expected": [
+            "4.1.1",
+            "전원과 파형 > PULSE 계단·펄스"
+          ],
+          "got": [
+            "전원과 파형 > PULSE 계단·펄스",
+            "전원과 파형 > PWL 구간 선형",
+            "ngspice manual > 4.1.1 Pulse (p.96)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "SIN sinusoidal source VO VA FREQ",
+          "expected": [
+            "4.1.2",
+            "전원과 파형 > SIN 정현파"
+          ],
+          "got": [
+            "전원과 파형 > SIN 정현파",
+            "ngspice manual > 4.1.2 Sinusoidal (p.97)",
+            "ngspice manual > 4.1.5 Single-Frequency FM (p.99)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "independent voltage source dc ac value syntax",
+          "expected": [
+            "4.1",
+            "전원과 파형 > 직류·교류 지정"
+          ],
+          "got": [
+            "ngspice manual > 5.2.2 VALUE (p.115)",
+            "ngspice manual > 5.3.2 VALUE (p.118)",
+            "ngspice manual > 4.1 Independent Sources for Voltage or Current (p.95)"
+          ],
+          "rank": 3
+        },
+        {
+          "q": "저항 소자 줄 형식 Rname n+ n- value",
+          "expected": [
+            "3.3.1",
+            "넷리스트 기본 문법 > 소자 줄 형식"
+          ],
+          "got": [
+            "ngspice manual > 3.3.2 Semiconductor Resistors (p.80)",
+            "ngspice manual > 3.3.1 Resistors (p.78)",
+            "ngspice manual > 5.3.2 VALUE (p.118)"
+          ],
+          "rank": 2
+        },
+        {
+          "q": "capacitor element line initial condition",
+          "expected": [
+            "3.3.6"
+          ],
+          "got": [
+            "ngspice manual > 3.3.7 Semiconductor Capacitors (p.84)",
+            "ngspice manual > 3.3.8 Semiconductor Capacitor Model (C) (p.84)",
+            "ngspice manual > 3.2.4 Initial conditions (p.77)"
+          ],
+          "rank": null
+        },
+        {
+          "q": "inductor element syntax",
+          "expected": [
+            "3.3.10"
+          ],
+          "got": [
+            "ngspice manual > 5.3.2 VALUE (p.118)",
+            "ngspice manual > 5.2.2 VALUE (p.115)",
+            "ngspice manual > 3 Circuit Elements and Models (p.73)"
+          ],
+          "rank": null
+        },
+        {
+          "q": "coupled mutual inductors K coefficient",
+          "expected": [
+            "3.3.12"
+          ],
+          "got": [
+            "ngspice manual > 3.3.12 Coupled (Mutual) Inductors (p.89)",
+            "ngspice manual > 27.2.4 Mutual - Mutual Inductor (p.693)",
+            "ngspice manual > 8.2.21 Inductive Coupling (p.217)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".MODEL device model card syntax",
+          "expected": [
+            "2.5",
+            "8.1.1"
+          ],
+          "got": [
+            "ngspice manual > 7.6.3 BSIM Models (p.167)",
+            "ngspice manual > 8.1.1 Syntax (p.179)",
+            "ngspice manual > 7.5.1 MESFET devices (p.159)"
+          ],
+          "rank": 2
+        },
+        {
+          "q": "subcircuit .SUBCKT .ENDS definition and call X",
+          "expected": [
+            "2.6",
+            "2.6.1",
+            "2.6.3"
+          ],
+          "got": [
+            "ngspice manual > 2.6.3 Subcircuit Calls (p.57)",
+            "ngspice manual > 2.6.2 .ENDS Line (p.57)",
+            "ngspice manual > 2.6 .SUBCKT Subcircuits (p.56)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".INCLUDE file",
+          "expected": [
+            "2.8"
+          ],
+          "got": [
+            "ngspice manual > 2.8 .INCLUDE (p.58)",
+            "ngspice manual > 2.9 .INCPSLT (p.58)",
+            "ngspice manual > 2.1.1 Input file structure (p.47)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".param parametric netlist brace expressions",
+          "expected": [
+            "2.11",
+            "2.11.1",
+            "2.11.2"
+          ],
+          "got": [
+            "ngspice manual > 2.11.2 Brace expressions in circuit elements: (p.60)",
+            "ngspice manual > 2.11 .PARAM Parametric netlists (p.59)",
+            "ngspice manual > 2.11.5 Syntax of expressions (p.62)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "title line first line of input file",
+          "expected": [
+            "2.4.1",
+            "넷리스트 기본 문법 > 파일 구조",
+            "2.1.1"
+          ],
+          "got": [
+            "ngspice manual > 2.4.1 .TITLE line (p.53)",
+            "ngspice manual > 2.4.2 .END Line (p.53)",
+            "ngspice manual > 2.1.1 Input file structure (p.47)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".END line last line",
+          "expected": [
+            "2.4.2",
+            "넷리스트 기본 문법 > 파일 구조"
+          ],
+          "got": [
+            "ngspice manual > 2.4.2 .END Line (p.53)",
+            "ngspice manual > 2.6.2 .ENDS Line (p.57)",
+            "ngspice manual > 26.8 END (p.664)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "comments in netlist asterisk",
+          "expected": [
+            "2.4.3",
+            "2.4.4",
+            "넷리스트 기본 문법 > 파일 구조"
+          ],
+          "got": [
+            "ngspice manual > 2.4.3 Comments (p.54)",
+            "ngspice manual > 13.5 Commands (p.399)",
+            "ngspice manual > 26.3 COMMENT (p.656)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "접미사 M 밀리 meg 메가 1M 뜻",
+          "expected": [
+            "넷리스트 기본 문법 > 값과 접미사",
+            "오류 메시지와 해결 > 1M 이 1 밀리로 읽힘",
+            "2.1.3"
+          ],
+          "got": [
+            "오류 메시지와 해결 > 1M 이 1 밀리로 읽힘",
+            "넷리스트 기본 문법 > 값과 접미사",
+            "측정식(meas) 문법 > 특정 점의 값: FIND … AT"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "convergence failure singular matrix",
+          "expected": [
+            "1.4.3",
+            "오류 메시지와 해결 > singular matrix / DC solution failed"
+          ],
+          "got": [
+            "ngspice manual > 1.4.3 Convergence failure (p.46)",
+            "ngspice manual > 26.12.5 Bugs (p.671)",
+            "ngspice manual > 1.4 Convergence (p.45)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "timestep too small 오류 해결",
+          "expected": [
+            "오류 메시지와 해결 > timestep too small",
+            "1.4.3",
+            "11.1.4"
+          ],
+          "got": [
+            "오류 메시지와 해결 > timestep too small",
+            "ngspice manual > 12.17 Tools for debugging a circuit netlist (p.388)",
+            "ngspice manual > 25.3.5 Code Model d_source (p.647)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "diode model parameters IS N RS",
+          "expected": [
+            "7.2*"
+          ],
+          "got": [
+            "ngspice manual > 7.2.2 Diode Equations (p.138)",
+            "ngspice manual > 27.2.1 Resistor (p.689)",
+            "ngspice manual > 7.2.1 Diode Model (D) (p.134)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "MOSFET instance line W L model NMOS PMOS",
+          "expected": [
+            "7.6*"
+          ],
+          "got": [
+            "ngspice manual > 3.2.2 Instance and model parameters (p.77)",
+            "ngspice manual > 27.6.5 MOS9 - Modified Level 3 MOSFET model (p.725)",
+            "ngspice manual > 27.6.7 BSIM2 - Berkeley Short Channel IGFET Model (p.732)"
+          ],
+          "rank": null
+        },
+        {
+          "q": "BJT NPN PNP model",
+          "expected": [
+            "7.3*"
+          ],
+          "got": [
+            "ngspice manual > 7.3.3 Gummel-Poon Models (p.145)",
+            "ngspice manual > 7.3.2 BJT Models (NPN/PNP) (p.144)",
+            "ngspice manual > 3.1 About netlists, device instances, models and model parameters (p.73)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".NODESET .IC initial conditions",
+          "expected": [
+            "11.2.1",
+            "11.2.2"
+          ],
+          "got": [
+            "ngspice manual > 11.2.1 .NODESET: Specify Initial Node Voltage Guesses (p.327)",
+            "ngspice manual > 11.2.2 .IC: Set Initial Conditions (p.328)",
+            "ngspice manual > 3.2.4 Initial conditions (p.77)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".FOUR Fourier analysis of transient output",
+          "expected": [
+            "11.6.4"
+          ],
+          "got": [
+            "ngspice manual > 11.6.4 .FOUR: Fourier Analysis of Transient Analysis Output (p.355)",
+            "ngspice manual > 1.2.3 Transient Analysis (p.40)",
+            "ngspice manual > 1.2.8 Periodic Steady State Analysis (p.42)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "RC 저역통과 필터 차단 주파수 공식",
+          "expected": [
+            "자주 쓰는 해석 공식 > 1차 RC 필터"
+          ],
+          "got": [
+            "자주 쓰는 해석 공식 > 1차 RC 필터",
+            "자주 쓰는 해석 공식 > 직렬 RLC",
+            "자주 쓰는 해석 공식 > RC 계단 응답"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".options simulator variables reltol abstol",
+          "expected": [
+            "11.1"
+          ],
+          "got": [
+            "ngspice manual > 11.1 Simulator Variables (.options) (p.321)",
+            "ngspice manual > 13.5.54 Option: Set a ngspice option (p.427)",
+            "ngspice manual > 11.1.2 OP and DC Solution Options (p.323)"
+          ],
+          "rank": 1
+        }
+      ],
+      "embed_model": "local-embed"
+    },
+    {
+      "mode": "hybrid",
+      "n": 32,
+      "hit@1": 0.812,
+      "hit@3": 0.938,
+      "mrr": 0.87,
+      "rows": [
+        {
+          "q": "교류 소신호 해석 .ac 문법",
+          "expected": [
+            "11.3.1",
+            "해석 종류와 결과 벡터 > .ac 교류 소신호 해석"
+          ],
+          "got": [
+            "전원과 파형 > 직류·교류 지정",
+            "해석 종류와 결과 벡터 > .ac 교류 소신호 해석",
+            "측정식(meas) 문법 > 흔한 실수"
+          ],
+          "rank": 2
+        },
+        {
+          "q": ".AC dec oct lin points fstart fstop",
+          "expected": [
+            "11.3.1"
+          ],
+          "got": [
+            "ngspice manual > 11.3.1 .AC: Small-Signal AC Analysis (p.329)",
+            "ngspice manual > 13.5.1 Ac: Perform an AC, small-signal frequency response analysis (p.399)",
+            "ngspice manual > 13.5.88 Sp: S-Parameter Analysis (p.444)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "과도 해석 .tran 시간 간격과 끝 시간",
+          "expected": [
+            "11.3.10",
+            "해석 종류와 결과 벡터 > .tran 과도 해석"
+          ],
+          "got": [
+            "해석 종류와 결과 벡터 > .tran 과도 해석",
+            "측정식(meas) 문법 > 두 시점 사이: TRIG … TARG",
+            "오류 메시지와 해결 > timestep too small"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".TRAN TSTEP TSTOP TSTART TMAX uic",
+          "expected": [
+            "11.3.10"
+          ],
+          "got": [
+            "ngspice manual > 11.3.10 .TRAN: Transient Analysis (p.337)",
+            "ngspice manual > 13.5.99 Tran: Perform a transient analysis (p.448)",
+            "ngspice manual > 13.5.45 Linearize: Interpolate to a linear scale (p.423)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "직류 스윕 .dc 소스 시작 끝 간격",
+          "expected": [
+            "11.3.2",
+            "해석 종류와 결과 벡터 > .dc 직류 스윕"
+          ],
+          "got": [
+            "해석 종류와 결과 벡터 > .dc 직류 스윕",
+            "ngspice manual > 1.2.1 DC Analysis (p.40)",
+            "해석 종류와 결과 벡터 > .tran 과도 해석"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "동작점 해석 .op",
+          "expected": [
+            "11.3.5",
+            "해석 종류와 결과 벡터 > .op 동작점 해석"
+          ],
+          "got": [
+            "해석 종류와 결과 벡터 > .op 동작점 해석",
+            "ngspice manual > 13.5.53 Op: Perform an operating point analysis (p.427)",
+            "측정식(meas) 문법 > 흔한 실수"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".meas TRIG TARG rise time measurement",
+          "expected": [
+            "11.4*",
+            "측정식(meas) 문법 > 두 시점 사이: TRIG"
+          ],
+          "got": [
+            "ngspice manual > 11.4.5 Trig Targ (p.343)",
+            "측정식(meas) 문법 > 두 시점 사이: TRIG … TARG",
+            "ngspice manual > 11.4.5 Trig Targ (p.343)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "measure WHEN FIND AT syntax",
+          "expected": [
+            "11.4*",
+            "측정식(meas) 문법 > 교차점: WHEN",
+            "측정식(meas) 문법 > 특정 점의 값: FIND"
+          ],
+          "got": [
+            "ngspice manual > 11.4.6 Find ... When (p.345)",
+            "ngspice manual > 11.4.6 Find ... When (p.345)",
+            "측정식(meas) 문법 > 특정 점의 값: FIND … AT"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "PULSE 전원 파형 인자 V1 V2 TD TR TF PW PER",
+          "expected": [
+            "4.1.1",
+            "전원과 파형 > PULSE 계단·펄스"
+          ],
+          "got": [
+            "전원과 파형 > PULSE 계단·펄스",
+            "ngspice manual > 4.1.1 Pulse (p.96)",
+            "전원과 파형 > PWL 구간 선형"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "SIN sinusoidal source VO VA FREQ",
+          "expected": [
+            "4.1.2",
+            "전원과 파형 > SIN 정현파"
+          ],
+          "got": [
+            "ngspice manual > 4.1.2 Sinusoidal (p.97)",
+            "전원과 파형 > SIN 정현파",
+            "ngspice manual > 4.1.5 Single-Frequency FM (p.99)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "independent voltage source dc ac value syntax",
+          "expected": [
+            "4.1",
+            "전원과 파형 > 직류·교류 지정"
+          ],
+          "got": [
+            "ngspice manual > 4.1 Independent Sources for Voltage or Current (p.95)",
+            "ngspice manual > 4.1 Independent Sources for Voltage or Current (p.95)",
+            "ngspice manual > 5.2.2 VALUE (p.115)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "저항 소자 줄 형식 Rname n+ n- value",
+          "expected": [
+            "3.3.1",
+            "넷리스트 기본 문법 > 소자 줄 형식"
+          ],
+          "got": [
+            "넷리스트 기본 문법 > 파일 구조",
+            "측정식(meas) 문법 > (서문)",
+            "넷리스트 기본 문법 > 소자 줄 형식"
+          ],
+          "rank": 3
+        },
+        {
+          "q": "capacitor element line initial condition",
+          "expected": [
+            "3.3.6"
+          ],
+          "got": [
+            "ngspice manual > 3.3.14 Capacitor or inductor with initial conditions (p.91)",
+            "ngspice manual > 3.3.6 Capacitors (p.83)",
+            "ngspice manual > 3.3.7 Semiconductor Capacitors (p.84)"
+          ],
+          "rank": 2
+        },
+        {
+          "q": "inductor element syntax",
+          "expected": [
+            "3.3.10"
+          ],
+          "got": [
+            "ngspice manual > 3.3.13 Inductors, dependent on expressions (behavioral inductor) (p.90)",
+            "ngspice manual > 22.2.1 XSPICE Syntax Extensions (p.585)",
+            "ngspice manual > 5.3.2 VALUE (p.118)"
+          ],
+          "rank": null
+        },
+        {
+          "q": "coupled mutual inductors K coefficient",
+          "expected": [
+            "3.3.12"
+          ],
+          "got": [
+            "ngspice manual > 3.3.12 Coupled (Mutual) Inductors (p.89)",
+            "ngspice manual > 27.2.4 Mutual - Mutual Inductor (p.693)",
+            "ngspice manual > 27.4.1 CplLines - Simple Coupled Multiconductor Lines (p.699)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".MODEL device model card syntax",
+          "expected": [
+            "2.5",
+            "8.1.1"
+          ],
+          "got": [
+            "ngspice manual > 8.1.1 Syntax (p.179)",
+            "ngspice manual > 8.1.1 Syntax (p.179)",
+            "ngspice manual > 7.6.3 BSIM Models (p.167)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "subcircuit .SUBCKT .ENDS definition and call X",
+          "expected": [
+            "2.6",
+            "2.6.1",
+            "2.6.3"
+          ],
+          "got": [
+            "ngspice manual > 2.6.2 .ENDS Line (p.57)",
+            "ngspice manual > 2.6.1 .SUBCKT Line (p.56)",
+            "ngspice manual > 2.6 .SUBCKT Subcircuits (p.56)"
+          ],
+          "rank": 2
+        },
+        {
+          "q": ".INCLUDE file",
+          "expected": [
+            "2.8"
+          ],
+          "got": [
+            "ngspice manual > 2.8 .INCLUDE (p.58)",
+            "ngspice manual > 2.1.1 Input file structure (p.47)",
+            "ngspice manual > 2.10 .LIB (p.59)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".param parametric netlist brace expressions",
+          "expected": [
+            "2.11",
+            "2.11.1",
+            "2.11.2"
+          ],
+          "got": [
+            "ngspice manual > 2.11.2 Brace expressions in circuit elements: (p.60)",
+            "ngspice manual > 2.11 .PARAM Parametric netlists (p.59)",
+            "ngspice manual > 2.11.7 A word of caution on the three ngspice expression parsers (p.66)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "title line first line of input file",
+          "expected": [
+            "2.4.1",
+            "넷리스트 기본 문법 > 파일 구조",
+            "2.1.1"
+          ],
+          "got": [
+            "ngspice manual > 2.4.1 .TITLE line (p.53)",
+            "ngspice manual > 13.5.14 Circbyline: Enter a circuit line by line (p.406)",
+            "ngspice manual > 2.1.1 Input file structure (p.47)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".END line last line",
+          "expected": [
+            "2.4.2",
+            "넷리스트 기본 문법 > 파일 구조"
+          ],
+          "got": [
+            "ngspice manual > 2.4.2 .END Line (p.53)",
+            "ngspice manual > 2.6.2 .ENDS Line (p.57)",
+            "ngspice manual > 2.1.1 Input file structure (p.47)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "comments in netlist asterisk",
+          "expected": [
+            "2.4.3",
+            "2.4.4",
+            "넷리스트 기본 문법 > 파일 구조"
+          ],
+          "got": [
+            "ngspice manual > 2.4.3 Comments (p.54)",
+            "ngspice manual > 26.3 COMMENT (p.656)",
+            "ngspice manual > 2.4.4 End-of-line comments (p.54)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "접미사 M 밀리 meg 메가 1M 뜻",
+          "expected": [
+            "넷리스트 기본 문법 > 값과 접미사",
+            "오류 메시지와 해결 > 1M 이 1 밀리로 읽힘",
+            "2.1.3"
+          ],
+          "got": [
+            "넷리스트 기본 문법 > 값과 접미사",
+            "오류 메시지와 해결 > 1M 이 1 밀리로 읽힘",
+            "ngspice manual > 12.11.6 LTSPICE Compatibility mode (p.381)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "convergence failure singular matrix",
+          "expected": [
+            "1.4.3",
+            "오류 메시지와 해결 > singular matrix / DC solution failed"
+          ],
+          "got": [
+            "ngspice manual > 1.4.3 Convergence failure (p.46)",
+            "ngspice manual > 26.17.5 BUGS (p.680)",
+            "ngspice manual > 26.12.5 Bugs (p.671)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "timestep too small 오류 해결",
+          "expected": [
+            "오류 메시지와 해결 > timestep too small",
+            "1.4.3",
+            "11.1.4"
+          ],
+          "got": [
+            "오류 메시지와 해결 > timestep too small",
+            "ngspice manual > 12.17 Tools for debugging a circuit netlist (p.388)",
+            "오류 메시지와 해결 > singular matrix / DC solution failed"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "diode model parameters IS N RS",
+          "expected": [
+            "7.2*"
+          ],
+          "got": [
+            "ngspice manual > 7.2.2 Diode Equations (p.138)",
+            "ngspice manual > 7.2.1 Diode Model (D) (p.134)",
+            "ngspice manual > 11.1.5 ELEMENT Specific options (p.326)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "MOSFET instance line W L model NMOS PMOS",
+          "expected": [
+            "7.6*"
+          ],
+          "got": [
+            "ngspice manual > 27.6.7 BSIM2 - Berkeley Short Channel IGFET Model (p.732)",
+            "ngspice manual > 17.6 Four-Bit Binary Adder (MOS) (p.548)",
+            "ngspice manual > 27.6.1 MOS1 - Level 1 MOSFET model with Meyer capacitance model (p.711)"
+          ],
+          "rank": null
+        },
+        {
+          "q": "BJT NPN PNP model",
+          "expected": [
+            "7.3*"
+          ],
+          "got": [
+            "ngspice manual > 7.3.2 BJT Models (NPN/PNP) (p.144)",
+            "ngspice manual > 27.5.1 BJT - Bipolar Junction Transistor (p.704)",
+            "ngspice manual > 2.5 .MODEL Device Models (p.55)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".NODESET .IC initial conditions",
+          "expected": [
+            "11.2.1",
+            "11.2.2"
+          ],
+          "got": [
+            "ngspice manual > 11.2.2 .IC: Set Initial Conditions (p.328)",
+            "ngspice manual > 11.2.1 .NODESET: Specify Initial Node Voltage Guesses (p.327)",
+            "ngspice manual > 3.2.4 Initial conditions (p.77)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".FOUR Fourier analysis of transient output",
+          "expected": [
+            "11.6.4"
+          ],
+          "got": [
+            "ngspice manual > 11.6.4 .FOUR: Fourier Analysis of Transient Analysis Output (p.355)",
+            "ngspice manual > 13.5.35 Fourier: Perform a Fourier transform (p.416)",
+            "ngspice manual > 13.5.35 Fourier: Perform a Fourier transform (p.416)"
+          ],
+          "rank": 1
+        },
+        {
+          "q": "RC 저역통과 필터 차단 주파수 공식",
+          "expected": [
+            "자주 쓰는 해석 공식 > 1차 RC 필터"
+          ],
+          "got": [
+            "자주 쓰는 해석 공식 > 1차 RC 필터",
+            "자주 쓰는 해석 공식 > 직렬 RLC",
+            "측정식(meas) 문법 > 교차점: WHEN"
+          ],
+          "rank": 1
+        },
+        {
+          "q": ".options simulator variables reltol abstol",
+          "expected": [
+            "11.1"
+          ],
+          "got": [
+            "ngspice manual > 11.1 Simulator Variables (.options) (p.321)",
+            "ngspice manual > 11.1.2 OP and DC Solution Options (p.323)",
+            "ngspice manual > 11.1.7 Precedence of option and .options commands (p.327)"
+          ],
+          "rank": 1
+        }
+      ],
+      "embed_model": "local-embed"
+    }
+  ]
+}

@@ -15,7 +15,47 @@ from pathlib import Path
 from .embeddings import Embedder, EmbeddingCache, cosine
 
 _WORD = re.compile(r"[0-9A-Za-z가-힣]+")
-RRF_K = 60
+RRF_K = 60  # RRF 상수. 작을수록 1위 근처의 순위 차가 크게 반영된다(retrieval-eval --rrf-k 로 실험, ADR-031)
+
+
+def split_long(text: str, max_chars: int) -> list[str]:
+    """문단(빈 줄) 경계에서 max_chars 안쪽으로 나눈다. 한 문단이 그보다 길면 줄 단위로. max_chars 가 0 이하면 자르지 않는다."""
+    if max_chars <= 0 or len(text) <= max_chars:
+        return [text]
+    parts: list[str] = []
+    buf = ""
+    for para in re.split(r"\n{2,}", text):
+        if len(para) > max_chars:
+            for line in para.split("\n"):
+                if len(buf) + len(line) + 1 > max_chars and buf:
+                    parts.append(buf.strip())
+                    buf = ""
+                buf += line + "\n"
+            continue
+        if len(buf) + len(para) + 2 > max_chars and buf:
+            parts.append(buf.strip())
+            buf = ""
+        buf += para + "\n\n"
+    if buf.strip():
+        parts.append(buf.strip())
+    return parts
+
+
+def rrf_fuse(
+    bm25_ids: list[int],
+    vector_ids: list[int],
+    rrf_k: int | None = None,
+    bm25_weight: float = 1.0,
+    vector_weight: float = 1.0,
+) -> list[tuple[int, float]]:
+    """두 순위 목록을 RRF(Reciprocal Rank Fusion)로 합친다: 점수 = Σ 가중치 / (k + 순위). 기본은 k=60, 가중치 1:1."""
+    k = RRF_K if rrf_k is None else rrf_k
+    fused: dict[int, float] = {}
+    for rank, i in enumerate(bm25_ids):
+        fused[i] = fused.get(i, 0.0) + bm25_weight / (k + rank + 1)
+    for rank, i in enumerate(vector_ids):
+        fused[i] = fused.get(i, 0.0) + vector_weight / (k + rank + 1)
+    return sorted(fused.items(), key=lambda x: -x[1])
 
 
 @dataclass
@@ -53,13 +93,20 @@ class DocIndex:
         embedder: Embedder | None = None,
         embed_model: str = "local-embed",
         cache_path: Path | None = None,
+        max_chars: int | None = None,
     ):
+        """max_chars 를 주면 절 하나가 그보다 길 때 문단 경계에서 나눈다(기본은 절 그대로, 청크 크기 실험용)."""
         self.docs_dir = Path(docs_dir)
+        self.max_chars = max_chars
         self.conn = sqlite3.connect(":memory:", check_same_thread=False)
         self.conn.execute("CREATE VIRTUAL TABLE chunks USING fts5(doc, section, text, tokenize='unicode61')")
         self.chunks: list[Chunk] = []
         for p in sorted(self.docs_dir.glob("*.md")):
-            self.chunks.extend(chunk_markdown(p))
+            for c in chunk_markdown(p):
+                if max_chars:
+                    self.chunks.extend(Chunk(c.doc, c.section, part) for part in split_long(c.text, max_chars))
+                else:
+                    self.chunks.append(c)
         self.conn.executemany(
             "INSERT INTO chunks(doc, section, text) VALUES (?,?,?)", [(c.doc, c.section, c.text) for c in self.chunks]
         )
@@ -109,8 +156,16 @@ class DocIndex:
         sims.sort(key=lambda x: -x[1])
         return sims[:limit]
 
-    def search(self, query: str, k: int = 5, mode: str | None = None) -> list[dict]:
-        """mode: None(가능하면 hybrid) | 'bm25' | 'vector' | 'hybrid'"""
+    def search(
+        self,
+        query: str,
+        k: int = 5,
+        mode: str | None = None,
+        rrf_k: int | None = None,
+        bm25_weight: float = 1.0,
+        vector_weight: float = 1.0,
+    ) -> list[dict]:
+        """mode: None(가능하면 hybrid) | 'bm25' | 'vector' | 'hybrid'. rrf_k·가중치는 hybrid 융합에만 쓴다(기본 60, 1:1)."""
         mode = mode or self.mode
         pool = max(k * 4, 10)
         bm = self._bm25_ranked(query, pool)
@@ -124,12 +179,7 @@ class DocIndex:
                 ranked = vec[:k]
                 how = "vector"
             else:  # RRF
-                fused: dict[int, float] = {}
-                for rank, (i, _, _) in enumerate(bm):
-                    fused[i] = fused.get(i, 0.0) + 1.0 / (RRF_K + rank + 1)
-                for rank, (i, _) in enumerate(vec):
-                    fused[i] = fused.get(i, 0.0) + 1.0 / (RRF_K + rank + 1)
-                ranked = sorted(fused.items(), key=lambda x: -x[1])[:k]
+                ranked = rrf_fuse([i for i, _, _ in bm], [i for i, _ in vec], rrf_k, bm25_weight, vector_weight)[:k]
                 how = "hybrid"
         out = []
         for i, score in ranked:

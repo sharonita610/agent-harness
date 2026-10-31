@@ -26,6 +26,7 @@ from ..observability.redact import maybe_redact, redact_text
 from ..observability.tracer import TraceCollector, maybe_export, write_jsonl
 from ..packs import load_pack
 from ..packs.enterprise.seed import DEFAULT_DB
+from ..retrieval.citation import citations_ok, parse_citations, sources_from_tool_calls
 from ..tools.permissions import auto_deny
 from ..tools.registry import ToolRegistry
 
@@ -261,6 +262,15 @@ def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
         checks["answer_no_pattern"] = re.search(task["answer_not_regex"], answer) is None
     if task.get("answer_regex_all"):
         checks["answer_patterns"] = all(re.search(p, answer) is not None for p in task["answer_regex_all"])
+    extra: dict[str, Any] = {}
+    if task.get("expect_citation"):
+        # 답의 "출처: 문서명 > 절" 이 이번 실행에서 검색 도구가 실제로 돌려준 절인가(지어낸 출처를 잡는다, ADR-031)
+        sources = sources_from_tool_calls(res.tool_calls)
+        checks["cite_matches_retrieval"] = citations_ok(answer, sources)
+        extra["citations"] = {
+            "cited": [f"{d} > {s}" if d else s for d, s in parse_citations(answer)],
+            "retrieved": [f"{x['doc']} > {x['section']}" for x in sources],
+        }  # 틀린 이유를 나중에 볼 수 있게(출처를 안 적었나, 다른 절을 적었나)
     checks["finished"] = res.stopped_reason in ("final", "max_steps")
     return {
         "pass": all(checks.values()),
@@ -268,6 +278,7 @@ def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
         "truth": truth,
         "executed_tools": executed,
         "approvals": approved_requests,
+        **extra,
     }
 
 
@@ -521,6 +532,15 @@ def _summarize(rows, **meta) -> dict[str, Any]:
             "escalated_runs": sum(1 for r in all_runs if strong_spec in (r.get("by_model") or {})),
             "escalation_reasons": reasons,
         }
+    cited = [r for r in all_runs if "cite_matches_retrieval" in r["checks"]]
+    citation = (
+        {
+            "citation_checked": len(cited),
+            "citation_accuracy": round(sum(r["checks"]["cite_matches_retrieval"] for r in cited) / len(cited), 3),
+        }
+        if cited
+        else {}
+    )  # 출처 정확도: 통과율과 별개로 "인용이 검색 결과와 맞은 실행" 의 비율
     return {
         **meta,
         "tasks": len(rows),
@@ -528,6 +548,7 @@ def _summarize(rows, **meta) -> dict[str, Any]:
         **cost,
         **({"routing": routing} if routing else {}),
         "pass_rate": round(sum(r["pass"] for r in all_runs) / max(1, len(all_runs)), 3),
+        **citation,
         "by_type": {k: round(sum(v) / len(v), 3) for k, v in by_type.items()},
         "avg_steps": round(statistics.mean(r["steps"] for r in all_runs), 2) if all_runs else 0,
         "p50_latency_s": round(statistics.median(r["latency_s"] for r in all_runs), 1) if all_runs else 0,
@@ -557,6 +578,10 @@ def render_markdown(summary: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         )
         + (f" · 프롬프트 {summary['prompt_version']}" if summary.get("prompt_version") else ""),
     ]
+    if summary.get("citation_checked"):
+        lines.append(
+            f"- 출처 정확도 {summary['citation_accuracy']:.0%} (출처 검사 {summary['citation_checked']}회 실행: 답의 '출처: 문서 > 절' 이 검색 결과의 절과 일치)"
+        )
     if summary.get("routing"):
         ro = summary["routing"]
         per_model = " · ".join(

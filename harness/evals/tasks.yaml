@@ -1,4 +1,4 @@
-# 평가 태스크. type: query(조회) | doc(규정) | mixed(조회+규정) | write(승인 필요) | trap(함정)
+# 평가 태스크. type: query(조회) | doc(규정) | mixed(조회+규정) | write(승인 필요) | trap(함정). expect_citation: 답의 "출처: 문서 > 절" 이 검색 결과의 절과 맞는지(cite_matches_retrieval, ADR-031)
 # truth_sql 결과값(숫자/문자)이 답변에 모두 등장해야 통과. params_sql 은 질문의 {변수} 를 DB 에서 채운다.
 - id: q01
   type: query
@@ -35,6 +35,7 @@
   question: "지난달(2026년 9월) 재고 부족 사유로 지연된 주문은 몇 건이고, 규정상 그 지연은 회사 책임이야 고객 책임이야?"
   truth_sql: "SELECT COUNT(*) FROM orders WHERE status='지연' AND delay_reason='재고 부족' AND order_date LIKE '2026-09%'"
   expect_tools_all: [run_sql, search_docs]
+  expect_citation: true
   answer_contains_any: ["회사 책임", "회사의 책임", "회사 책임 사유"]
 
 - id: m02
@@ -44,24 +45,28 @@
     oid: "SELECT o.id FROM orders o JOIN shipments s ON s.order_id=o.id WHERE o.status='지연' AND s.shipped_date IS NOT NULL AND julianday(s.shipped_date)-julianday(s.planned_date) BETWEEN 6 AND 10 AND o.delay_reason='배송사 지연' ORDER BY o.id LIMIT 1"
   expect_tools_all: [search_docs]
   expect_tools_any: [get_order, run_sql]
+  expect_citation: true
   answer_contains_any: ["5%", "5 %", "5퍼센트"]
 
 - id: d01
   type: doc
   question: "배송사 지연으로 출고가 7일 늦어진 주문의 보상 비율은 얼마야?"
   expect_tools_any: [search_docs]
+  expect_citation: true
   answer_contains_any: ["5%", "5 %", "5퍼센트"]
 
 - id: d02
   type: doc
   question: "할인 금액이 200만 원이면 누가 승인해야 해?"
   expect_tools_any: [search_docs]
+  expect_citation: true
   answer_contains_any: ["영업부서장", "부서장"]
 
 - id: d03
   type: doc
   question: "지연 보상 금액이 400만 원이면 승인자는 누구야?"
   expect_tools_any: [search_docs]
+  expect_citation: true
   answer_contains_any: ["대표"]
 
 - id: w01

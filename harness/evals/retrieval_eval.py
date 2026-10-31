@@ -2,11 +2,15 @@
 
 enterprise: 규정 문서 10개(retrieval.yaml, 정답 = 문서 이름)
 spice: 매뉴얼 지식 베이스(retrieval_spice.yaml, 정답 = 절 번호 또는 출처 문자열 조각). --index docs 면 요약 문서 6개만.
+
+실험 축(ADR-031): chunk_chars(마크다운 색인의 청크 상한; 지식 베이스는 `kb build --chunk-chars` 로 만든 파일을 --kb 로),
+rrf_k·bm25_weight·vector_weight(hybrid 융합). 기본값이면 결과 파일은 전과 같은 형식에 필드만 더 붙는다.
 """
 
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -14,6 +18,7 @@ import yaml
 
 from ..packs.enterprise.tools import DOCS_DIR
 from ..retrieval import DocIndex, OpenAIEmbedder, embedder_available
+from ..retrieval.search import RRF_K
 from .runner import RESULTS_DIR
 
 QUERIES = Path(__file__).parent / "retrieval.yaml"
@@ -35,12 +40,13 @@ def _matches(item: dict, hit: dict) -> bool:
     return False
 
 
-def evaluate(index, queries: list[dict], mode: str, k: int = 3) -> dict:
+def evaluate(index, queries: list[dict], mode: str, k: int = 3, fusion: dict | None = None) -> dict:
+    """fusion: {"rrf_k", "bm25_weight", "vector_weight"} 중 쓸 것만. hybrid 가 아니면 무시된다."""
     hit1 = hit3 = 0
     rr = 0.0
     rows = []
     for item in queries:
-        hits = index.search(item["q"], k=k, mode=mode)
+        hits = index.search(item["q"], k=k, mode=mode, **(fusion or {}))
         rank = next((i + 1 for i, h in enumerate(hits) if _matches(item, h)), None)
         hit1 += rank == 1
         hit3 += rank is not None
@@ -64,42 +70,53 @@ def evaluate(index, queries: list[dict], mode: str, k: int = 3) -> dict:
     }
 
 
-def run(console=None, pack: str = "enterprise", index_kind: str = "auto") -> dict:
-    """index_kind: auto(spice 는 지식 베이스가 있으면 그것) | docs(마크다운 요약만) | kb"""
+def run(
+    console=None,
+    pack: str = "enterprise",
+    index_kind: str = "auto",
+    chunk_chars: int | None = None,
+    kb_path: Path | None = None,
+    rrf_k: int | None = None,
+    bm25_weight: float = 1.0,
+    vector_weight: float = 1.0,
+    tag: str | None = None,
+) -> dict:
+    """index_kind: auto(spice 는 지식 베이스가 있으면 그것) | docs(마크다운 요약만) | kb
+    chunk_chars: 마크다운 색인의 청크 상한(기본 HARNESS_CHUNK_CHARS, 없으면 절 그대로). kb_path: spice 지식 베이스 파일."""
+    if chunk_chars is None and os.getenv("HARNESS_CHUNK_CHARS"):
+        chunk_chars = int(os.environ["HARNESS_CHUNK_CHARS"])
+    fusion = {"rrf_k": rrf_k, "bm25_weight": bm25_weight, "vector_weight": vector_weight}
     emb = OpenAIEmbedder() if embedder_available() else None
+    data_dir = RESULTS_DIR.parent.parent.parent / "data"
     if pack == "spice":
         from ..packs.spice.tools import DOCS_DIR as SPICE_DOCS
         from ..packs.spice.tools import KB_PATH, make_index
 
         queries = yaml.safe_load(QUERIES_SPICE.read_text(encoding="utf-8"))
-        if index_kind == "docs" or (index_kind == "auto" and not KB_PATH.exists()):
-            index = (
-                DocIndex(
-                    SPICE_DOCS,
-                    embedder=emb,
-                    embed_model=emb.model if emb else None,
-                    cache_path=RESULTS_DIR.parent.parent.parent / "data" / "spice_doc_embeddings.json",
-                )
-                if emb
-                else DocIndex(SPICE_DOCS)
+        kb_path = Path(kb_path or KB_PATH)
+        if index_kind == "docs" or (index_kind == "auto" and not kb_path.exists()):
+            index = DocIndex(
+                SPICE_DOCS,
+                embedder=emb,
+                embed_model=emb.model if emb else "local-embed",
+                cache_path=data_dir / "spice_doc_embeddings.json" if emb else None,
+                max_chars=chunk_chars,
             )
-            index_kind = "docs"
+            index_kind, kb_path = "docs", None
         else:
-            index = make_index(hybrid=emb is not None, kb_path=KB_PATH)
+            index = make_index(hybrid=emb is not None, kb_path=kb_path)
             index_kind = "kb"
     else:
         queries = yaml.safe_load(QUERIES.read_text(encoding="utf-8"))
-        index = (
-            DocIndex(
-                DOCS_DIR,
-                embedder=emb,
-                embed_model=emb.model,
-                cache_path=RESULTS_DIR.parent.parent.parent / "data" / "doc_embeddings.json",
-            )
-            if emb
-            else DocIndex(DOCS_DIR)
+        index = DocIndex(
+            DOCS_DIR,
+            embedder=emb,
+            embed_model=emb.model if emb else "local-embed",
+            cache_path=data_dir / "doc_embeddings.json" if emb else None,
+            max_chars=chunk_chars,
         )
-        index_kind = "docs"
+        index_kind, kb_path = "docs", None
+    n_chunks = index.stats()["chunks"] if hasattr(index, "stats") else len(index.chunks)
     modes = ["bm25"]
     if emb is not None and index.mode == "hybrid":
         modes += ["vector", "hybrid"]
@@ -107,14 +124,14 @@ def run(console=None, pack: str = "enterprise", index_kind: str = "auto") -> dic
         console.print(
             f"[yellow]임베딩 {emb.model} 이 지식 베이스에 없어 bm25 만 잽니다. 먼저: uv run harness kb embed --model …[/yellow]"
         )
-    results = [evaluate(index, queries, m) for m in modes]
+    results = [evaluate(index, queries, m, fusion=fusion) for m in modes]
     embed_model = emb.model if emb else None
     for r in results:
         r["embed_model"] = embed_model if r["mode"] != "bm25" else None
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     out = (
         RESULTS_DIR
-        / f"retrieval_{datetime.now().strftime('%Y%m%d-%H%M%S')}{('_' + pack + '-' + index_kind) if pack != 'enterprise' else ''}.json"
+        / f"retrieval_{datetime.now().strftime('%Y%m%d-%H%M%S')}{('_' + pack + '-' + index_kind) if pack != 'enterprise' else ''}{('_' + tag) if tag else ''}.json"
     )
     out.write_text(
         json.dumps(
@@ -124,6 +141,11 @@ def run(console=None, pack: str = "enterprise", index_kind: str = "auto") -> dic
                 "queries": len(queries),
                 "embed_model": embed_model,
                 "embed_base_url": emb.base_url if emb else None,
+                "chunk_chars": chunk_chars,
+                "chunks": n_chunks,
+                "kb": str(kb_path) if kb_path else None,
+                "fusion": {**fusion, "rrf_k": RRF_K if rrf_k is None else rrf_k},
+                "tag": tag,
                 "results": results,
             },
             ensure_ascii=False,
@@ -136,6 +158,12 @@ def run(console=None, pack: str = "enterprise", index_kind: str = "auto") -> dic
         for r in results
     ]
     if console:
+        console.print(
+            f"[dim]색인 {index_kind} · 청크 {n_chunks}개"
+            + (f" · 청크 상한 {chunk_chars}자" if chunk_chars else "")
+            + (f" · {kb_path}" if kb_path else "")
+            + f" · RRF k={RRF_K if rrf_k is None else rrf_k}, 가중치 bm25 {bm25_weight} : 벡터 {vector_weight}[/dim]"
+        )
         console.print("\n".join(table))
         for r in results:
             misses = [x for x in r["rows"] if x["rank"] != 1]

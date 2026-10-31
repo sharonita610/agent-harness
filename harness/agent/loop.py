@@ -9,6 +9,7 @@ from typing import Any, Callable
 
 from pydantic import ValidationError
 
+from ..retrieval.citation import extract_sources
 from ..tools.permissions import ApprovalHandler, Decision, Policy, auto_deny
 from ..tools.progress import progress_scope
 from ..tools.registry import ToolRegistry, format_validation_error
@@ -248,6 +249,10 @@ class Agent:
             return msg, False
         content = truncate_result(result, self.result_max_chars)
         entry["result_preview"] = content[:300]
+        if sources := extract_sources(
+            result
+        ):  # 검색 결과의 절 목록. 평가의 출처 인용 채점(cite_matches_retrieval)이 본다
+            entry["result_sources"] = sources
         extra = {"url": result["url"]} if isinstance(result, dict) and isinstance(result.get("url"), str) else {}
         if isinstance(result, (dict, list)) and len(content) <= self.result_max_chars:
             extra["result"] = (

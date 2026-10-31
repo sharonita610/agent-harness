@@ -231,12 +231,33 @@ def eval_cmd(
 def retrieval_eval(
     pack: Optional[str] = typer.Option(None, help=PACK_HELP),
     index: str = typer.Option("auto", help="spice: auto | kb(매뉴얼 지식 베이스) | docs(요약 문서 6개)"),
+    chunk_chars: Optional[int] = typer.Option(
+        None, "--chunk-chars", help="마크다운 색인의 청크 상한(글자). 기본은 절 그대로(HARNESS_CHUNK_CHARS 로도)"
+    ),
+    kb: Optional[Path] = typer.Option(
+        None,
+        help="spice: 비교할 지식 베이스 파일(기본 data/kb/ngspice-manual.sqlite). `kb build --chunk-chars` 로 만든 것",
+    ),
+    rrf_k: Optional[int] = typer.Option(None, "--rrf-k", help="hybrid 융합의 RRF 상수(기본 60)"),
+    bm25_weight: float = typer.Option(1.0, "--bm25-weight", help="hybrid 융합에서 BM25 순위의 가중치(기본 1)"),
+    vector_weight: float = typer.Option(1.0, "--vector-weight", help="hybrid 융합에서 벡터 순위의 가중치(기본 1)"),
+    tag: Optional[str] = typer.Option(None, help="결과 파일 이름 꼬리표(예: c900)"),
 ):
     """문서 검색 품질 비교(bm25 / vector / hybrid). 임베딩 서버(8082)가 떠 있으면 세 모드 전부."""
     from .evals.retrieval_eval import run
     from .packs import load_pack
 
-    run(console=console, pack=load_pack(pack).name, index_kind=index)
+    run(
+        console=console,
+        pack=load_pack(pack).name,
+        index_kind=index,
+        chunk_chars=chunk_chars,
+        kb_path=kb,
+        rrf_k=rrf_k,
+        bm25_weight=bm25_weight,
+        vector_weight=vector_weight,
+        tag=tag,
+    )
 
 
 @app.command()
@@ -377,17 +398,23 @@ def kb_build(
     name: str = typer.Option("ngspice manual", help="문서 이름"),
     docs: Optional[Path] = typer.Option(None, help="함께 넣을 마크다운 폴더(기본: 회로 팩 요약 문서 6개)"),
     out: Path = typer.Option(DEFAULT_KB, help="SQLite 파일"),
+    chunk_chars: Optional[int] = typer.Option(
+        None, "--chunk-chars", help="청크 상한(글자). 기본 1800(HARNESS_CHUNK_CHARS). 다른 값은 --out 을 따로 두고 비교"
+    ),
 ):
     """PDF 를 절 단위로 잘라 지식 베이스를 만든다(임베딩은 kb embed 로 따로)."""
     from .packs.spice.tools import DOCS_DIR
-    from .retrieval.kb import KnowledgeBase, ingest_markdown_dir, ingest_pdf
+    from .retrieval.kb import MAX_CHUNK_CHARS, KnowledgeBase, ingest_markdown_dir, ingest_pdf
 
+    max_chars = chunk_chars or MAX_CHUNK_CHARS
     kb = KnowledgeBase(out)
     if pdf:
-        chunks = ingest_pdf(pdf, name)
-        console.print(f"{pdf.name}: 절 {len({c.section_id for c in chunks})}개 → 청크 {len(chunks)}개")
+        chunks = ingest_pdf(pdf, name, max_chars=max_chars)
+        console.print(
+            f"{pdf.name}: 절 {len({c.section_id for c in chunks})}개 → 청크 {len(chunks)}개 (상한 {max_chars}자)"
+        )
         kb.build(chunks, kind="pdf", path=str(pdf))
-    md = ingest_markdown_dir(docs or DOCS_DIR)
+    md = ingest_markdown_dir(docs or DOCS_DIR, max_chars=max_chars)
     kb.build(md, kind="markdown", path=str(docs or DOCS_DIR))
     console.print(f"마크다운 청크 {len(md)}개 · 저장: {out}")
     console.print(kb.stats())

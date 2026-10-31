@@ -10,6 +10,7 @@ PDF 청킹은 책갈피(TOC)의 절 번호를 본문 블록에서 찾아 경계�
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import sqlite3
 import struct
@@ -19,9 +20,9 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 from .embeddings import Embedder
-from .search import RRF_K, DocIndex, chunk_markdown
+from .search import DocIndex, chunk_markdown, rrf_fuse, split_long
 
-MAX_CHUNK_CHARS = 1800
+MAX_CHUNK_CHARS = int(os.getenv("HARNESS_CHUNK_CHARS", "1800") or 1800)  # 청크 상한(글자). 실험은 ADR-031
 HEADER_Y, FOOTER_Y = 42.0, 790.0  # 이 매뉴얼(A4, LaTeX)의 머리글·쪽번호 위치
 _SECTION_NO = re.compile(r"^(\d+(?:\.\d+)*)\s+(.+)$")
 _CHAPTER = re.compile(r"^(\d+)\s+(.+)$")
@@ -52,27 +53,7 @@ class KBChunk:
 
 
 # ----------------------------------------------------------------------------- 수집
-def _split_long(text: str, max_chars: int) -> list[str]:
-    """문단(빈 줄) 경계에서 max_chars 안쪽으로 나눈다. 한 문단이 그보다 길면 줄 단위로."""
-    if len(text) <= max_chars:
-        return [text]
-    parts: list[str] = []
-    buf = ""
-    for para in re.split(r"\n{2,}", text):
-        if len(para) > max_chars:
-            for line in para.split("\n"):
-                if len(buf) + len(line) + 1 > max_chars and buf:
-                    parts.append(buf.strip())
-                    buf = ""
-                buf += line + "\n"
-            continue
-        if len(buf) + len(para) + 2 > max_chars and buf:
-            parts.append(buf.strip())
-            buf = ""
-        buf += para + "\n\n"
-    if buf.strip():
-        parts.append(buf.strip())
-    return parts
+_split_long = split_long  # 문단 경계 분할은 search.split_long 로 옮겼다(DocIndex 와 공유)
 
 
 def ingest_pdf(
@@ -328,7 +309,16 @@ class KnowledgeBase:
         top = np.argsort(-scores)[:limit]
         return [(ids[i], float(scores[i])) for i in top]
 
-    def search(self, query: str, k: int = 5, mode: str | None = None) -> list[dict]:
+    def search(
+        self,
+        query: str,
+        k: int = 5,
+        mode: str | None = None,
+        rrf_k: int | None = None,
+        bm25_weight: float = 1.0,
+        vector_weight: float = 1.0,
+    ) -> list[dict]:
+        """DocIndex.search 와 같은 얼굴. rrf_k·가중치는 hybrid 융합에만(기본 60, 1:1)."""
         mode = mode or self.mode
         pool = max(k * 4, 10)
         bm = self._bm25_ranked(query, pool)
@@ -341,12 +331,8 @@ class KnowledgeBase:
             if mode == "vector":
                 ranked, how = vec[:k], "vector"
             else:
-                fused: dict[int, float] = {}
-                for rank, (i, _, _) in enumerate(bm):
-                    fused[i] = fused.get(i, 0.0) + 1.0 / (RRF_K + rank + 1)
-                for rank, (i, _) in enumerate(vec):
-                    fused[i] = fused.get(i, 0.0) + 1.0 / (RRF_K + rank + 1)
-                ranked, how = sorted(fused.items(), key=lambda x: -x[1])[:k], "hybrid"
+                fused = rrf_fuse([i for i, _, _ in bm], [i for i, _ in vec], rrf_k, bm25_weight, vector_weight)
+                ranked, how = fused[:k], "hybrid"
         out = []
         for i, score in ranked:
             r = self.conn.execute("SELECT * FROM chunks WHERE id=?", (i,)).fetchone()

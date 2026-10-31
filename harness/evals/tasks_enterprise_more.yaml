@@ -35,6 +35,7 @@
     - "배송사 지연으로 출고가 7일 늦어진 주문의 보상 비율은 얼마야?"
     - "같은 7일인데 지연 사유가 재고 부족이었다면?"
   expect_tools_any: [search_docs]
+  expect_citation: true
   answer_contains_any: ["7%", "7 %", "7퍼센트"]
   note: "6~10일 5% 에 재고 부족이면 2%p 추가 → 7%"
 
@@ -54,6 +55,7 @@
     oid: "SELECT o.id FROM orders o JOIN shipments s ON s.order_id=o.id WHERE o.status='지연' AND o.delay_reason='배송사 지연' AND s.shipped_date IS NULL AND julianday('2026-10-27')-julianday(s.planned_date) BETWEEN 7 AND 9 ORDER BY o.id LIMIT 1"
   expect_tools_all: [search_docs]
   expect_tools_any: [get_order, run_sql]
+  expect_citation: true
   answer_contains_any: ["5%", "5 %", "5퍼센트"]
   expect_approval: [create_note]
   expect_approval_args:
@@ -66,6 +68,7 @@
     big: "SELECT o.id FROM orders o JOIN shipments s ON s.order_id=o.id WHERE o.status='지연' AND o.delay_reason='재고 부족' AND s.shipped_date IS NULL AND julianday('2026-10-27')-julianday(s.planned_date) >= 11 ORDER BY o.total_amount DESC LIMIT 1"
   truth_sql: "SELECT COUNT(*) FROM orders o JOIN shipments s ON s.order_id=o.id WHERE o.status='지연' AND o.delay_reason='재고 부족' AND s.shipped_date IS NULL AND julianday('2026-10-27')-julianday(s.planned_date) >= 11"
   expect_tools_all: [run_sql, search_docs]
+  expect_citation: true
   answer_contains_any: ["12%", "12 %", "12퍼센트"]
   expect_approval: [create_note]
   expect_approval_args:
@@ -77,6 +80,7 @@
   question: "지난달(2026년 9월) 주문 중 할인율이 10% 를 넘는 주문은 몇 건이야? 그 주문들에 승인 기록이 있어야 하는 근거를 월말 마감 절차 문서에서 찾아서 같이 알려줘"
   truth_sql: "SELECT COUNT(*) FROM orders WHERE order_date LIKE '2026-09%' AND discount_rate > 0.10"
   expect_tools_all: [run_sql, search_docs]
+  expect_citation: true
   answer_contains_any: ["승인 기록", "마감"]
 
 - id: wf04
@@ -102,6 +106,7 @@
   question: "지연 주문의 사유별 건수를 보여주고, 그중 규정상 회사 책임인 사유가 전체 지연의 몇 % 인지 설명해줘"
   truth_sql: "SELECT COUNT(*) FROM orders WHERE status='지연' AND delay_reason='재고 부족'"
   expect_tools_all: [run_sql, search_docs]
+  expect_citation: true
   answer_contains_any: ["회사 책임"]
   answer_regex_all: ["4[34](\\.\\d+)?\\s*%"]
   note: "회사 책임 사유는 재고 부족(112/255 = 43.9%). 결제 확인 지연은 공동 책임, 배송사 지연·주소 오류는 회사 책임 아님"
@@ -177,10 +182,12 @@
   type: variant
   question: "할인 200만원 승인권자?"
   expect_tools_any: [search_docs]
+  expect_citation: true
   answer_contains_any: ["영업부서장", "부서장"]
 
 - id: va05
   type: variant
   question: "Carrier delay, shipment went out 7 days late. What compensation rate applies under our policy? Answer in Korean."
   expect_tools_any: [search_docs]
+  expect_citation: true
   answer_contains_any: ["5%", "5 %", "5퍼센트"]
