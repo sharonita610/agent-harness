@@ -37,4 +37,4 @@
 
 **7. 교훈.** "같은 모델" 이라는 말을 믿지 말고 양자화 구성(`config.json` 의 `quantization`, GGUF 의 텐서 타입)을 읽는다. 엔진·모델 파일을 바꾸면 속도표가 아니라 **같은 평가를 돌려 본 뒤에** 고른다. 이번에는 Q4 결과로 "MLX 가 떨어진다" 고 적을 뻔했고, 변환본 하나를 더 받아 보고서야 원인이 갈라졌다. `scripts/serve_mlx.sh` 의 기본 모델은 Q8 로 두고, Q4 는 메모리가 모자랄 때의 선택지로만 남긴다(그때는 `HARNESS_LLM_EXTRA_BODY` 의 반복 벌점을 함께 쓴다).
 
-**8. 다음.** mlx-lm 에 harmony 파서·문법 강제가 들어오면 `parse_harmony` 는 예비 경로로만 남긴다. 엔비디아 GPU 서버에서 vLLM(`openai/gpt-oss-20b`, MXFP4 그대로)을 같은 한 줄로 돌리면 동시 요청·처리량·비용 축이 더해진다.
+**8. 다음.** mlx-lm 에 harmony 파서·문법 강제가 들어오면 `parse_harmony` 는 예비 경로로만 남긴다. 엔비디아 GPU 서버에서 vLLM(`openai/gpt-oss-20b`, MXFP4 그대로)을 같은 한 줄로 돌리면 동시 요청·처리량·비용 축이 더해진다. 동시 요청·처리량은 ADR-030 에서 쟀다(llama.cpp 는 슬롯 4 를 넘으면 큐 대기, MLX 는 연속 배치).
