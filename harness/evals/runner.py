@@ -21,6 +21,8 @@ import yaml
 from ..agent.loop import Agent
 from ..agent.providers import make_provider
 from ..agent.types import Usage
+from ..observability.redact import enabled as redact_enabled
+from ..observability.redact import maybe_redact, redact_text
 from ..observability.tracer import TraceCollector, maybe_export, write_jsonl
 from ..packs import load_pack
 from ..packs.enterprise.seed import DEFAULT_DB
@@ -410,7 +412,9 @@ def run_eval(
                 {
                     "run": i + 1,
                     **sc,
-                    "answer": res.answer,
+                    "answer": redact_text(res.answer)
+                    if redact_enabled()
+                    else res.answer,  # 채점은 위에서 원문으로 끝났다
                     "steps": res.steps,
                     "latency_s": res.latency_s,
                     "prompt_tokens": res.usage.prompt_tokens,
@@ -419,7 +423,7 @@ def run_eval(
                     "routes": [ev.data["route"] for ev in res.events if ev.kind == "llm" and ev.data.get("route")],
                     **({"turns": turn_rows} if turn_rows else {}),
                     "stopped": res.stopped_reason,
-                    "tool_calls": res.tool_calls,
+                    "tool_calls": maybe_redact(res.tool_calls),
                     "trace": str(tpath.relative_to(RESULTS_DIR)),
                     "trace_summary": collector_box["c"].summary(),
                 }

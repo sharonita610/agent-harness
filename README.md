@@ -55,7 +55,7 @@ All data is synthetic. Personal project, Oct 2026, MIT.
 
 **어떻게 만들었나 (설계)**
 - [구성](#구성): 폴더별 역할
-- [설계 결정](#설계-결정): 왜 그렇게 만들었는지 요약, 상세는 ADR 27편
+- [설계 결정](#설계-결정): 왜 그렇게 만들었는지 요약, 상세는 ADR 28편
 - [로드맵](#로드맵) · [문서](#문서) · [세 번째 팩 만들기](docs/ADDING-A-PACK.md)
 
 **이 프로젝트가 증명하려는 것** (AI Agent Engineer 공고 13개의 공통 요구사항을 하나씩 대응):
@@ -77,7 +77,7 @@ All data is synthetic. Personal project, Oct 2026, MIT.
 | 제조 현장 데이터 위의 에이전트 | 세 번째 팩 `factory`: 가짜 공장의 NG(불량) 이미지 기록·설비 파라미터·조치 위에서 "어느 라인이 언제 튀었나 → 무엇이 달라졌나 → 조치 → 효과" 를 도구로 답하고, 라벨 확정·티켓은 결재 | `harness/packs/factory/`, ADR-016 |
 | 지식 베이스와 검색 파이프라인 | 매뉴얼 PDF 765쪽 → 절 단위 1,137청크 → SQLite(BM25 + 벡터, 증분 임베딩) → 검색·읽기 도구 → 32문항으로 측정(hit@1 44% → 97%) | `harness/retrieval/kb.py`, ADR-014 |
 | 지식 그래프 | 실험 추적 그래프: 실행을 회로·소자·해석·측정 노드와 관계로 자동 기록, 같은 토폴로지 변형을 값 차이와 함께 연결. "지난번 R1=2.2k 때 fc", "같은 회로 실행 전부", "두 실행 비교" 를 도구 3개로 답함. 규정 **문서 그래프**: 문서 10개의 인용·절·데이터 개념 관계를 본문에서 자동 추출해 "이 규정을 개정하면 같이 봐야 하는 문서" 를 도구 2개로 답함 | `harness/packs/spice/graph.py`, `harness/retrieval/docgraph.py`, ADR-015, ADR-023 |
-| 판단 근거를 글로 | 설계 결정 문서 27편, 실험 노트 | `docs/decisions/`, `NOTES.md` |
+| 판단 근거를 글로 | 설계 결정 문서 28편, 실험 노트 | `docs/decisions/`, `NOTES.md` |
 
 MCP 서버로도 노출되어 Hermes Agent, Claude Desktop 같은 외부 에이전트에서 같은 도구를 쓸 수 있다. HTTP 로 열면 웹과 같은 키·범위·결재함을 거친다.
 
@@ -413,6 +413,8 @@ open http://127.0.0.1:8787/docs   # OpenAPI
 | `HARNESS_CORS_ORIGINS` | 화면이 다른 비서 서비스를 부를 때의 CORS(`*`) |
 | `HARNESS_PUBLIC_URL` | agent card 에 적을 외부 주소 |
 | `HARNESS_OTLP_ENDPOINT` | 트레이스 내보내기(Jaeger 등) |
+| `HARNESS_REDACT` | 기록 가리기. 트레이스·서비스 이벤트·평가 결과에 남는 도구 결과와 답에서 전화번호·이메일·주민번호·카드번호 꼴과 phone·연락처·token 같은 키의 값을 지운다(`1`, `0` 으로 끔). 채점은 가리기 전에 끝난다 (ADR-028) |
+| `HARNESS_TRACE_RETENTION_DAYS` | 트레이스 보존 일수. 비우면 지우지 않는다 |
 | `HARNESS_SPICE_RUNS`, `HARNESS_SPICE_LIBRARY`, `HARNESS_SPICE_KB`, `HARNESS_SPICE_GRAPH`, `HARNESS_NGSPICE` | 회로 팩의 실행 폴더·저장 회로·지식 베이스·실험 그래프·ngspice 경로 |
 | `HARNESS_FACTORY_DB`, `HARNESS_FACTORY_RUNS` | 공정 팩의 DB 와 그래프 폴더 |
 | `TZ` | 저장 시각의 시간대(Docker 에서 `Asia/Seoul`) |
@@ -445,7 +447,7 @@ uv run harness users add 팀장 --role approver       # 결재(승인·반려)
 uv run harness users list
 curl -H "Authorization: Bearer hk_…" http://127.0.0.1:8787/me
 ```
-사용자를 하나라도 등록하면 모든 API 가 키를 요구하고, 결재는 approver 이상만 할 수 있다. 등록이 없으면 개발 모드(익명 admin)로 열리며 화면 왼쪽 아래에 그 사실이 표시된다. 누가 무엇을 승인·반려·제출했는지는 `GET /audit` 에 남는다. 설계: ADR-010.
+사용자를 하나라도 등록하면 모든 API 가 키를 요구하고(`Authorization: Bearer` 또는 `x-api-key` 헤더만, 주소에 붙인 `?api_key=` 는 브라우저 기록·접근 로그에 남아 받지 않는다), 결재는 approver 이상만, 사람 채점 저장(`POST /grading/…`)은 operator 이상만 할 수 있다. 등록이 없으면 개발 모드(익명 admin)로 열리며 화면 왼쪽 아래에 그 사실이 표시된다. 누가 무엇을 승인·반려·제출했는지는 `GET /audit` 에 남는다. 설계: ADR-010.
 
 **데이터 범위(row-level)** 도 사용자에게 붙일 수 있다. 프롬프트가 아니라 DB 연결에 임시 뷰를 씌워 강제하므로 모델이 어떤 SQL 을 쓰든 범위 밖 행은 보이지 않는다.
 ```bash
@@ -460,7 +462,7 @@ uv run harness ask "지연 주문 몇 건?" --trace                  # traces/<r
 HARNESS_OTLP_ENDPOINT=http://127.0.0.1:4318/v1/traces uv run harness ask "…" --trace   # OpenTelemetry 로 전송
 docker run -d --name jaeger -p 16686:16686 -p 4318:4318 jaegertracing/jaeger:2.4.0     # 보기: http://127.0.0.1:16686
 ```
-스팬: `agent.run` → `llm.stepN`, `tool.<name>`, `approval.<name>`. 평가는 실행마다 트레이스를 남기고(`results/traces/`), 서비스는 `GET /runs/{id}/trace` 로 재구성한다. 설계: ADR-007.
+기록에는 개인정보 꼴이 남지 않는다: 도구 결과·인자·답에서 전화번호·이메일·주민번호·카드번호 패턴과 phone·연락처·token 류 키의 값을 트레이스·서비스 이벤트·평가 결과에 저장하기 전에 가린다(`HARNESS_REDACT`, 기본 켬). 채점은 원문으로 먼저 끝내므로 "연락처를 내지 않았는가" 검사는 그대로 작동한다. 보존 기간은 `HARNESS_TRACE_RETENTION_DAYS`. 스팬: `agent.run` → `llm.stepN`, `tool.<name>`, `approval.<name>`. 평가는 실행마다 트레이스를 남기고(`results/traces/`), 서비스는 `GET /runs/{id}/trace` 로 재구성한다. 설계: ADR-007.
 
 ## 문서 검색: 하이브리드
 ```bash
@@ -739,4 +741,4 @@ _출처: [20261029-014321_local_supervisor_n3.json](harness/evals/results/202610
 - 3주차: ~~React UI~~ ~~README 상단 재정리~~ ~~2차 도메인 팩(`spice`)~~ ~~LLM 판정자 vs 사람 채점 대조~~ ~~매뉴얼 지식 베이스~~ ~~실험 추적 그래프~~ ~~3차 팩(`factory`)~~ ~~A2A·총괄 비서~~ ~~LangGraph 비교 실험~~ ~~업무 데스크 화면·데이터 탭·큐 보드~~ ~~MCP over HTTP~~ ~~데모 영상(녹화 스크립트)~~ 완료 → 평가 결과 공개, Electron 셸, 판정자 전 팩 적용, 인젝션 문제 확대, CI 평가 스모크, ~~소자 라이브러리~~ ~~문서 그래프~~ ~~모델 라우팅~~ ~~오프라인(에어갭) 모드~~ GPU 배포·양자화 비교
 
 ## 문서
-`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정 27편, 최근: ADR-025 요청 다양화, ADR-026 설비·시뮬레이터 상태, ADR-027 오프라인 모드) · `docs/ADDING-A-PACK.md`(팩 추가) · `docs/demo-script.md`(데모 대본) · `docs/VERIFY-day1-3.md`(검증 절차) · `scripts/capture_ui.py`(README 화면 캡처, 실제 실행) · `scripts/smoke.py`(전체 점검)
+`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정 28편, 최근: ADR-026 설비·시뮬레이터 상태, ADR-027 오프라인 모드, ADR-028 기록 가리기와 안전 마무리) · `docs/ADDING-A-PACK.md`(팩 추가) · `docs/demo-script.md`(데모 대본) · `docs/VERIFY-day1-3.md`(검증 절차) · `scripts/capture_ui.py`(README 화면 캡처, 실제 실행) · `scripts/smoke.py`(전체 점검)

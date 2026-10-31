@@ -428,7 +428,8 @@ def create_app(
         return f.read_text(encoding="utf-8")
 
     @app.post("/grading/{name}")
-    async def grading_save(name: str, request: Request):
+    async def grading_save(name: str, request: Request, user: User = Depends(require("operator"))):
+        """사람 채점 저장. 채점 결과는 '판정자가 사람과 얼마나 일치하나' 의 근거라 operator 이상만 쓴다."""
         if "/" in name or ".." in name:
             raise HTTPException(400, "잘못된 이름")
         body = await request.json()
@@ -440,7 +441,9 @@ def create_app(
 
         out.write_text(
             _json.dumps(
-                {"results": name, "graded_at": body.get("graded_at"), "grades": grades}, ensure_ascii=False, indent=2
+                {"results": name, "graded_at": body.get("graded_at"), "graded_by": user.name, "grades": grades},
+                ensure_ascii=False,
+                indent=2,
             ),
             encoding="utf-8",
         )

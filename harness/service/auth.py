@@ -92,7 +92,7 @@ def _extract_key(request: Request) -> str | None:
     auth = request.headers.get("authorization", "")
     if auth.lower().startswith("bearer "):
         return auth[7:].strip()
-    return request.headers.get("x-api-key") or request.query_params.get("api_key")
+    return request.headers.get("x-api-key")  # 쿼리 문자열(?api_key=)은 받지 않는다: 브라우저 기록·접근 로그에 남는다
 
 
 def make_dependencies(user_store: UserStore) -> tuple[Callable, Callable[[str], Callable]]:

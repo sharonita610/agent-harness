@@ -51,6 +51,7 @@ class ApprovalBroker:
                 ev = self._events.get(aid)
                 if ev:
                     ev.set()
+                self._prune_locked()
 
     def cancel_pending(self, run_id: str, by: str = "cancelled") -> int:
         """실행이 취소되면 그 실행의 대기 전표를 닫는다. 결재함에 남아 나중에 승인되는 일을 막는다."""
@@ -69,7 +70,23 @@ class ApprovalBroker:
             self._decisions[aid] = approve
             self.store.decide_approval(aid, "approved" if approve else "denied", by)
             ev.set()
+            self._prune_locked()
             return True
+
+    MAX_DECIDED = 1000  # 처리된 전표는 이 수를 넘기면 오래된 것부터 메모리에서 지운다(저장소에는 남는다)
+
+    def _prune_locked(self) -> None:
+        """결정이 끝난 전표의 이벤트·결정을 오래된 순으로 지운다. 대기 중인 전표는 건드리지 않는다. _lock 안에서 부른다."""
+        if len(self._decisions) <= self.MAX_DECIDED:
+            return
+        drop = len(self._decisions) - self.MAX_DECIDED // 2
+        for aid in list(self._decisions)[:drop]:
+            self._decisions.pop(aid, None)
+            self._events.pop(aid, None)
+
+    def memory_size(self) -> dict[str, int]:
+        with self._lock:
+            return {"events": len(self._events), "decisions": len(self._decisions)}
 
     def pending(self) -> list[dict[str, Any]]:
         return self.store.list_approvals("pending")

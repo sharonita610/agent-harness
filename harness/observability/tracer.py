@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from ..agent.types import AgentEvent, AgentResult
+from .redact import maybe_redact, prune_old_files
 
 ROOT = Path(__file__).resolve().parents[2]
 TRACES_DIR = ROOT / "traces"
@@ -76,6 +77,7 @@ class TraceCollector:
         kind = ev.kind if isinstance(ev, AgentEvent) else ev["kind"]
         step = ev.step if isinstance(ev, AgentEvent) else ev.get("step")
         d = ev.data if isinstance(ev, AgentEvent) else ev.get("data", {})
+        d = maybe_redact(d)  # 도구 결과·인자 속 개인정보 꼴은 스팬 속성에 남기지 않는다(HARNESS_REDACT=0 으로 끔)
         if kind == "step":
             self._step_start = now
         elif kind == "llm":
@@ -226,6 +228,7 @@ class TraceCollector:
 def write_jsonl(collector: TraceCollector, path: Path | None = None) -> Path:
     path = path or TRACES_DIR / f"{collector.run_id}.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
+    prune_old_files(path.parent)  # HARNESS_TRACE_RETENTION_DAYS 가 있으면 오래된 트레이스를 지운다
     with path.open("w", encoding="utf-8") as f:
         f.write(json.dumps({"type": "summary", **collector.summary()}, ensure_ascii=False) + "\n")
         for s in collector.to_dicts():

@@ -8,6 +8,8 @@ from typing import Any, AsyncIterator, Callable
 
 from ..agent.loop import Agent
 from ..agent.types import AgentResult
+from ..observability.redact import enabled as redact_enabled
+from ..observability.redact import maybe_redact, redact_text
 from .sse import ping, sse
 
 Sink = Callable[[dict[str, Any]], None]
@@ -66,8 +68,9 @@ def execute_run(
         store.finish_run(run_id, "failed", error=f"{type(e).__name__}: {e}")
         raise
     store.add_message(session_id, "user", question)
-    store.add_message(session_id, "assistant", res.answer)
-    store.finish_run(run_id, "cancelled" if res.stopped_reason == "cancelled" else "done", result=res)
+    stored = res.model_copy(update={"answer": redact_text(res.answer)}) if redact_enabled() else res
+    store.add_message(session_id, "assistant", stored.answer)
+    store.finish_run(run_id, "cancelled" if res.stopped_reason == "cancelled" else "done", result=stored)
     _export_trace(store, run_id, question)
     return res
 
@@ -103,7 +106,7 @@ def make_sink(store, run_id: str, forward: Callable[[dict[str, Any]], None] | No
         with lock:
             seq["n"] += 1
             n = seq["n"]
-        store.add_event(run_id, n, ev["kind"], ev.get("step"), ev.get("data", {}))
+        store.add_event(run_id, n, ev["kind"], ev.get("step"), maybe_redact(ev.get("data", {})))  # 저장본만 가린다
         if forward:
             forward({**ev, "seq": n})
 
