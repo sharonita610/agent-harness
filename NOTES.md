@@ -288,3 +288,15 @@ uv run harness eval --n 1            # 평가 16개
 - 사용자: "1 은 어떤 걸 위해 필요한가" → 기능이 아니라 README 의 약속("데이터 층에서 막는다")과 코드의 예외 넷을 맞추는 일이라고 답했고, 진행 지시.
 - 쿼리 문자열 키 제거, 채점 저장 operator 인증(채점 페이지는 화면 키를 헤더로), 기록 가리기(패턴 + 키 이름, 트레이스·서비스 저장본·평가 결과; 채점은 원문으로 먼저), 트레이스 보존 일수, 브로커 처리 전표 1,000건 상한(ADR-028).
 - 함정: 가리기를 채점 전에 하면 "연락처 안 냈나" 검사가 전부 통과한다. 러너에서 순서를 고정하고 테스트로 박았다.
+
+### 서빙 엔진 비교: llama.cpp 와 MLX (2026-11-01)
+- 질문: 같은 맥·같은 모델(gpt-oss-20b 4비트)에서 엔진만 바꾸면 무엇이 달라지나. vLLM 은 CUDA 전용이라 이 맥에서는 성립하지 않음(ADR-029 에 GPU 서버용 한 줄만).
+- MLX: `uv run --with mlx-lm python -m mlx_lm.server`(0.32.2), `mlx-community/gpt-oss-20b-MXFP4-Q4` 10.5GB(safetensors 3개). 포트 8081 은 Expo 가 쓰고 있어 `MLX_PORT=8091`. `ps` RSS 는 Metal 메모리를 안 보여 `footprint -p` 로 측정(11GB, 피크 12GB).
+- 측정(같은 프롬프트, 스트리밍, 워밍업 후 3회 중앙값): MLX 디코드 75 tok/s · 첫 토큰 0.04s / llama.cpp 67 tok/s · 0.12s(분석 채널은 `reasoning_content` 로 따로 오므로 생성 토큰 전체로 셈). llama.cpp 의 footprint 는 723MB + mmap 6GB 로만 잡혀(Metal 버퍼가 프로세스에 귀속 안 됨) 메모리는 파일 크기(12.1 vs 10.5GB)로 비교.
+- 발견 1: 서버가 `tools` 를 받고도 harmony 원문을 content 로 돌려준다 → `parse_harmony`(providers.py) 로 commentary 채널의 함수 호출·final 채널의 답을 건짐. 테스트 `tests/test_harmony.py`.
+- 발견 2: 벌점 없이 16회 중 4회가 analysis 채널 반복 루프로 2048 토큰 소진(finish=length), 분석문이 답으로 샘. → (a) analysis 만 있고 length 면 빈 응답으로 돌려 기존 `truncated_empty` 되묻기·라우팅 `truncated` 신호를 타게 함. (b) `HARNESS_LLM_EXTRA_BODY` 로 `repetition_penalty 1.1` → 같은 질문 2048 → 126 토큰, p95 66 → 25초.
+- 발견 3: 벌점 1.1 은 한국어를 조금 망가뜨림("아래드된") + 함수 호출 JSON 이 머리말 없이 본문으로 샘(3/48). llama.cpp 는 grammar 로 형식을 강제, MLX 서버는 자유 샘플링.
+- 통과율(회사 16문제): MLX 62.5%(n=1, 벌점 없음) · 75%(n=1, 1.1) · 52%(n=3, 1.1) vs llama.cpp 98%(n=3, 10-29) · 100% (16/16)(n=1, 11-01). 실패 유형은 ADR-029 결과 4.
+- 두 파일은 같은 모델이 아님: GGUF 는 전문가 MXFP4 + 어텐션·임베딩·출력 Q8_0(1.9GB), MLX 변환본은 어텐션·임베딩까지 4비트 affine(config.json `quantization`). 10.5 vs 12.1GB 차이가 여기서 남.
+- 결과 파일 이름 버그: `with_suffix` 가 모델 이름의 점(`MXFP4-Q4` 앞의 `.`)에서 잘라 `…mlx-community/gpt-oss-20b-MXFP4-Q4_mlx-n1` → `_provider_slug`(모델 마지막 조각, `.`→`_`, `->`→`-to-`) + 문자열 결합으로 수정.
+- 다음: `MXFP4-Q8`(12.1GB)로 양자화 요인 분리, mlx-lm 에 harmony 파서가 들어오면 재측정.

@@ -156,3 +156,14 @@ def test_approval_args_accept_alternatives():
     other = _res("", approvals=[("create_action", {"line": 1, "station": "권취", "owner": "이엔지니어"})])
     assert score(task, by_name, [])["checks"]["approval_args"] and score(task, by_id, [])["checks"]["approval_args"]
     assert score(task, other, [])["checks"]["approval_args"] is False
+
+
+def test_provider_slug_keeps_dots_out_of_result_names():
+    from harness.evals.runner import _provider_slug
+
+    assert (
+        _provider_slug("compat:http://127.0.0.1:8091/v1|mlx-community/gpt-oss-20b-MXFP4-Q4")
+        == "compat-gpt-oss-20b-MXFP4-Q4"
+    )
+    assert _provider_slug("route:local->openai:gpt-5-mini") == "route-local-to-openai-gpt-5-mini"
+    assert _provider_slug("local") == "local" and _provider_slug("openai:gpt-5-mini") == "openai-gpt-5-mini"

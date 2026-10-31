@@ -349,6 +349,16 @@ def run_turns(agent: Agent, turns: list[str]) -> tuple[Any, list[dict[str, Any]]
     return merged, turn_rows
 
 
+def _provider_slug(provider: str) -> str:
+    """결과 파일 이름용 provider 표기. compat:주소|모델 은 모델 이름만(주소의 점이 확장자로 오해되는 것도 막는다), 나머지는 기호를 - 로."""
+    kind, _, rest = provider.partition(":")
+    if kind == "compat":
+        _, _, model = rest.partition("|")
+        rest = model.rsplit("/", 1)[-1] or "model"
+    text = f"{kind}-{rest}" if rest else kind
+    return text.replace("->", "-to-").replace(":", "-").replace("/", "-").replace("|", "-").replace(".", "_")
+
+
 def run_eval(
     provider: str = "local",
     n: int = 1,
@@ -369,9 +379,7 @@ def run_eval(
     prov = make_provider(provider)
     registry = ToolRegistry(pk.build_tools(db_path=pack_db) if pack_db else pk.build_tools())
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    safe_provider = (
-        provider.replace("->", "-to-").replace(":", "-").replace("/", "-").replace("|", "-")
-    )  # 파일 이름에 >, :, / 금지
+    safe_provider = _provider_slug(provider)
     suffix = f"{safe_provider}{('_' + pk.name) if pk.name != 'enterprise' else ''}{('_' + tag) if tag else ''}"
     trace_dir = RESULTS_DIR / "traces" / f"{stamp}_{suffix}"
     collector_box: dict[str, TraceCollector] = {}
@@ -457,10 +465,11 @@ def run_eval(
     )
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     base = RESULTS_DIR / f"{stamp}_{suffix}"
-    base.with_suffix(".json").write_text(
+    # with_suffix 는 이름 속 점(127.0.0.1)을 확장자로 보고 잘라 버린다 → 문자열로 붙인다
+    Path(str(base) + ".json").write_text(
         json.dumps({"summary": summary, "tasks": rows}, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
     )
-    base.with_suffix(".md").write_text(render_markdown(summary, rows), encoding="utf-8")
+    Path(str(base) + ".md").write_text(render_markdown(summary, rows), encoding="utf-8")
     if console:
         console.print(render_markdown(summary, rows))
         console.print(f"[dim]저장: {base}.json / .md[/dim]")

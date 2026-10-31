@@ -80,6 +80,34 @@ def _calls_from_obj(obj: Any, start: int) -> list[ToolCall]:
     return out
 
 
+# gpt-oss 의 harmony 형식: 서버가 도구 호출을 파싱해 주지 않으면(예: mlx_lm.server) 원문에 채널 토큰이 그대로 온다.
+#   <|channel|>analysis<|message|>…<|end|><|start|>assistant<|channel|>commentary to=functions.run_sql <|constrain|>json<|message|>{"sql": …}<|call|>
+#   <|channel|>final<|message|>최종 답<|return|>
+_HARMONY_CALL = re.compile(
+    r"to=functions\.([\w\-]+).*?<\|message\|>\s*(\{.*?\})\s*(?=<\|call\|>|<\|end\|>|<\|start\|>|$)", re.S
+)
+_HARMONY_FINAL = re.compile(r"<\|channel\|>final<\|message\|>(.*?)(?:<\|end\|>|<\|return\|>|<\|call\|>|$)", re.S)
+_HARMONY_TOKEN = re.compile(r"<\|[a-z_]+\|>")
+
+
+def parse_harmony(text: str | None) -> tuple[str | None, list[ToolCall]]:
+    """harmony 원문 → (최종 답, 도구 호출). 채널 토큰이 없으면 그대로 돌려준다. 분석(analysis) 채널은 버린다."""
+    if not text or "<|channel|>" not in text:
+        return text, []
+    calls: list[ToolCall] = []
+    for i, m in enumerate(_HARMONY_CALL.finditer(text)):
+        args, err = _parse_args(m.group(2))
+        calls.append(ToolCall(id=f"call_h{i}", name=m.group(1), arguments=args, parse_error=err))
+    fm = _HARMONY_FINAL.search(text)
+    if fm:
+        return fm.group(1).strip() or None, calls
+    if calls:
+        return None, calls
+    # 분석만 있고 답이 없으면 마지막 메시지 조각을 답으로(채널 토큰 제거)
+    last = text.rsplit("<|message|>", 1)[-1]
+    return _HARMONY_TOKEN.sub("", last).strip() or None, calls
+
+
 def salvage_text_tool_calls(text: str | None) -> list[ToolCall]:
     """소형 모델이 툴콜을 본문 텍스트로 뱉은 경우 건져낸다.
     형태 1: <tool_call>{"name":..,"arguments":..}</tool_call>
@@ -146,6 +174,37 @@ def assemble_stream(chunks: Any, on_delta: OnDelta | None = None) -> LLMResponse
     return LLMResponse(text="".join(text_parts) or None, tool_calls=tool_calls, usage=usage, finish_reason=finish)
 
 
+def _with_harmony(resp: LLMResponse) -> LLMResponse:
+    """서버가 도구 호출을 파싱하지 않고 harmony 원문을 content 로 준 경우(mlx_lm.server 등) 하네스가 건진다.
+    분석 채널만 쓰다 길이 제한에 걸린 응답은 답이 아니라 '빈 응답' 으로 돌려 루프가 되묻거나 라우팅이 올리게 한다."""
+    if not resp.tool_calls and resp.text and "<|channel|>" in resp.text:
+        has_final = "<|channel|>final" in resp.text
+        text, calls = parse_harmony(resp.text)
+        if not calls and not has_final and resp.finish_reason == "length":
+            text = None
+        resp.text, resp.tool_calls = text, calls
+    return resp
+
+
+def _extra_body_from_env() -> dict:
+    """HARNESS_LLM_EXTRA_BODY='{"repetition_penalty": 1.1}' 처럼 로컬·호환 서버에만 보낼 추가 파라미터(서버마다 이름이 다르다)."""
+    raw = os.getenv("HARNESS_LLM_EXTRA_BODY", "").strip()
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"HARNESS_LLM_EXTRA_BODY 는 JSON 객체여야 합니다: {e}") from e
+    if not isinstance(data, dict):
+        raise ValueError("HARNESS_LLM_EXTRA_BODY 는 JSON 객체여야 합니다")
+    return data
+
+
+def _with_env_extra(kw: dict) -> dict:
+    merged = {**_extra_body_from_env(), **(kw.pop("extra_body", None) or {})}
+    return {"extra_body": merged, **kw}
+
+
 class OpenAICompatProvider:
     """OpenAI 호환 /v1/chat/completions. llama-server, vLLM, LM Studio, OpenAI 모두 여기로. on_delta 를 주면 스트리밍."""
 
@@ -180,7 +239,9 @@ class OpenAICompatProvider:
         for attempt in range(60):  # 모델 로딩 중(503) 이면 최대 ~2분 기다린다
             try:
                 if on_delta is not None:
-                    return assemble_stream(self._create(messages, tools, NOT_GIVEN, stream=True), on_delta)
+                    return _with_harmony(
+                        assemble_stream(self._create(messages, tools, NOT_GIVEN, stream=True), on_delta)
+                    )
                 resp = self._create(messages, tools, NOT_GIVEN)
                 break
             except APIStatusError as e:
@@ -205,7 +266,9 @@ class OpenAICompatProvider:
             usage = Usage(
                 prompt_tokens=resp.usage.prompt_tokens or 0, completion_tokens=resp.usage.completion_tokens or 0
             )
-        return LLMResponse(text=msg.content, tool_calls=calls, usage=usage, finish_reason=choice.finish_reason)
+        return _with_harmony(
+            LLMResponse(text=msg.content, tool_calls=calls, usage=usage, finish_reason=choice.finish_reason)
+        )
 
     def _create(self, messages, tools, not_given, stream: bool = False):
         kw: dict[str, Any] = dict(
@@ -431,7 +494,7 @@ def make_provider(spec: str | None = None, **kw) -> Provider:
             base_url=check_url(os.getenv("LLM_BASE_URL", DEFAULT_LOCAL_BASE_URL), "모델 서버"),
             api_key="llama.cpp",
             name="local",
-            **kw,
+            **_with_env_extra(kw),
         )
     if kind == "openai":
         return OpenAICompatProvider(model=rest or "gpt-5-mini", name="openai", **kw)
@@ -444,6 +507,6 @@ def make_provider(spec: str | None = None, **kw) -> Provider:
             base_url=check_url(base_url, "모델 서버"),
             api_key="no-key",
             name="compat",
-            **kw,
+            **_with_env_extra(kw),
         )
     raise ValueError(f"알 수 없는 프로바이더: {spec}")
