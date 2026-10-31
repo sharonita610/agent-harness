@@ -1,0 +1,850 @@
+{
+  "summary": {
+    "provider": "local",
+    "model": "local-llm",
+    "n": 3,
+    "tag": "more-parallel-n3",
+    "prompt_version": "v1",
+    "pack": "supervisor",
+    "tasks_file": "tasks_supervisor_more",
+    "tasks": 4,
+    "runs": 12,
+    "cost_usd": 0.0,
+    "cost_usd_if_hosted": 0.00117,
+    "pass_rate": 0.833,
+    "by_type": {
+      "multiturn": 1.0,
+      "premise": 0.833,
+      "variant": 0.667
+    },
+    "avg_steps": 2.67,
+    "p50_latency_s": 12.5,
+    "p95_latency_s": 21.2,
+    "tokens_per_run": 3726,
+    "generated_at": "2026-11-01T05:59:21"
+  },
+  "tasks": [
+    {
+      "id": "mt01",
+      "type": "multiturn",
+      "question": "현재 상태가 '지연'인 주문은 총 몇 건이야? → 그중 등급 A 거래처 주문은 몇 건이야?",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "truth_in_answer": true,
+            "calls": true,
+            "finished": true
+          },
+          "truth": [
+            43
+          ],
+          "executed_tools": [
+            "delegate",
+            "delegate"
+          ],
+          "approvals": [],
+          "answer": "지연 상태인 주문 중 등급 A 거래처의 주문은 **43건**입니다.  \n출처: 회사 데이터 비서.",
+          "steps": 4,
+          "latency_s": 15.13,
+          "prompt_tokens": 4582,
+          "completion_tokens": 466,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 4582,
+              "completion_tokens": 466,
+              "calls": 4
+            }
+          },
+          "routes": [],
+          "turns": [
+            {
+              "question": "현재 상태가 '지연'인 주문은 총 몇 건이야?",
+              "answer": "현재 '지연' 상태인 주문은 **255건**입니다.  \n출처: 회사 데이터 비서.",
+              "steps": 2,
+              "latency_s": 6.45,
+              "stopped": "final"
+            },
+            {
+              "question": "그중 등급 A 거래처 주문은 몇 건이야?",
+              "answer": "지연 상태인 주문 중 등급 A 거래처의 주문은 **43건**입니다.  \n출처: 회사 데이터 비서.",
+              "steps": 2,
+              "latency_s": 8.68,
+              "stopped": "final"
+            }
+          ],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "delegate",
+              "arguments": {
+                "agent": "회사",
+                "question": "현재 상태가 '지연'인 주문은 총 몇 건이야?",
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"agent\": \"enterprise\", \"task_id\": \"run_d8e15e9b1ffb\", \"state\": \"completed\", \"answer\": \"현재 '지연' 상태인 주문은 **255건**입니다.\"}"
+            },
+            {
+              "step": 1,
+              "name": "delegate",
+              "arguments": {
+                "agent": "회사",
+                "question": "지연 상태인 주문 중 등급 A 거래처 주문은 몇 건이야?",
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"agent\": \"enterprise\", \"task_id\": \"run_39be9189216a\", \"state\": \"completed\", \"answer\": \"지연 상태인 주문 중 등급 **A** 거래처의 주문은 **43건**입니다.\"}"
+            }
+          ],
+          "trace": "traces/20261101-055632_local_supervisor_more-parallel-n3/mt01_run1.jsonl",
+          "trace_summary": {
+            "run_id": "mt01_run1",
+            "spans": 7,
+            "llm_calls": 4,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 8740,
+            "tool_ms": 6388,
+            "human_ms": 0,
+            "total_ms": 6448
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "truth_in_answer": true,
+            "calls": true,
+            "finished": true
+          },
+          "truth": [
+            43
+          ],
+          "executed_tools": [
+            "delegate",
+            "delegate"
+          ],
+          "approvals": [],
+          "answer": "지연 상태인 주문 중 등급 A 거래처의 주문은 **43건**입니다.  \n출처: 회사 데이터 비서.",
+          "steps": 4,
+          "latency_s": 12.53,
+          "prompt_tokens": 4580,
+          "completion_tokens": 325,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 4580,
+              "completion_tokens": 325,
+              "calls": 4
+            }
+          },
+          "routes": [],
+          "turns": [
+            {
+              "question": "현재 상태가 '지연'인 주문은 총 몇 건이야?",
+              "answer": "현재 ‘지연’ 상태인 주문은 **255건**입니다.  \n출처: 회사 데이터 비서.",
+              "steps": 2,
+              "latency_s": 6.05,
+              "stopped": "final"
+            },
+            {
+              "question": "그중 등급 A 거래처 주문은 몇 건이야?",
+              "answer": "지연 상태인 주문 중 등급 A 거래처의 주문은 **43건**입니다.  \n출처: 회사 데이터 비서.",
+              "steps": 2,
+              "latency_s": 6.48,
+              "stopped": "final"
+            }
+          ],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "delegate",
+              "arguments": {
+                "agent": "회사",
+                "question": "현재 상태가 '지연'인 주문은 총 몇 건이야?",
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"agent\": \"enterprise\", \"task_id\": \"run_d4cee646d92f\", \"state\": \"completed\", \"answer\": \"현재 ‘지연’ 상태인 주문은 **255건**입니다.\"}"
+            },
+            {
+              "step": 1,
+              "name": "delegate",
+              "arguments": {
+                "agent": "회사",
+                "question": "지연 상태인 주문 중 등급 A 거래처 주문은 몇 건이야?",
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"agent\": \"enterprise\", \"task_id\": \"run_59165bc35b17\", \"state\": \"completed\", \"answer\": \"지연 상태인 주문 중 등급 A 거래처의 주문은 **43건**입니다.\"}"
+            }
+          ],
+          "trace": "traces/20261101-055632_local_supervisor_more-parallel-n3/mt01_run2.jsonl",
+          "trace_summary": {
+            "run_id": "mt01_run2",
+            "spans": 7,
+            "llm_calls": 4,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 6110,
+            "tool_ms": 6410,
+            "human_ms": 0,
+            "total_ms": 6051
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "truth_in_answer": true,
+            "calls": true,
+            "finished": true
+          },
+          "truth": [
+            43
+          ],
+          "executed_tools": [
+            "delegate",
+            "delegate"
+          ],
+          "approvals": [],
+          "answer": "지연 상태인 주문 중 등급 A 거래처의 주문은 **43건**입니다.  \n출처: 회사 데이터 비서.",
+          "steps": 4,
+          "latency_s": 16.26,
+          "prompt_tokens": 4588,
+          "completion_tokens": 370,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 4588,
+              "completion_tokens": 370,
+              "calls": 4
+            }
+          },
+          "routes": [],
+          "turns": [
+            {
+              "question": "현재 상태가 '지연'인 주문은 총 몇 건이야?",
+              "answer": "현재 ‘지연’ 상태인 주문은 **255건**입니다.  \n출처: 회사 데이터 비서.",
+              "steps": 2,
+              "latency_s": 8.01,
+              "stopped": "final"
+            },
+            {
+              "question": "그중 등급 A 거래처 주문은 몇 건이야?",
+              "answer": "지연 상태인 주문 중 등급 A 거래처의 주문은 **43건**입니다.  \n출처: 회사 데이터 비서.",
+              "steps": 2,
+              "latency_s": 8.25,
+              "stopped": "final"
+            }
+          ],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "delegate",
+              "arguments": {
+                "agent": "회사",
+                "question": "현재 상태가 '지연'인 주문은 총 몇 건이야?",
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"agent\": \"enterprise\", \"task_id\": \"run_866e7babbab9\", \"state\": \"completed\", \"answer\": \"현재 ‘지연’ 상태인 주문은 **255건**입니다.\"}"
+            },
+            {
+              "step": 1,
+              "name": "delegate",
+              "arguments": {
+                "agent": "회사",
+                "question": "현재 상태가 '지연'인 주문 중 등급 A 거래처 주문은 몇 건이야?",
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"agent\": \"enterprise\", \"task_id\": \"run_8abdc6b86d5f\", \"state\": \"completed\", \"answer\": \"지연 상태인 주문 중 등급 A 거래처의 주문은 **43건**입니다.\"}"
+            }
+          ],
+          "trace": "traces/20261101-055632_local_supervisor_more-parallel-n3/mt01_run3.jsonl",
+          "trace_summary": {
+            "run_id": "mt01_run3",
+            "spans": 7,
+            "llm_calls": 4,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 6820,
+            "tool_ms": 9450,
+            "human_ms": 0,
+            "total_ms": 8011
+          }
+        }
+      ]
+    },
+    {
+      "id": "pr01",
+      "type": "premise",
+      "question": "5라인 조립 스테이션의 10월 20일 NG 건수를 알려줘",
+      "pass_rate": 0.6666666666666666,
+      "runs": [
+        {
+          "run": 1,
+          "pass": false,
+          "checks": {
+            "calls": true,
+            "answer_contains": false,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "delegate"
+          ],
+          "approvals": [],
+          "answer": "5라인 조립 스테이션의 10월 20일 NG 건수를 알려줘",
+          "steps": 2,
+          "latency_s": 11.59,
+          "prompt_tokens": 2305,
+          "completion_tokens": 460,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 2305,
+              "completion_tokens": 460,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "delegate",
+              "arguments": {
+                "agent": "공정",
+                "question": "5라인 조립 스테이션의 10월 20일 NG 건수를 알려줘",
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"agent\": \"factory\", \"task_id\": \"run_c70a3e60f1d1\", \"state\": \"completed\", \"answer\": \"죄송합니다. 현재 데이터에는 1~4라인만 존재합니다. “5라인”이 맞으신가요, 아니면 다른 라인(예: 1라인, 2라인 등)을 말씀하시는 건가요? 정확한 라인 번호를 알려주시면 NG 건수를 조회해 드리겠습니다.\"}"
+            }
+          ],
+          "trace": "traces/20261101-055632_local_supervisor_more-parallel-n3/pr01_run1.jsonl",
+          "trace_summary": {
+            "run_id": "pr01_run1",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 7830,
+            "tool_ms": 3755,
+            "human_ms": 0,
+            "total_ms": 11588
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "calls": true,
+            "answer_contains": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "delegate"
+          ],
+          "approvals": [],
+          "answer": "죄송합니다. 현재 데이터에는 1~4라인만 존재합니다. “5라인”이 실제로 존재하는 라인인지, 혹은 다른 라인(예: 1라인, 2라인 등)을 말씀하시는 건지 확인해 주실 수 있을까요? 정확한 라인 번호를 알려주시면 NG 건수를 조회해 드리겠습니다.  \n출처: 공정 NG 분석 비서",
+          "steps": 2,
+          "latency_s": 12.43,
+          "prompt_tokens": 2310,
+          "completion_tokens": 425,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 2310,
+              "completion_tokens": 425,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "delegate",
+              "arguments": {
+                "agent": "공정",
+                "question": "5라인 조립 스테이션의 10월 20일 NG 건수를 알려줘",
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"agent\": \"factory\", \"task_id\": \"run_2eecd8538843\", \"state\": \"completed\", \"answer\": \"죄송합니다. 현재 데이터에는 1~4라인만 존재합니다. “5라인”이 실제로 존재하는 라인인지, 혹은 다른 라인(예: 1라인, 2라인 등)을 말씀하시는 건지 확인해 주실 수 있을까요? 정확한 라인 번호를 알려주시면 NG 건수를 조회해 드리겠습니다.\"}"
+            }
+          ],
+          "trace": "traces/20261101-055632_local_supervisor_more-parallel-n3/pr01_run2.jsonl",
+          "trace_summary": {
+            "run_id": "pr01_run2",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 7240,
+            "tool_ms": 5177,
+            "human_ms": 0,
+            "total_ms": 12426
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "calls": true,
+            "answer_contains": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "delegate"
+          ],
+          "approvals": [],
+          "answer": "죄송합니다. 현재 데이터베이스에는 1~4라인만 존재합니다. “5라인”이 실제로 존재하는 라인인지, 혹은 다른 라인(예: 1라인, 2라인 등)을 말씀하시는 건지 확인해 주실 수 있을까요? 정확한 라인 번호를 알려주시면 NG 건수를 조회해 드리겠습니다.  \n출처: 공정 NG 분석 비서",
+          "steps": 2,
+          "latency_s": 9.32,
+          "prompt_tokens": 2311,
+          "completion_tokens": 387,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 2311,
+              "completion_tokens": 387,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "delegate",
+              "arguments": {
+                "agent": "공정",
+                "question": "5라인 조립 스테이션의 10월 20일 NG 건수를 알려줘",
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"agent\": \"factory\", \"task_id\": \"run_8379ed120074\", \"state\": \"completed\", \"answer\": \"죄송합니다. 현재 데이터베이스에는 1~4라인만 존재합니다. “5라인”이 실제로 존재하는 라인인지, 혹은 다른 라인(예: 1라인, 2라인 등)을 말씀하시는 건지 확인해 주실 수 있을까요? 정확한 라인 번호를 알려주시면 NG 건수를 조회해 드리겠습니다.\"}"
+            }
+          ],
+          "trace": "traces/20261101-055632_local_supervisor_more-parallel-n3/pr01_run3.jsonl",
+          "trace_summary": {
+            "run_id": "pr01_run3",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 6560,
+            "tool_ms": 2753,
+            "human_ms": 0,
+            "total_ms": 9322
+          }
+        }
+      ]
+    },
+    {
+      "id": "pr02",
+      "type": "premise",
+      "question": "주문 99999번의 지연 사유를 알려줘",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "calls": true,
+            "answer_contains": true,
+            "answer_clean": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "delegate"
+          ],
+          "approvals": [],
+          "answer": "죄송합니다. 주문 번호 **99999**는 현재 시스템에 존재하지 않습니다. 다른 주문 번호를 알려주시면 확인해 드리겠습니다.  \n출처: 회사 데이터 비서.",
+          "steps": 2,
+          "latency_s": 6.15,
+          "prompt_tokens": 2247,
+          "completion_tokens": 186,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 2247,
+              "completion_tokens": 186,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "delegate",
+              "arguments": {
+                "agent": "회사",
+                "question": "주문 99999번의 지연 사유를 알려줘",
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"agent\": \"enterprise\", \"task_id\": \"run_af8987dd1ace\", \"state\": \"completed\", \"answer\": \"죄송합니다. 주문 번호 **99999**는 현재 시스템에 존재하지 않습니다. 다른 주문 번호를 알려주시면 확인해 드리겠습니다.\"}"
+            }
+          ],
+          "trace": "traces/20261101-055632_local_supervisor_more-parallel-n3/pr02_run1.jsonl",
+          "trace_summary": {
+            "run_id": "pr02_run1",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 3380,
+            "tool_ms": 2760,
+            "human_ms": 0,
+            "total_ms": 6148
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "calls": true,
+            "answer_contains": true,
+            "answer_clean": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "delegate"
+          ],
+          "approvals": [],
+          "answer": "주문 99999번은 존재하지 않으므로 지연 사유를 확인할 수 없습니다. 다른 주문 번호를 알려주시면 확인해 드리겠습니다.  \n출처: 회사 데이터 비서.",
+          "steps": 2,
+          "latency_s": 8.87,
+          "prompt_tokens": 2262,
+          "completion_tokens": 280,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 2262,
+              "completion_tokens": 280,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "delegate",
+              "arguments": {
+                "agent": "회사",
+                "question": "주문 99999번의 지연 사유를 알려줘",
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"agent\": \"enterprise\", \"task_id\": \"run_656c14130c9a\", \"state\": \"completed\", \"answer\": \"죄송합니다. 주문 번호 **99999**는 현재 데이터베이스에 존재하지 않으므로 지연 사유를 확인할 수 없습니다. 다른 주문 번호를 알려주시면 확인해 드리겠습니다.\"}"
+            }
+          ],
+          "trace": "traces/20261101-055632_local_supervisor_more-parallel-n3/pr02_run2.jsonl",
+          "trace_summary": {
+            "run_id": "pr02_run2",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 4630,
+            "tool_ms": 4245,
+            "human_ms": 0,
+            "total_ms": 8874
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "calls": true,
+            "answer_contains": true,
+            "answer_clean": true,
+            "finished": true
+          },
+          "truth": [],
+          "executed_tools": [
+            "delegate"
+          ],
+          "approvals": [],
+          "answer": "주문 99999번은 현재 시스템에 존재하지 않으므로 지연 사유를 확인할 수 없습니다. 다른 주문 번호를 알려주시면 확인해 드리겠습니다.  \n출처: 회사 데이터 비서",
+          "steps": 2,
+          "latency_s": 7.72,
+          "prompt_tokens": 2259,
+          "completion_tokens": 275,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 2259,
+              "completion_tokens": 275,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "delegate",
+              "arguments": {
+                "agent": "회사",
+                "question": "주문 99999번의 지연 사유를 알려줘",
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"agent\": \"enterprise\", \"task_id\": \"run_13d7739eecee\", \"state\": \"completed\", \"answer\": \"죄송합니다. 주문 번호 **99999**는 현재 시스템에 존재하지 않으므로 지연 사유를 확인할 수 없습니다. 다른 주문 번호를 알려주시면 확인해 드리겠습니다.\"}"
+            }
+          ],
+          "trace": "traces/20261101-055632_local_supervisor_more-parallel-n3/pr02_run3.jsonl",
+          "trace_summary": {
+            "run_id": "pr02_run3",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 4650,
+            "tool_ms": 3066,
+            "human_ms": 0,
+            "total_ms": 7722
+          }
+        }
+      ]
+    },
+    {
+      "id": "va01",
+      "type": "variant",
+      "question": "How many orders are currently delayed, and what is the cutoff frequency of a 1kΩ/100nF RC low-pass? Answer in Korean.",
+      "pass_rate": 0.6666666666666666,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "truth_in_answer": true,
+            "calls": true,
+            "answer_patterns": true,
+            "finished": true
+          },
+          "truth": [
+            255
+          ],
+          "executed_tools": [
+            "list_agents",
+            "delegate_many"
+          ],
+          "approvals": [],
+          "answer": "현재 지연 중인 주문은 **255건**이며, 1 kΩ/100 nF RC 저역통과 필터의 차단 주파수는 **약 1.59 kHz**입니다.  \n출처: 한빛상사 비서(회사 데이터 비서), 회로 시뮬레이션 비서.",
+          "steps": 3,
+          "latency_s": 26.28,
+          "prompt_tokens": 4854,
+          "completion_tokens": 845,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 4854,
+              "completion_tokens": 845,
+              "calls": 3
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_agents",
+              "arguments": {},
+              "status": "ok",
+              "result_preview": "{\"agents\": [{\"id\": \"enterprise\", \"name\": \"한빛상사 비서\", \"description\": \"주문·재고·거래처 DB(SQLite) 와 사내 규정 문서 위의 에이전트. 도구 12개(문서 그래프 포함), 사용자별 데이터 범위.\", \"aliases\": [\"회사\", \"회사 데이터\", \"주문\", \"재고\", \"거래처\", \"규정\", \"한빛\"], \"url\": \"http://127.0.0.1:8786\", \"skills\": [\"지연 주문 몇 건\", \"재고 부족 지연과 책임\", \"할인 승인자\", \"개정 영향\", \"메모 남기"
+            },
+            {
+              "step": 2,
+              "name": "delegate_many",
+              "arguments": {
+                "items": [
+                  {
+                    "agent": "회사",
+                    "question": "현재 지연 중인 주문 수를 알려줘."
+                  },
+                  {
+                    "agent": "회로",
+                    "question": "1kΩ/100nF RC 저역통과 필터의 차단 주파수를 알려줘."
+                  }
+                ],
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"delegated\": [{\"agent\": \"enterprise\", \"state\": \"completed\"}, {\"agent\": \"spice\", \"state\": \"completed\"}], \"parallel\": 2, \"elapsed_s\": 10.75, \"results\": [{\"agent\": \"enterprise\", \"task_id\": \"run_131f25e31a5b\", \"state\": \"completed\", \"answer\": \"현재 지연 중인 주문은 **255건**입니다.\"}, {\"agent\": \"spice\", \"task_id\": \""
+            }
+          ],
+          "trace": "traces/20261101-055632_local_supervisor_more-parallel-n3/va01_run1.jsonl",
+          "trace_summary": {
+            "run_id": "va01_run1",
+            "spans": 6,
+            "llm_calls": 3,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 15520,
+            "tool_ms": 10758,
+            "human_ms": 0,
+            "total_ms": 26276
+          }
+        },
+        {
+          "run": 2,
+          "pass": false,
+          "checks": {
+            "truth_in_answer": true,
+            "calls": true,
+            "answer_patterns": false,
+            "finished": true
+          },
+          "truth": [
+            255
+          ],
+          "executed_tools": [
+            "list_agents",
+            "delegate_many"
+          ],
+          "approvals": [],
+          "answer": "지연 주문은 **255건**이며, 1 kΩ/100 nF RC 저역통과의 차단 주파수는 **약 1 590 Hz**(1 587 Hz 시뮬레이션, 1 591 Hz 공식값)입니다.  \n출처: 한빛상사 비서, 회로 시뮬레이션 비서.",
+          "steps": 3,
+          "latency_s": 21.25,
+          "prompt_tokens": 4840,
+          "completion_tokens": 569,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 4840,
+              "completion_tokens": 569,
+              "calls": 3
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_agents",
+              "arguments": {},
+              "status": "ok",
+              "result_preview": "{\"agents\": [{\"id\": \"enterprise\", \"name\": \"한빛상사 비서\", \"description\": \"주문·재고·거래처 DB(SQLite) 와 사내 규정 문서 위의 에이전트. 도구 12개(문서 그래프 포함), 사용자별 데이터 범위.\", \"aliases\": [\"회사\", \"회사 데이터\", \"주문\", \"재고\", \"거래처\", \"규정\", \"한빛\"], \"url\": \"http://127.0.0.1:8786\", \"skills\": [\"지연 주문 몇 건\", \"재고 부족 지연과 책임\", \"할인 승인자\", \"개정 영향\", \"메모 남기"
+            },
+            {
+              "step": 2,
+              "name": "delegate_many",
+              "arguments": {
+                "items": [
+                  {
+                    "agent": "회사",
+                    "question": "지연 주문 몇 건?"
+                  },
+                  {
+                    "agent": "회로",
+                    "question": "1kΩ/100nF RC 저역통과의 차단 주파수?"
+                  }
+                ],
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"delegated\": [{\"agent\": \"enterprise\", \"state\": \"completed\"}, {\"agent\": \"spice\", \"state\": \"completed\"}], \"parallel\": 2, \"elapsed_s\": 10.06, \"results\": [{\"agent\": \"enterprise\", \"task_id\": \"run_b4760ec0b740\", \"state\": \"completed\", \"answer\": \"지연 중인 주문은 **255건**입니다.\"}, {\"agent\": \"spice\", \"task_id\": \"run"
+            }
+          ],
+          "trace": "traces/20261101-055632_local_supervisor_more-parallel-n3/va01_run2.jsonl",
+          "trace_summary": {
+            "run_id": "va01_run2",
+            "spans": 6,
+            "llm_calls": 3,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 11180,
+            "tool_ms": 10067,
+            "human_ms": 0,
+            "total_ms": 21251
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "truth_in_answer": true,
+            "calls": true,
+            "answer_patterns": true,
+            "finished": true
+          },
+          "truth": [
+            255
+          ],
+          "executed_tools": [
+            "delegate_many"
+          ],
+          "approvals": [],
+          "answer": "현재 지연 중인 주문은 **255건**이며, 1kΩ/100nF RC 저역통과 필터의 컷오프 주파수는 **1.588 kHz**입니다.  \n출처: 회사 데이터 비서, 회로 시뮬레이션 비서",
+          "steps": 2,
+          "latency_s": 21.08,
+          "prompt_tokens": 2488,
+          "completion_tokens": 497,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 2488,
+              "completion_tokens": 497,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "delegate_many",
+              "arguments": {
+                "items": [
+                  {
+                    "agent": "회사",
+                    "question": "현재 지연 중인 주문 수는 몇 건인가요?"
+                  },
+                  {
+                    "agent": "회로",
+                    "question": "1kΩ/100nF RC 저역통과 필터의 컷오프 주파수는 얼마인가요?"
+                  }
+                ],
+                "wait_s": 180
+              },
+              "status": "ok",
+              "result_preview": "{\"delegated\": [{\"agent\": \"enterprise\", \"state\": \"completed\"}, {\"agent\": \"spice\", \"state\": \"completed\"}], \"parallel\": 2, \"elapsed_s\": 12.48, \"results\": [{\"agent\": \"enterprise\", \"task_id\": \"run_6f17aaf9877a\", \"state\": \"completed\", \"answer\": \"현재 지연 중인 주문 수는 **255건**입니다.\"}, {\"agent\": \"spice\", \"task_id\":"
+            }
+          ],
+          "trace": "traces/20261101-055632_local_supervisor_more-parallel-n3/va01_run3.jsonl",
+          "trace_summary": {
+            "run_id": "va01_run3",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 8590,
+            "tool_ms": 12479,
+            "human_ms": 0,
+            "total_ms": 21076
+          }
+        }
+      ]
+    }
+  ]
+}

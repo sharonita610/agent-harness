@@ -86,7 +86,7 @@ def check(name, ok, detail=""):
 
 
 # 1. health + dashboard + fonts + tools
-expect_tools = {"enterprise": 12, "spice": 18, "factory": 18, "supervisor": 4}
+expect_tools = {"enterprise": 12, "spice": 18, "factory": 18, "supervisor": 5}
 for pack, base in BASES.items():
     try:
         s, b = get(base + "/health")

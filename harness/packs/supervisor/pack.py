@@ -9,7 +9,7 @@ from .tools import DOCS_DIR, SYSTEM_PROMPTS, TOOL_LABELS, build_tools, scope_not
 PACK = Pack(
     name="supervisor",
     title="총괄 비서 (A2A)",
-    description="분야별 비서 3개를 A2A 프로토콜로 호출해 질문을 위임하고 답을 합치는 감독 에이전트. 도구 4개.",
+    description="분야별 비서 3개를 A2A 프로토콜로 호출해 질문을 위임하고 답을 합치는 감독 에이전트. 독립 질의는 delegate_many 로 동시에 보낸다. 도구 5개.",
     build_tools=build_tools,
     system_prompts=SYSTEM_PROMPTS,
     parse_scope=lambda spec: None,

@@ -29,6 +29,9 @@ const KEY_KO: Record<string, string> = {
   run_id: "실행",
   answer: "답",
   agent: "비서",
+  delegated: "위임",
+  parallel: "동시 실행 수",
+  elapsed_s: "소요(s)",
   state: "상태",
   task_id: "태스크",
   count: "건수",
@@ -227,6 +230,30 @@ export default function ResultCard({ result, tool }: { result: unknown; tool?: s
   }
   const r = result as Row;
   const parts: React.ReactNode[] = [];
+  // 동시 위임(delegate_many): results 의 항목마다 인용 카드 하나. 결재 대기·실패 항목은 상태를 같이 적는다
+  const many = Array.isArray(r.results) ? (r.results as Row[]) : null;
+  if (
+    many &&
+    (tool === "delegate_many" ||
+      (many.length > 0 && many.every((x) => x && typeof x === "object" && "agent" in x && "state" in x)))
+  ) {
+    return (
+      <div className="result">
+        {many.map((x, i) => (
+          <blockquote key={i} className="quote">
+            <span className="from">
+              {formatValue(x.agent)} 비서의 답
+              {x.state && x.state !== "completed" ? ` · ${formatValue(x.state)}` : ""}
+            </span>
+            <Rich text={String(x.answer || x.waiting_for || x.error || x.note || "")} />
+          </blockquote>
+        ))}
+        {typeof r.parallel === "number" && typeof r.elapsed_s === "number" ? (
+          <p className="card-text">{`비서 ${r.parallel}곳에 동시 위임 · ${r.elapsed_s}s`}</p>
+        ) : null}
+      </div>
+    );
+  }
   if (tool === "delegate" || (typeof r.answer === "string" && r.agent)) {
     parts.push(
       <blockquote key="q" className="quote">

@@ -213,8 +213,11 @@ def score(task: dict, res, truth: list[Any]) -> dict[str, Any]:
     if task.get("expect_calls"):
 
         def _call_ok(exp: dict) -> bool:
+            # name 은 문자열 하나, "a|b", 또는 목록. 같은 일을 하는 도구가 둘일 때(delegate 와 delegate_many) 어느 쪽이든 인정한다
+            names = exp.get("name")
+            names = [str(x) for x in names] if isinstance(names, list) else str(names or "").split("|")
             for c in res.tool_calls:
-                if c.get("name") != exp.get("name") or c.get("status") not in ("ok", None):
+                if c.get("name") not in names or c.get("status") not in ("ok", None):
                     continue
                 args = c.get("arguments") or {}
                 preview = str(c.get("result_preview") or "")

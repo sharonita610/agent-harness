@@ -150,7 +150,7 @@ LLM 에이전트를 실무에 쓰려면 답 자체보다 세 가지가 필요하
 | `harness/packs/enterprise/` | 1차 팩 · 회사 데이터 비서: DB 스키마·시드(`seed.py`, 3,000 주문, 시드 고정), 규정 문서 10개(`docs/`, 함정 지시문 2개 포함), 메모 행 안 함정 지시문 1건, 도구 12개(`tools.py`, 문서 그래프 질의 `related_docs`·`impact_of` 포함), 사용자별 범위(`scope.py`) |
 | `harness/packs/spice/` | 2차 팩 · 회로 시뮬레이션 비서: 넷리스트 가드·파서(`netlist.py`), ngspice 실행·측정·스윕(`simulator.py`), SVG 그래프(`plot.py`), 도구 18개(`tools.py`: 검색·읽기·기록 질의·소자 라이브러리·시뮬레이터 상태 포함), 실험 추적 그래프(`graph.py`), 소자 모델 카드 11개(`library/`), 매뉴얼 요약 문서 7개(함정 지시문 1개), 샘플 회로 7개(주석 안 함정 지시문 1개) |
 | `harness/packs/factory/` | 3차 팩 · 공정 NG 분석 비서: 가짜 공장 시드(`seed.py`, 4라인 × 6공정, NG 이벤트 2.4만, 이상 3개 심음), 급증 탐지·원인 후보·조치 효과·설비 상태 도구(`tools.py`, 18개), 규정 문서 10개(함정 지시문 2개) |
-| `harness/packs/supervisor/` | 4차 팩 · 총괄 비서: 다른 비서들의 A2A Agent Card 를 읽고 `delegate` 로 위임, 결재 대기·거절·되물음을 그대로 전달. 도구 4개 |
+| `harness/packs/supervisor/` | 4차 팩 · 총괄 비서: 다른 비서들의 A2A Agent Card 를 읽고 `delegate` 로 위임, 독립 질의는 `delegate_many` 로 동시에 보내고, 결재 대기·거절·되물음을 그대로 전달. 도구 5개 |
 | `harness/service/a2a.py` | A2A 프로토콜 면: agent card, `message/send`(blocking)·`message/stream`(SSE)·`tasks/get`·`tasks/cancel`. 태스크 = 실행, 결재 대기 = input-required |
 | `harness/tools/sql.py`, `harness/viz/` | 공용 SQL 가드·읽기 전용 연결, SVG 그래프. 세 팩이 같이 쓴다 |
 | `harness/retrieval/` | 도메인 중립 검색: 마크다운 청킹, FTS5 BM25, 임베딩 + RRF 하이브리드(`search.py`), PDF 매뉴얼 지식 베이스(`kb.py`: 책갈피 절 단위 청킹, SQLite 저장, 증분 임베딩, 절 읽기), 문서 그래프(`docgraph.py`: 인용·절·데이터 개념 간선, 개정 영향 질의, SVG). 두 팩이 같이 쓴다 |
@@ -277,11 +277,13 @@ HARNESS_PACK=factory uv run uvicorn harness.service.app:app --port 8787
 
 비서 세 개는 각각 독립 서비스다. 이들을 한 질문에서 같이 쓰려고 **A2A(Agent-to-Agent) 프로토콜** 을 얹었다. MCP 가 "에이전트 ↔ 도구" 라면 A2A 는 "에이전트 ↔ 에이전트" 다. 각 서비스는 `/.well-known/agent-card.json` 으로 자기를 소개하고 `/a2a`(JSON-RPC) 로 `message/send` · `message/stream` · `tasks/get` · `tasks/cancel` 을 받는다. 새 엔진은 없다. 기존 잡 큐·저장소·결재 브로커 위에 프로토콜 면만 있다(태스크 = 실행, contextId = 세션, 결재 대기 = `input-required`).
 
-네 번째 팩 **총괄 비서** 는 도구가 A2A 클라이언트 세 개뿐이다. 질문을 분야별로 나눠 `delegate` 하고 답을 합친다.
+네 번째 팩 **총괄 비서** 는 도구가 A2A 클라이언트뿐이다. 질문을 분야별로 나눠 위임하고 답을 합친다. 서로 의존하지 않는 질의는 `delegate_many` 로 한 번에 보내 비서별 스레드로 동시에 돌리고, 앞 답이 다음 질문의 입력이 될 때만 `delegate` 를 차례로 쓴다(ADR-032).
 
 <img src="docs/img/ui-supervisor.jpg" alt="총괄 비서 작업지: 회사 비서와 회로 비서에 A2A 로 위임한 답이 인용 카드로 붙은 화면" width="70%">
 
 위 화면: "지연 주문 몇 건 + RC 차단 주파수" 를 받은 총괄 비서가 비서 목록을 확인하고, 회사 비서(255건)와 회로 비서(1.59 kHz)에 차례로 위임한 뒤 출처를 붙여 합쳤다. 위임받은 답은 인용 카드로 붙는다. 4단계 34초. 하위 비서가 사람 결재를 기다리면 태스크가 `input-required` 가 되고 총괄 비서는 "결재 대기" 로 보고한다. 결재 자체는 화면의 결재함에서 사람이 한다. 결재함은 네 비서의 대기 전표를 모두 모으고, 전표에 어느 비서의 요청인지 적힌다(ADR-018). 설계와 발견한 결함(잡 큐의 스레드 깨우기)은 ADR-017.
+
+서로 의존하지 않는 하위 질의는 이제 `delegate_many` 로 한 번에 보낸다(비서별 스레드로 동시에, 같은 비서로 가는 질의만 순차, ADR-032): 위 복합 질문이 두 표본에서 2.3스텝 33.6초·2.0스텝 27.8초가 됐고(같은 날 순차 대조 4.0스텝 35.7초), 두 비서의 대기가 합(20.1초)이 아니라 겹침(16.7·17.3초)으로 든다. 모델 서버가 하나라 두 비서가 같은 GPU 를 나눠 쓰므로 벽시계는 그만큼만 줄고, 스텝은 전체 평균 2.67 → 2.08·2.04 로 줄며, 통과율은 같은 날 순차 대조와 같은 수준(97% · 96%)이고, 결재 대기나 실패한 항목은 그 항목만 "결재 대기"·"확인 실패" 로 남고 나머지 답은 그대로 전달된다. 결과: [병렬 A](harness/evals/results/20261101-054956_local_supervisor_parallel-n3.json) · [병렬 C](harness/evals/results/20261101-065000_local_supervisor_parallel-n3-c.json) · [같은 날 순차 대조](harness/evals/results/20261101-060534_local_supervisor_seq-n3.json) · 확장 묶음 [병렬 A](harness/evals/results/20261101-055632_local_supervisor_more-parallel-n3.json), 표와 분해는 ADR-032.
 
 ```bash
 # 하위 비서 3개(개발 모드) + 총괄 비서
