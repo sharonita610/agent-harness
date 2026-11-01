@@ -44,6 +44,7 @@ PACK = Pack(
     # reference_date_source=…[1], system_prompts_for=기준일로 프롬프트를 다시 렌더하는 함수. 평가 yaml 은 {last_month} 같은 변수로(ADR-034)
     parse_scope=lambda spec: None,
     scope_note=lambda scope: "",  # 사용자별 범위가 있으면 enterprise/scope.py 처럼
+    # 개인정보 열이 있으면 enterprise/sensitivity.py 처럼 등급표를 적고 연결에 tools.sql.build_views 를 씌운다(별칭·함수로 우회 안 됨, ADR-035)
     shared_kwargs=lambda: {"index": make_index()},  # 서비스가 한 번 만들어 공유하는 자원
     tasks_path=Path(__file__).parents[2] / "evals" / "tasks_mypack.yaml",
     docs_dir=Path(__file__).parent / "docs",
