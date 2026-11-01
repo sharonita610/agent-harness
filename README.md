@@ -300,7 +300,7 @@ uv run harness eval --pack supervisor --n 3                                 # �
 "이미 쓰고 있는 HR DB 에 비서를 붙일 수 있나" 에 대한 답. **팩 폴더 하나로 되지만, 데이터가 SQLite 파일로 들어온다는 조건에서다.** 운영 DB 에 직접 붙이는 것은 권하지 않는다.
 
 **추천 구성: 스냅샷 + 선별 뷰 + 정식 절차 쓰기 + 로컬 모델 고정**
-- 읽기: 밤마다(또는 몇 시간마다) 읽기 전용 계정으로 HR DB 의 **뷰 10개 안팎**(직원·조직·휴가·근태·급여·평가)만 읽어 `data/hr.db` 로 찍는다. 원본 테이블을 통째로 복사하지 않고 뷰 단계에서 열을 고르고 가린다(주민번호는 아예 안 가져옴). 한 트랜잭션 안에서 읽어 일관성을 지키고, `hr.db.tmp` 로 쓴 뒤 이름을 바꿔 원자적으로 교체한다. 비서에게는 "데이터 기준 시각" 을 프롬프트로 알린다(회사 팩의 `REFERENCE_DATE` 자리).
+- 읽기: 밤마다(또는 몇 시간마다) 읽기 전용 계정으로 HR DB 의 **뷰 10개 안팎**(직원·조직·휴가·근태·급여·평가)만 읽어 `data/hr.db` 로 찍는다. 원본 테이블을 통째로 복사하지 않고 뷰 단계에서 열을 고르고 가린다(주민번호는 아예 안 가져옴). 한 트랜잭션 안에서 읽어 일관성을 지키고, `hr.db.tmp` 로 쓴 뒤 이름을 바꿔 원자적으로 교체한다. 스냅샷 스크립트는 기준 시각을 DB 의 `_meta` 표에 적는다(`harness.refdate.write_reference_date`). 비서의 "오늘"·"지난달"·지연 일수와 평가 문제의 날짜가 전부 그 값을 따르고, `HARNESS_REFERENCE_DATE` 로 덮어쓸 수도 있다(ADR-034).
 - 쓰기: 휴가 승인·정보 수정은 스냅샷에 쓰지 않는다. HR 시스템의 API 나 요청 테이블로 보내고, 결재 전표 → 실제 변경의 연결을 감사 기록에 남긴다. 권한 3등급과 결재 브로커는 그대로 쓴다.
 - 권한: 역할 3층(HR 담당·팀장·본인)마다 행 범위(본인 + 조직도상 부하, `scope.py` 의 임시 뷰 방식)와 열 허용 목록(급여는 HR·본인만, 연락처 마스킹). 민감도 등급표를 먼저 적는다. 범위 뷰도 공용 목록도 아닌 테이블은 범위 사용자에게 빈 뷰다(기본 거부, ADR-033): 새 테이블은 분류 전까지 보이지 않는다.
 - 모델: HR 인스턴스는 `HARNESS_ALLOWED_PROVIDERS=local` 로 외부 모델을 막는다. 라우팅(`route:`)은 개인정보를 밖으로 보내므로 쓰지 않는다.
@@ -403,6 +403,7 @@ open http://127.0.0.1:8787/docs   # OpenAPI
 | 변수 | 뜻 (기본값) |
 |---|---|
 | `HARNESS_PACK` | 띄울 팩 `enterprise` / `spice` / `factory` / `supervisor` (`enterprise`) |
+| `HARNESS_REFERENCE_DATE` | 비서가 "오늘" 로 삼는 데이터 기준일, `YYYY-MM-DD` 또는 `today`. 비우면 DB 의 `_meta` 표(`reference_date`, 스냅샷 스크립트가 적음), 그것도 없으면 시드 날짜(`2026-10-27`). 프롬프트의 "오늘"·"지난달", 도구의 지연 일수·정비 경과, 평가 문제의 날짜 변수가 전부 이 값을 따른다(ADR-034) |
 | `HARNESS_PROVIDER` | 기본 모델 `local` / `local:별칭` / `openai:모델` / `anthropic:모델` / `compat:주소\|모델` / `route:싼모델->강한모델`(막히면 올림, ADR-024) (`local`) |
 | `HARNESS_ALLOWED_PROVIDERS` | 요청이 고를 수 있는 provider 목록(쉼표). 비우면 기본 provider 하나만 허용 |
 | `HARNESS_OFFLINE`, `HARNESS_OFFLINE_ALLOW` | 에어갭 모드: 외부 공급자 거부, 모델·임베딩·트레이스 주소를 루프백·사설망·사내 호스트로 제한. 예외 호스트는 쉼표 목록(접미사는 `.corp.local` 꼴) (ADR-027) |
@@ -587,7 +588,7 @@ Hermes 는 64K 미만 컨텍스트를 거부하고, 자체 프롬프트가 1.8�
 ## 평가
 결과 파일은 전부 레포에 있다: [`harness/evals/results/`](harness/evals/results/) 의 실행별 json(문제별 통과·도구 호출·토큰)과 md 요약, 사람 채점(`human-*.json`)과 일치도(`agreement_*.json`), 검색 평가(`retrieval_*.json`), 그리고 모델×팩 표를 한 장으로 보는 [`report.html`](harness/evals/results/report.html)(내려받아 열거나 `python3 -m http.server --directory harness/evals/results 8765`). 트레이스 343개만 용량 때문에 제외했다.
 
-`harness/evals/tasks.yaml` 의 16개 태스크를 모델별로 n회 반복해 통과율·스텝·지연·토큰·비용을 비교한다. 유형: 조회(5) · 규정(3) · 복합(2) · 변경→승인 요청(2) · 함정(4: 지시문 주입, 개인정보 일괄 요청, 삭제 요청, 모호한 질문).
+`harness/evals/tasks.yaml` 의 16개 태스크를 모델별로 n회 반복해 통과율·스텝·지연·토큰·비용을 비교한다. 유형: 조회(5) · 규정(3) · 복합(2) · 변경→승인 요청(2) · 함정(4: 지시문 주입, 개인정보 일괄 요청, 삭제 요청, 모호한 질문). 날짜는 박아 두지 않고 기준일 변수로 적는다(`{last_month_label}`, `{last_month}`, `{this_month_start}`, `{ref_date}` …, `harness/refdate.py`): 기준일을 바꾸면(`HARNESS_REFERENCE_DATE` 또는 평가 DB 의 `_meta`) 질문과 정답 SQL 이 같이 움직이고, 채우지 못한 변수가 남으면 러너가 거절한다. 결과 파일의 `summary.reference_date` 에 그날의 기준일이 남는다(ADR-034).
 
 채점은 세 층이다.
 1. **규칙 채점** (`harness eval`): 정답 값 포함, 도구 호출·승인 요청 여부, 금지 도구 미실행, 금지 표현 없음. 재현 가능하지만 "맞는 말을 다르게 쓴 답" 을 놓칠 수 있다.
@@ -788,4 +789,4 @@ _출처: [20261029-014321_local_supervisor_n3.json](harness/evals/results/202610
 - 3주차: ~~React UI~~ ~~README 상단 재정리~~ ~~2차 도메인 팩(`spice`)~~ ~~LLM 판정자 vs 사람 채점 대조~~ ~~매뉴얼 지식 베이스~~ ~~실험 추적 그래프~~ ~~3차 팩(`factory`)~~ ~~A2A·총괄 비서~~ ~~LangGraph 비교 실험~~ ~~업무 데스크 화면·데이터 탭·큐 보드~~ ~~MCP over HTTP~~ ~~데모 영상(녹화 스크립트)~~ 완료 → ~~평가 결과 공개~~ ~~데모 영상 공개~~ ~~판정자 전 팩 적용~~ ~~인젝션 문제 확대~~ ~~CI 스모크~~ Electron 셸, ~~소자 라이브러리~~ ~~문서 그래프~~ ~~모델 라우팅~~ ~~오프라인(에어갭) 모드~~ GPU 배포·양자화 비교
 
 ## 문서
-`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정 33편, 최근: ADR-029 서빙 엔진 비교 llama.cpp·MLX, ADR-030 서빙 부하 테스트 TTFT·ITL·처리량, ADR-031 RAG 평가 확장: 청크 크기·인용 정확도·융합 가중, ADR-032 총괄 비서 병렬 위임, ADR-033 실데이터 적용 전 보정) · `docs/ADDING-A-PACK.md`(팩 추가) · `docs/demo-script.md`(데모 대본, 영상은 [releases/demo-2026-10-30](https://github.com/sharonita610/agent-harness/releases/tag/demo-2026-10-30)) · `docs/VERIFY-day1-3.md`(검증 절차) · `scripts/capture_ui.py`(README 화면 캡처, 실제 실행) · `scripts/smoke.py`(전체 점검) · `scripts/bench_llm.py`(서빙 부하 테스트: 동시 요청별 TTFT·ITL·처리량)
+`NOTES.md`(실험 노트: 측정값, 실패 모드, 평가 회차별 기록) · `docs/decisions/`(설계 결정 34편, 최근: ADR-030 서빙 부하 테스트 TTFT·ITL·처리량, ADR-031 RAG 평가 확장: 청크 크기·인용 정확도·융합 가중, ADR-032 총괄 비서 병렬 위임, ADR-033 실데이터 적용 전 보정, ADR-034 데이터 기준일 주입) · `docs/ADDING-A-PACK.md`(팩 추가) · `docs/demo-script.md`(데모 대본, 영상은 [releases/demo-2026-10-30](https://github.com/sharonita610/agent-harness/releases/tag/demo-2026-10-30)) · `docs/VERIFY-day1-3.md`(검증 절차) · `scripts/capture_ui.py`(README 화면 캡처, 실제 실행) · `scripts/smoke.py`(전체 점검) · `scripts/bench_llm.py`(서빙 부하 테스트: 동시 요청별 TTFT·ITL·처리량)

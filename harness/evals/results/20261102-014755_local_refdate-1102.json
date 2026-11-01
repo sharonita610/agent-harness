@@ -1,0 +1,502 @@
+{
+  "summary": {
+    "provider": "local",
+    "model": "local-llm",
+    "n": 1,
+    "tag": "refdate-1102",
+    "prompt_version": "v1",
+    "pack": "enterprise",
+    "tasks_file": "tasks",
+    "reference_date": "2026-11-02",
+    "tasks": 6,
+    "runs": 6,
+    "cost_usd": 0.0,
+    "cost_usd_if_hosted": 0.00088,
+    "pass_rate": 0.833,
+    "citation_checked": 1,
+    "citation_accuracy": 1.0,
+    "by_type": {
+      "query": 0.8,
+      "mixed": 1.0
+    },
+    "avg_steps": 3,
+    "p50_latency_s": 8.8,
+    "p95_latency_s": 9.1,
+    "tokens_per_run": 6575,
+    "generated_at": "2026-11-02T01:48:45"
+  },
+  "tasks": [
+    {
+      "id": "q01",
+      "type": "query",
+      "question": "현재 상태가 '지연'인 주문은 총 몇 건이야?",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "truth_in_answer": true,
+            "tools_any": true,
+            "finished": true
+          },
+          "truth": [
+            255
+          ],
+          "executed_tools": [
+            "list_tables",
+            "run_sql"
+          ],
+          "approvals": [],
+          "answer": "현재 ‘지연’ 상태인 주문은 **255건**입니다.",
+          "steps": 3,
+          "latency_s": 8.56,
+          "prompt_tokens": 5735,
+          "completion_tokens": 280,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 5735,
+              "completion_tokens": 280,
+              "calls": 3
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_tables",
+              "arguments": {},
+              "status": "ok",
+              "result_preview": "[{\"table\": \"customers\", \"rows\": 50}, {\"table\": \"inventory\", \"rows\": 400}, {\"table\": \"order_items\", \"rows\": 8816}, {\"table\": \"order_notes\", \"rows\": 147}, {\"table\": \"order_status_history\", \"rows\": 6159}, {\"table\": \"orders\", \"rows\": 3000}, {\"table\": \"products\", \"rows\": 200}, {\"table\": \"shipments\", \"row"
+            },
+            {
+              "step": 2,
+              "name": "run_sql",
+              "arguments": {
+                "sql": "SELECT COUNT(*) AS total FROM orders WHERE status = '지연';",
+                "limit": 10
+              },
+              "status": "ok",
+              "result_preview": "{\"columns\": [\"total\"], \"rows\": [{\"total\": 255}], \"row_count\": 1, \"truncated\": false, \"sql_executed\": \"SELECT COUNT(*) AS total FROM orders WHERE status = '지연' LIMIT 10\"}"
+            }
+          ],
+          "trace": "traces/20261102-014755_local_refdate-1102/q01_run1.jsonl",
+          "trace_summary": {
+            "run_id": "q01_run1",
+            "spans": 6,
+            "llm_calls": 3,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 8520,
+            "tool_ms": 22,
+            "human_ms": 0,
+            "total_ms": 8556
+          }
+        }
+      ]
+    },
+    {
+      "id": "q02",
+      "type": "query",
+      "question": "지난달(2026년 10월) 주문 건수는 몇 건이야? 취소된 주문은 빼고.",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "truth_in_answer": true,
+            "tools_any": true,
+            "finished": true
+          },
+          "truth": [
+            219
+          ],
+          "executed_tools": [
+            "list_tables",
+            "run_sql"
+          ],
+          "approvals": [],
+          "answer": "지난달(2026년 10월) 주문 건수는 **219건**입니다.  \n(취소된 주문은 제외했습니다.)",
+          "steps": 3,
+          "latency_s": 8.97,
+          "prompt_tokens": 5823,
+          "completion_tokens": 433,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 5823,
+              "completion_tokens": 433,
+              "calls": 3
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_tables",
+              "arguments": {},
+              "status": "ok",
+              "result_preview": "[{\"table\": \"customers\", \"rows\": 50}, {\"table\": \"inventory\", \"rows\": 400}, {\"table\": \"order_items\", \"rows\": 8816}, {\"table\": \"order_notes\", \"rows\": 147}, {\"table\": \"order_status_history\", \"rows\": 6159}, {\"table\": \"orders\", \"rows\": 3000}, {\"table\": \"products\", \"rows\": 200}, {\"table\": \"shipments\", \"row"
+            },
+            {
+              "step": 2,
+              "name": "run_sql",
+              "arguments": {
+                "sql": "SELECT COUNT(*) AS order_count FROM orders WHERE order_date >= '2026-10-01' AND order_date <= '2026-10-31' AND status != '취소';",
+                "limit": 10
+              },
+              "status": "ok",
+              "result_preview": "{\"columns\": [\"order_count\"], \"rows\": [{\"order_count\": 219}], \"row_count\": 1, \"truncated\": false, \"sql_executed\": \"SELECT COUNT(*) AS order_count FROM orders WHERE order_date >= '2026-10-01' AND order_date <= '2026-10-31' AND status != '취소' LIMIT 10\"}"
+            }
+          ],
+          "trace": "traces/20261102-014755_local_refdate-1102/q02_run1.jsonl",
+          "trace_summary": {
+            "run_id": "q02_run1",
+            "spans": 6,
+            "llm_calls": 3,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 8860,
+            "tool_ms": 62,
+            "human_ms": 0,
+            "total_ms": 8970
+          }
+        }
+      ]
+    },
+    {
+      "id": "q03",
+      "type": "query",
+      "question": "등급 A 거래처 중 지난달(2026년 10월) 주문 금액 합계가 가장 큰 거래처 1곳의 이름은?",
+      "pass_rate": 0.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": false,
+          "checks": {
+            "truth_in_answer": false,
+            "tools_any": true,
+            "finished": true
+          },
+          "truth": [
+            "주식회사 월드"
+          ],
+          "executed_tools": [
+            "list_tables",
+            "run_sql"
+          ],
+          "approvals": [],
+          "answer": "등급 A 거래처 중 지난달(2026년 10월) 주문 금액 합계가 가장 큰 거래처는 **“유한회사 라온신라금고”**입니다.  \n\n(데이터 조회 결과: 총 주문 금액 15,226,005원)",
+          "steps": 3,
+          "latency_s": 9.12,
+          "prompt_tokens": 5939,
+          "completion_tokens": 461,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 5939,
+              "completion_tokens": 461,
+              "calls": 3
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_tables",
+              "arguments": {},
+              "status": "ok",
+              "result_preview": "[{\"table\": \"customers\", \"rows\": 50}, {\"table\": \"inventory\", \"rows\": 400}, {\"table\": \"order_items\", \"rows\": 8816}, {\"table\": \"order_notes\", \"rows\": 147}, {\"table\": \"order_status_history\", \"rows\": 6159}, {\"table\": \"orders\", \"rows\": 3000}, {\"table\": \"products\", \"rows\": 200}, {\"table\": \"shipments\", \"row"
+            },
+            {
+              "step": 2,
+              "name": "run_sql",
+              "arguments": {
+                "sql": "SELECT c.name, SUM(o.total_amount) AS total\nFROM orders o\nJOIN customers c ON o.customer_id = c.id\nWHERE c.grade = 'A'\n  AND o.order_date >= '2026-10-01' AND o.order_date <= '2026-10-31'\nGROUP BY c.id, c.name\nORDER BY total DESC\nLIMIT 1",
+                "limit": 10
+              },
+              "status": "ok",
+              "result_preview": "{\"columns\": [\"name\", \"total\"], \"rows\": [{\"name\": \"유한회사 라온신라금고\", \"total\": 15226005}], \"row_count\": 1, \"truncated\": false, \"sql_executed\": \"SELECT c.name, SUM(o.total_amount) AS total\\nFROM orders o\\nJOIN customers c ON o.customer_id = c.id\\nWHERE c.grade = 'A'\\n  AND o.order_date >= '2026-10-01' AND "
+            }
+          ],
+          "trace": "traces/20261102-014755_local_refdate-1102/q03_run1.jsonl",
+          "trace_summary": {
+            "run_id": "q03_run1",
+            "spans": 6,
+            "llm_calls": 3,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 9010,
+            "tool_ms": 54,
+            "human_ms": 0,
+            "total_ms": 9117
+          }
+        }
+      ]
+    },
+    {
+      "id": "q04",
+      "type": "query",
+      "question": "안전재고보다 현재 재고가 적은 재고 항목은 몇 개야?",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "truth_in_answer": true,
+            "tools_any": true,
+            "finished": true
+          },
+          "truth": [
+            149
+          ],
+          "executed_tools": [
+            "run_sql"
+          ],
+          "approvals": [],
+          "answer": "현재 재고가 안전재고보다 적은 항목은 **149개**입니다. (데이터 조회 결과)",
+          "steps": 2,
+          "latency_s": 3.61,
+          "prompt_tokens": 3666,
+          "completion_tokens": 195,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 3666,
+              "completion_tokens": 195,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "run_sql",
+              "arguments": {
+                "sql": "SELECT COUNT(*) AS shortage_count FROM inventory WHERE on_hand < safety_stock",
+                "limit": 1
+              },
+              "status": "ok",
+              "result_preview": "{\"columns\": [\"shortage_count\"], \"rows\": [{\"shortage_count\": 149}], \"row_count\": 1, \"truncated\": false, \"sql_executed\": \"SELECT COUNT(*) AS shortage_count FROM inventory WHERE on_hand < safety_stock LIMIT 1\"}"
+            }
+          ],
+          "trace": "traces/20261102-014755_local_refdate-1102/q04_run1.jsonl",
+          "trace_summary": {
+            "run_id": "q04_run1",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 3590,
+            "tool_ms": 2,
+            "human_ms": 0,
+            "total_ms": 3614
+          }
+        }
+      ]
+    },
+    {
+      "id": "q05",
+      "type": "query",
+      "question": "주문 1023번의 상태와 주문 금액을 알려줘",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "truth_in_answer": true,
+            "tools_any": true,
+            "finished": true
+          },
+          "truth": [
+            "완료",
+            118500
+          ],
+          "executed_tools": [
+            "get_order"
+          ],
+          "approvals": [],
+          "answer": "주문 1023번의 현재 상태는 **완료**이며, 주문 금액은 **118,500원**입니다.  \n(출처: 주문 상세 조회 결과)",
+          "steps": 2,
+          "latency_s": 3.06,
+          "prompt_tokens": 3949,
+          "completion_tokens": 134,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 3949,
+              "completion_tokens": 134,
+              "calls": 2
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "get_order",
+              "arguments": {
+                "order_id": 1023
+              },
+              "status": "ok",
+              "result_preview": "{\"order\": {\"id\": 1023, \"customer_id\": 31, \"order_date\": \"2026-02-21\", \"status\": \"완료\", \"total_amount\": 118500, \"delay_reason\": null, \"discount_rate\": 0.0, \"customer_name\": \"주식회사 스타\", \"customer_grade\": \"C\"}, \"items\": [{\"product_id\": 198, \"name\": \"장갑 니트릴 고급\", \"category\": \"소모품\", \"qty\": 3, \"unit_price\": "
+            }
+          ],
+          "trace": "traces/20261102-014755_local_refdate-1102/q05_run1.jsonl",
+          "trace_summary": {
+            "run_id": "q05_run1",
+            "spans": 4,
+            "llm_calls": 2,
+            "tool_calls": 1,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 3040,
+            "tool_ms": 11,
+            "human_ms": 0,
+            "total_ms": 3058
+          }
+        }
+      ]
+    },
+    {
+      "id": "m01",
+      "type": "mixed",
+      "question": "지난달(2026년 10월) 재고 부족 사유로 지연된 주문은 몇 건이고, 규정상 그 지연은 회사 책임이야 고객 책임이야?",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "truth_in_answer": true,
+            "tools_all": true,
+            "answer_contains": true,
+            "cite_matches_retrieval": true,
+            "finished": true
+          },
+          "truth": [
+            16
+          ],
+          "executed_tools": [
+            "list_tables",
+            "describe_table",
+            "run_sql",
+            "search_docs"
+          ],
+          "approvals": [],
+          "citations": {
+            "cited": [
+              "주문 상태 정의 > 지연 사유 코드"
+            ],
+            "retrieved": [
+              "주문 상태 정의 > 지연 사유 코드",
+              "재고 부족 처리 절차 > 기록",
+              "배송 지연 보상 규정 > 보상 비율",
+              "재고 부족 처리 절차 > (서문)",
+              "재고 부족 처리 절차 > 안전재고 미달 감지"
+            ]
+          },
+          "answer": "지난달(2026‑10) 재고 부족으로 지연된 주문은 **16건**입니다.  \n재고 부족은 “회사 책임 사유”로 분류됩니다.  \n(출처: 주문 상태 정의 > 지연 사유 코드)",
+          "steps": 5,
+          "latency_s": 16.91,
+          "prompt_tokens": 11921,
+          "completion_tokens": 912,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 11921,
+              "completion_tokens": 912,
+              "calls": 5
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_tables",
+              "arguments": {},
+              "status": "ok",
+              "result_preview": "[{\"table\": \"customers\", \"rows\": 50}, {\"table\": \"inventory\", \"rows\": 400}, {\"table\": \"order_items\", \"rows\": 8816}, {\"table\": \"order_notes\", \"rows\": 147}, {\"table\": \"order_status_history\", \"rows\": 6159}, {\"table\": \"orders\", \"rows\": 3000}, {\"table\": \"products\", \"rows\": 200}, {\"table\": \"shipments\", \"row"
+            },
+            {
+              "step": 2,
+              "name": "describe_table",
+              "arguments": {
+                "table": "orders"
+              },
+              "status": "ok",
+              "result_preview": "{\"table\": \"orders\", \"columns\": [{\"name\": \"id\", \"type\": \"INTEGER\", \"notnull\": false, \"pk\": true}, {\"name\": \"customer_id\", \"type\": \"INTEGER\", \"notnull\": true, \"pk\": false}, {\"name\": \"order_date\", \"type\": \"TEXT\", \"notnull\": true, \"pk\": false}, {\"name\": \"status\", \"type\": \"TEXT\", \"notnull\": true, \"pk\": f"
+            },
+            {
+              "step": 3,
+              "name": "run_sql",
+              "arguments": {
+                "sql": "SELECT COUNT(*) AS cnt FROM orders WHERE status = '지연' AND delay_reason LIKE '%재고 부족%' AND order_date BETWEEN '2026-10-01' AND '2026-10-31';",
+                "limit": 10
+              },
+              "status": "ok",
+              "result_preview": "{\"columns\": [\"cnt\"], \"rows\": [{\"cnt\": 16}], \"row_count\": 1, \"truncated\": false, \"sql_executed\": \"SELECT COUNT(*) AS cnt FROM orders WHERE status = '지연' AND delay_reason LIKE '%재고 부족%' AND order_date BETWEEN '2026-10-01' AND '2026-10-31' LIMIT 10\"}"
+            },
+            {
+              "step": 4,
+              "name": "search_docs",
+              "arguments": {
+                "query": "재고 부족 지연 책임",
+                "k": 5
+              },
+              "status": "ok",
+              "result_preview": "{\"query\": \"재고 부족 지연 책임\", \"mode\": \"bm25\", \"hits\": [{\"doc\": \"주문 상태 정의\", \"section\": \"지연 사유 코드\", \"score\": -7.363, \"source\": \"주문 상태 정의 > 지연 사유 코드\", \"text\": \"- 재고 부족: 주문 시점에 안전재고 미달로 출고 불가. 회사 책임 사유.\\n- 배송사 지연: 운송사 사정. 회사 책임 아님.\\n- 주소 오류: 고객 제공 주소 불일치. 고객 책임.\\n- 결제 확인 지연: 입금 확인이 늦어진 경우. 공동 책임.\", \"chars\": ",
+              "result_sources": [
+                {
+                  "doc": "주문 상태 정의",
+                  "section": "지연 사유 코드",
+                  "section_id": ""
+                },
+                {
+                  "doc": "재고 부족 처리 절차",
+                  "section": "기록",
+                  "section_id": ""
+                },
+                {
+                  "doc": "배송 지연 보상 규정",
+                  "section": "보상 비율",
+                  "section_id": ""
+                },
+                {
+                  "doc": "재고 부족 처리 절차",
+                  "section": "(서문)",
+                  "section_id": ""
+                },
+                {
+                  "doc": "재고 부족 처리 절차",
+                  "section": "안전재고 미달 감지",
+                  "section_id": ""
+                }
+              ]
+            }
+          ],
+          "trace": "traces/20261102-014755_local_refdate-1102/m01_run1.jsonl",
+          "trace_summary": {
+            "run_id": "m01_run1",
+            "spans": 10,
+            "llm_calls": 5,
+            "tool_calls": 4,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 16890,
+            "tool_ms": 20,
+            "human_ms": 0,
+            "total_ms": 16912
+          }
+        }
+      ]
+    }
+  ]
+}

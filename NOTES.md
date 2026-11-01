@@ -346,3 +346,11 @@ uv run harness eval --n 1            # 평가 16개
 - 안 고친 전제(ADR-033 "남은 것"): REFERENCE_DATE 고정·평가 날짜 상수, MASK_COLUMNS=phone 하나, `## ` 한 단계 청킹·PDF 상수, 판정자·라우팅의 외부 전송, 결재 600초·동시성 1·모의 분류기. 선택지 표는 README "기존 DB 를 붙일 때".
 - 서버는 끝나고 껐다.
 
+### 데이터 기준일 주입 (2026-11-02, ADR-034)
+- ADR-033 남은 것 첫 항목. "오늘" 이 시드 상수(2026-10-27)라 프롬프트·도구(지연 일수·최근 12개월·정비 경과·데이터 탭)·평가 yaml(지난달(2026년 9월), LIKE '2026-09%', julianday('2026-10-27')) 14곳에 박혀 있었다. 지난달 계산 f"{month-1:02d}" 는 1월에 2026-00.
+- `harness/refdate.py`: 환경변수 HARNESS_REFERENCE_DATE(YYYY-MM-DD|today) > DB `_meta`(reference_date, write_reference_date 로 적음) > 시드. 달 계산 shift_months, 평가 변수 date_vars(last_month·this_month_start·month-N_label·ref_date-N_ko …). Pack 에 reference_date·source·system_prompts_for, /health 에 노출. 공정 팩 "데이터 기간" 은 DB MIN/MAX(hour_start) 에서(data_period).
+- 러너: 평가 DB 의 _meta > 팩 기본, 프롬프트·도구·태스크 변수에 같은 값, 채우지 못한 {변수} 는 거절, summary.reference_date.
+- 회귀 확인: 시드 기준일로 렌더한 프롬프트 3개·태스크 67개(질문·turns·정답·정규식)가 변경 전 스냅샷과 글자 단위로 같음 → 기존 평가 결과와 비교 가능. 테스트 253.
+- 기준일 2026-11-02 로 6문제: 5/6, q02 219건·m01 16건(10월 기준) 맞음, q03 은 취소 주문 포함 합계로 1위가 바뀜(10월엔 취소 1건이 순위를 가른다, 모델 기본값 문제). summary.reference_date 기록됨. 서버는 끝나고 껐다.
+- 공정 팩 태스크의 10월 18일은 심어 둔 이상의 날짜라 그대로(쌍둥이 데이터의 속성). 남은 것: 화면 머리말에 기준일 표시, 서비스 재기동 없는 _meta 반영.
+
