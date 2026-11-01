@@ -5,6 +5,9 @@
 여기서는 두 가지로 가린다: (1) 값의 꼴 — 전화번호·이메일·주민등록번호·카드번호 패턴, (2) 키 이름 — phone·전화·연락처·
 email·주민·password·token 같은 키의 값은 통째로(단어 경계 기준이라 prompt_tokens 같은 수치는 건드리지 않는다). 채점은 가리기 전에 끝내므로 평가 점수에는 영향이 없다.
 HARNESS_REDACT=0 으로 끈다. 보존 기간은 HARNESS_TRACE_RETENTION_DAYS(트레이스 폴더에서 오래된 파일 삭제).
+
+경계는 영숫자 기준이다(ADR-033). 정규식 \b 는 한글을 단어 글자로 보아 "010-1234-5678로", "900101-1234567입니다" 처럼
+조사·서술어가 바로 붙은 번호(한국어 문장의 보통 꼴)에 경계가 생기지 않아 그대로 남겼다. 지금은 번호 앞뒤가 영숫자가 아니면 경계로 본다.
 """
 
 from __future__ import annotations
@@ -15,19 +18,26 @@ import time
 from pathlib import Path
 from typing import Any
 
+_L = r"(?<![0-9A-Za-z])"  # 앞 경계: 영숫자가 아니면 된다(한글 조사·서술어가 바로 붙어도 경계)
+_R = r"(?![0-9A-Za-z])"  # 뒤 경계: 같다. "5678로", "4567입니다" 가 걸린다
 PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\b01[016789][-.\s]?\d{3,4}[-.\s]?\d{4}\b"), "010-****-****"),  # 휴대전화
-    (re.compile(r"\b0\d{1,2}[-.\s]\d{3,4}[-.\s]\d{4}\b"), "0**-****-****"),  # 지역번호 유선전화
-    (re.compile(r"\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+\b"), "***@***"),  # 이메일
-    (re.compile(r"\b\d{6}-[1-4]\d{6}\b"), "******-*******"),  # 주민등록번호
-    (re.compile(r"\b(?:\d{4}[-\s]){3}\d{4}\b"), "****-****-****-****"),  # 카드번호
+    (re.compile(_L + r"01[016789][-.\s]?\d{3,4}[-.\s]?\d{4}" + _R), "010-****-****"),  # 휴대전화
+    (re.compile(_L + r"0\d{1,2}[-.\s]\d{3,4}[-.\s]\d{4}" + _R), "0**-****-****"),  # 지역번호 유선전화
+    # 이메일: 아이디·도메인은 영숫자만. 뒤에 붙은 조사("…com으로")는 주소가 아니므로 남긴다
+    (re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+" + _R), "***@***"),
+    (re.compile(_L + r"\d{6}-[1-4]\d{6}" + _R), "******-*******"),  # 주민등록번호
+    (re.compile(_L + r"(?:\d{4}[-\s]){3}\d{4}" + _R), "****-****-****-****"),  # 카드번호
+    # 계좌번호: 은행별 3단 형식(3~6 - 2~6 - 4~8). 날짜(4-2-2)·실행 id(8-6)·범위(3-3)는 묶음 수나 끝 묶음 길이가 달라 안 걸린다.
+    # 사업자등록번호(3-2-5)는 같은 꼴이라 함께 가려진다(과가림 쪽을 택함)
+    (re.compile(_L + r"\d{3,6}-\d{2,6}-\d{4,8}" + _R), "***-***-******"),
 ]
 # 민감한 키: 영문은 단어 경계로(prompt_tokens 의 "tokens" 는 아님), 한국어는 부분 일치
 _SENSITIVE_WORD = re.compile(
-    r"(^|[_\-\s.])(phone|mobile|tel|email|e-mail|ssn|resident|password|passwd|secret|token|api_?key|authorization|bearer)([_\-\s.]|$)",
+    r"(^|[_\-\s.])(phone|mobile|tel|email|e-mail|ssn|resident|password|passwd|secret|token|api_?key|authorization|bearer"
+    r"|account_?(?:no|num|number)|bank_?account|iban)([_\-\s.]|$)",
     re.I,
 )
-_SENSITIVE_KO = ("전화", "연락처", "이메일", "주민", "비밀번호")
+_SENSITIVE_KO = ("전화", "연락처", "이메일", "주민", "비밀번호", "계좌")
 MASK = "***"
 
 

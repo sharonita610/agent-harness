@@ -55,6 +55,28 @@ def test_redact_patterns_and_sensitive_keys():
     )
 
 
+def test_redact_korean_particles_and_account_numbers():
+    """ADR-033: 조사·서술어가 바로 붙은 번호(한국어 문장의 보통 꼴)와 계좌번호도 가린다. 날짜·실행 id·범위는 건드리지 않는다."""
+    cases = {
+        "010-1234-5678로 연락 주세요": "010-1234-5678",
+        "전화 010-1234-5678입니다": "010-1234-5678",
+        "유선 031-123-4567입니다": "031-123-4567",
+        "주민번호 900101-1234567입니다": "900101-1234567",
+        "카드 1234-5678-9012-3456로 결제": "9012-3456",
+        "계좌 110-123-456789 로 입금": "110-123-456789",
+        "카카오 3333-01-1234567입금": "3333-01-1234567",
+    }
+    for s, secret in cases.items():
+        assert secret not in redact_text(s), s
+    out = redact_text("kim@example.com으로 보내세요")
+    assert "kim@example.com" not in out and out.endswith("으로 보내세요")  # 조사는 주소가 아니다
+    keep = "주문 2026-10-01, 실행 20261101-035827, 수량 100-200, 버전 1.2.3, 주문번호 1023"
+    assert redact_text(keep) == keep
+    red = redact_obj({"account_no": "110-123-456789", "계좌번호": "x", "account_id": 7, "bank_account": "1"})
+    assert red["account_no"] == "***" and red["계좌번호"] == "***" and red["bank_account"] == "***"
+    assert red["account_id"] == 7  # 식별자 열은 계좌가 아니다
+
+
 def test_trace_collector_stores_redacted_tool_arguments(monkeypatch):
     """스팬 속성에는 도구 인자가 남는다(결과는 길이만). 인자 속 전화번호는 가려지고, HARNESS_REDACT=0 이면 그대로다."""
 
