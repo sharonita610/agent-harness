@@ -70,7 +70,7 @@ def test_supervisor_dashboard_reports_each_agent(seeded_db, tmp_path: Path):
     client = TestClient(create_app(db_path=str(tmp_path / "svc.sqlite"), pack="enterprise"))
     p = _by_id(check_panels(supervisor_dashboard(agents=["http://127.0.0.1:8786", "http://127.0.0.1:9"], http=client)))
     rows = p["agents"]["data"]["rows"]
-    assert rows[0]["연결"] == "연결됨" and rows[0]["팩"] == "enterprise" and rows[0]["도구"] == 12
+    assert rows[0]["연결"] == "연결됨" and rows[0]["팩"] == "enterprise" and rows[0]["도구"] == 13
     assert len(rows) == 2  # TestClient 는 호스트를 가리지 않아 둘 다 같은 앱으로 간다
     assert p["stats"]["data"][0]["value"] == "2/2"
 

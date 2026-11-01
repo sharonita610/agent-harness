@@ -147,7 +147,7 @@ LLM 에이전트를 실무에 쓰려면 답 자체보다 세 가지가 필요하
 | `harness/agent/` | 에이전트 루프(`loop.py`), 프로바이더 추상화(`providers.py`: llama.cpp 로컬 / OpenAI 호환 / Anthropic), 컨텍스트 예산(`context.py`) |
 | `harness/tools/` | 도구 레지스트리(pydantic 인자 검증, OpenAI 함수 스키마), 권한 정책(read / write / destructive) |
 | `harness/packs/__init__.py` | 팩 인터페이스(`Pack`): 도구·프롬프트·범위·평가 태스크·화면 라벨·데이터 탭 패널(`dashboard`, 여섯 종류 규약). 플랫폼은 이것만 보고 돈다. 선택은 `HARNESS_PACK` 또는 `--pack` |
-| `harness/packs/enterprise/` | 1차 팩 · 회사 데이터 비서: DB 스키마·시드(`seed.py`, 3,000 주문, 시드 고정), 규정 문서 10개(`docs/`, 함정 지시문 2개 포함), 메모 행 안 함정 지시문 1건, 도구 12개(`tools.py`, 문서 그래프 질의 `related_docs`·`impact_of` 포함), 사용자별 범위(`scope.py`) |
+| `harness/packs/enterprise/` | 1차 팩 · 회사 데이터 비서: DB 스키마·시드(`seed.py`, 3,000 주문, 시드 고정), 규정 문서 10개(`docs/`, 함정 지시문 2개 포함), 메모 행 안 함정 지시문 1건, 도구 13개(`tools.py`, 문서 그래프 질의 `related_docs`·`impact_of`, 절 전문 `read_doc` 포함), 사용자별 범위(`scope.py`) |
 | `harness/packs/spice/` | 2차 팩 · 회로 시뮬레이션 비서: 넷리스트 가드·파서(`netlist.py`), ngspice 실행·측정·스윕(`simulator.py`), SVG 그래프(`plot.py`), 도구 18개(`tools.py`: 검색·읽기·기록 질의·소자 라이브러리·시뮬레이터 상태 포함), 실험 추적 그래프(`graph.py`), 소자 모델 카드 11개(`library/`), 매뉴얼 요약 문서 7개(함정 지시문 1개), 샘플 회로 7개(주석 안 함정 지시문 1개) |
 | `harness/packs/factory/` | 3차 팩 · 공정 NG 분석 비서: 가짜 공장 시드(`seed.py`, 4라인 × 6공정, NG 이벤트 2.4만, 이상 3개 심음), 급증 탐지·원인 후보·조치 효과·설비 상태 도구(`tools.py`, 18개), 규정 문서 10개(함정 지시문 2개) |
 | `harness/packs/supervisor/` | 4차 팩 · 총괄 비서: 다른 비서들의 A2A Agent Card 를 읽고 `delegate` 로 위임, 독립 질의는 `delegate_many` 로 동시에 보내고, 결재 대기·거절·되물음을 그대로 전달. 도구 5개 |

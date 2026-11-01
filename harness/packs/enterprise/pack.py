@@ -15,6 +15,7 @@ TOOL_LABELS = {
     "get_order": "주문 상세 조회",
     "get_customer": "거래처 조회",
     "search_docs": "규정 문서 검색",
+    "read_doc": "규정 원문 읽기",
     "list_docs": "문서 목록 확인",
     "related_docs": "관련 문서 확인",
     "impact_of": "개정 영향 확인",
@@ -33,7 +34,7 @@ def _seed():
 PACK = Pack(
     name="enterprise",
     title="한빛상사 비서",
-    description="주문·재고·거래처 DB(SQLite) 와 사내 규정 문서 위의 에이전트. 도구 12개(문서 그래프 포함), 사용자별 데이터 범위.",
+    description="주문·재고·거래처 DB(SQLite) 와 사내 규정 문서 위의 에이전트. 도구 13개(문서 그래프·절 전문 읽기 포함), 사용자별 데이터 범위.",
     build_tools=build_tools,
     system_prompts=SYSTEM_PROMPTS,
     parse_scope=Scope.parse,

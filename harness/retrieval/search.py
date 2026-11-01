@@ -202,3 +202,39 @@ class DocIndex:
         for c in self.chunks:
             out[c.doc] = out.get(c.doc, 0) + 1
         return [{"doc": d, "sections": n} for d, n in out.items()]
+
+    def get_section(self, ref: str, max_chars: int = 4000) -> dict | None:
+        """절 전문. ref 는 search 결과의 source('문서 > 절') 그대로, 절 제목, 또는 문서 제목(그 문서의 절 전부를 이어 붙임).
+        절이 max_chars 로 조각나 있으면 다시 이어 준다. 없으면 None. 검색 도구가 앞부분만 보여 주고 전문은 이것으로(ADR-033)."""
+        want = ref.strip().lower()
+        if ">" in want:
+            doc_key, sec_key = (x.strip() for x in want.split(">", 1))
+        else:
+            doc_key, sec_key = None, want
+        found: list[Chunk] = []
+        if doc_key:
+            found = [c for c in self.chunks if c.doc.lower() == doc_key and c.section.lower() == sec_key]
+            if not found:  # 문서명 부분 일치("보상 규정" 으로 "배송 지연 보상 규정")
+                found = [c for c in self.chunks if doc_key in c.doc.lower() and c.section.lower() == sec_key]
+        if not found:  # 절 제목만: 첫 문서의 그 절
+            same = [c for c in self.chunks if c.section.lower() == sec_key]
+            if same:
+                found = [c for c in same if c.doc == same[0].doc]
+        whole = False
+        if not found:  # 문서 제목 → 문서 전체
+            found = [c for c in self.chunks if c.doc.lower() in (sec_key, doc_key)]
+            whole = bool(found)
+        if not found:
+            return None
+        text = "\n\n".join(f"## {c.section}\n{c.text}" if whole else c.text for c in found)
+        section = "(전체)" if whole else found[0].section
+        out: dict = {
+            "source": f"{found[0].doc} > {section}",
+            "doc": found[0].doc,
+            "section": section,
+            "text": text[:max_chars] + ("\n…(잘림)" if len(text) > max_chars else ""),
+            "chars": len(text),
+        }
+        if whole:
+            out["sections"] = list(dict.fromkeys(c.section for c in found))
+        return out
