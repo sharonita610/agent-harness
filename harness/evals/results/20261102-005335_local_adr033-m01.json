@@ -1,0 +1,395 @@
+{
+  "summary": {
+    "provider": "local",
+    "model": "local-llm",
+    "n": 3,
+    "tag": "adr033-m01",
+    "prompt_version": "v1",
+    "pack": "enterprise",
+    "tasks_file": "m01",
+    "tasks": 1,
+    "runs": 3,
+    "cost_usd": 0.0,
+    "cost_usd_if_hosted": 0.00081,
+    "pass_rate": 1.0,
+    "citation_checked": 3,
+    "citation_accuracy": 1.0,
+    "by_type": {
+      "mixed": 1.0
+    },
+    "avg_steps": 4.33,
+    "p50_latency_s": 24.4,
+    "p95_latency_s": 24.4,
+    "tokens_per_run": 11092,
+    "generated_at": "2026-11-02T00:54:45"
+  },
+  "tasks": [
+    {
+      "id": "m01",
+      "type": "mixed",
+      "question": "지난달(2026년 9월) 재고 부족 사유로 지연된 주문은 몇 건이고, 규정상 그 지연은 회사 책임이야 고객 책임이야?",
+      "pass_rate": 1.0,
+      "runs": [
+        {
+          "run": 1,
+          "pass": true,
+          "checks": {
+            "truth_in_answer": true,
+            "tools_all": true,
+            "answer_contains": true,
+            "cite_matches_retrieval": true,
+            "finished": true
+          },
+          "truth": [
+            5
+          ],
+          "executed_tools": [
+            "list_tables",
+            "describe_table",
+            "run_sql",
+            "search_docs"
+          ],
+          "approvals": [],
+          "citations": {
+            "cited": [
+              "- 주문 상태 정의 > 지연 사유 코드:",
+              "주문 상태 정의 > 지연 사유 코드"
+            ],
+            "retrieved": [
+              "주문 상태 정의 > 지연 사유 코드",
+              "재고 부족 처리 절차 > 기록",
+              "배송 지연 보상 규정 > 보상 비율",
+              "재고 부족 처리 절차 > (서문)",
+              "재고 부족 처리 절차 > 안전재고 미달 감지"
+            ]
+          },
+          "answer": "지난달(2026‑09) 재고 부족으로 지연된 주문은 **5건**입니다.  \n재고 부족은 “회사 책임 사유”로 규정되어 있어, 지연에 대한 책임은 회사에 있습니다.  \n\n**출처**  \n- 주문 상태 정의 > 지연 사유 코드: “재고 부족: 주문 시점에 안전재고 미달로 출고 불가. 회사 책임 사유.”",
+          "steps": 5,
+          "latency_s": 27.78,
+          "prompt_tokens": 11895,
+          "completion_tokens": 1191,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 11895,
+              "completion_tokens": 1191,
+              "calls": 5
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_tables",
+              "arguments": {},
+              "status": "ok",
+              "result_preview": "[{\"table\": \"customers\", \"rows\": 50}, {\"table\": \"inventory\", \"rows\": 400}, {\"table\": \"order_items\", \"rows\": 8816}, {\"table\": \"order_notes\", \"rows\": 145}, {\"table\": \"order_status_history\", \"rows\": 6159}, {\"table\": \"orders\", \"rows\": 3000}, {\"table\": \"products\", \"rows\": 200}, {\"table\": \"shipments\", \"row"
+            },
+            {
+              "step": 2,
+              "name": "describe_table",
+              "arguments": {
+                "table": "orders"
+              },
+              "status": "ok",
+              "result_preview": "{\"table\": \"orders\", \"columns\": [{\"name\": \"id\", \"type\": \"INTEGER\", \"notnull\": false, \"pk\": true}, {\"name\": \"customer_id\", \"type\": \"INTEGER\", \"notnull\": true, \"pk\": false}, {\"name\": \"order_date\", \"type\": \"TEXT\", \"notnull\": true, \"pk\": false}, {\"name\": \"status\", \"type\": \"TEXT\", \"notnull\": true, \"pk\": f"
+            },
+            {
+              "step": 3,
+              "name": "run_sql",
+              "arguments": {
+                "sql": "SELECT COUNT(*) as cnt FROM orders WHERE order_date BETWEEN '2026-09-01' AND '2026-09-30' AND delay_reason LIKE '%재고 부족%';",
+                "limit": 10
+              },
+              "status": "ok",
+              "result_preview": "{\"columns\": [\"cnt\"], \"rows\": [{\"cnt\": 5}], \"row_count\": 1, \"truncated\": false, \"sql_executed\": \"SELECT COUNT(*) as cnt FROM orders WHERE order_date BETWEEN '2026-09-01' AND '2026-09-30' AND delay_reason LIKE '%재고 부족%' LIMIT 10\"}"
+            },
+            {
+              "step": 4,
+              "name": "search_docs",
+              "arguments": {
+                "query": "재고 부족 지연 책임",
+                "k": 5
+              },
+              "status": "ok",
+              "result_preview": "{\"query\": \"재고 부족 지연 책임\", \"mode\": \"bm25\", \"hits\": [{\"doc\": \"주문 상태 정의\", \"section\": \"지연 사유 코드\", \"score\": -7.363, \"source\": \"주문 상태 정의 > 지연 사유 코드\", \"text\": \"- 재고 부족: 주문 시점에 안전재고 미달로 출고 불가. 회사 책임 사유.\\n- 배송사 지연: 운송사 사정. 회사 책임 아님.\\n- 주소 오류: 고객 제공 주소 불일치. 고객 책임.\\n- 결제 확인 지연: 입금 확인이 늦어진 경우. 공동 책임.\", \"chars\": ",
+              "result_sources": [
+                {
+                  "doc": "주문 상태 정의",
+                  "section": "지연 사유 코드",
+                  "section_id": ""
+                },
+                {
+                  "doc": "재고 부족 처리 절차",
+                  "section": "기록",
+                  "section_id": ""
+                },
+                {
+                  "doc": "배송 지연 보상 규정",
+                  "section": "보상 비율",
+                  "section_id": ""
+                },
+                {
+                  "doc": "재고 부족 처리 절차",
+                  "section": "(서문)",
+                  "section_id": ""
+                },
+                {
+                  "doc": "재고 부족 처리 절차",
+                  "section": "안전재고 미달 감지",
+                  "section_id": ""
+                }
+              ]
+            }
+          ],
+          "trace": "traces/20261102-005335_local_adr033-m01/m01_run1.jsonl",
+          "trace_summary": {
+            "run_id": "m01_run1",
+            "spans": 10,
+            "llm_calls": 5,
+            "tool_calls": 4,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 27620,
+            "tool_ms": 104,
+            "human_ms": 0,
+            "total_ms": 27776
+          }
+        },
+        {
+          "run": 2,
+          "pass": true,
+          "checks": {
+            "truth_in_answer": true,
+            "tools_all": true,
+            "answer_contains": true,
+            "cite_matches_retrieval": true,
+            "finished": true
+          },
+          "truth": [
+            5
+          ],
+          "executed_tools": [
+            "list_tables",
+            "describe_table",
+            "run_sql",
+            "search_docs"
+          ],
+          "approvals": [],
+          "citations": {
+            "cited": [
+              "- 주문 상태 정의 > 지연 사유 코드"
+            ],
+            "retrieved": [
+              "주문 상태 정의 > 지연 사유 코드",
+              "재고 부족 처리 절차 > 기록",
+              "배송 지연 보상 규정 > 보상 비율",
+              "재고 부족 처리 절차 > (서문)",
+              "재고 부족 처리 절차 > 안전재고 미달 감지"
+            ]
+          },
+          "answer": "지난달(2026년 9월) 재고 부족 사유로 지연된 주문 건수는 **5건**입니다.  \n규정에 따르면 재고 부족은 **회사 책임** 사유로 분류됩니다.  \n\n- **주문 상태 정의 > 지연 사유 코드**  \n  > “재고 부족: 주문 시점에 안전재고 미달로 출고 불가. **회사 책임 사유**.”  \n\n따라서 해당 지연은 회사가 책임을 지는 사유입니다.",
+          "steps": 5,
+          "latency_s": 24.42,
+          "prompt_tokens": 11917,
+          "completion_tokens": 1047,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 11917,
+              "completion_tokens": 1047,
+              "calls": 5
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "list_tables",
+              "arguments": {},
+              "status": "ok",
+              "result_preview": "[{\"table\": \"customers\", \"rows\": 50}, {\"table\": \"inventory\", \"rows\": 400}, {\"table\": \"order_items\", \"rows\": 8816}, {\"table\": \"order_notes\", \"rows\": 145}, {\"table\": \"order_status_history\", \"rows\": 6159}, {\"table\": \"orders\", \"rows\": 3000}, {\"table\": \"products\", \"rows\": 200}, {\"table\": \"shipments\", \"row"
+            },
+            {
+              "step": 2,
+              "name": "describe_table",
+              "arguments": {
+                "table": "orders"
+              },
+              "status": "ok",
+              "result_preview": "{\"table\": \"orders\", \"columns\": [{\"name\": \"id\", \"type\": \"INTEGER\", \"notnull\": false, \"pk\": true}, {\"name\": \"customer_id\", \"type\": \"INTEGER\", \"notnull\": true, \"pk\": false}, {\"name\": \"order_date\", \"type\": \"TEXT\", \"notnull\": true, \"pk\": false}, {\"name\": \"status\", \"type\": \"TEXT\", \"notnull\": true, \"pk\": f"
+            },
+            {
+              "step": 3,
+              "name": "run_sql",
+              "arguments": {
+                "sql": "SELECT COUNT(*) AS cnt FROM orders WHERE status='지연' AND delay_reason LIKE '%재고 부족%' AND order_date BETWEEN '2026-09-01' AND '2026-09-30';",
+                "limit": 10
+              },
+              "status": "ok",
+              "result_preview": "{\"columns\": [\"cnt\"], \"rows\": [{\"cnt\": 5}], \"row_count\": 1, \"truncated\": false, \"sql_executed\": \"SELECT COUNT(*) AS cnt FROM orders WHERE status='지연' AND delay_reason LIKE '%재고 부족%' AND order_date BETWEEN '2026-09-01' AND '2026-09-30' LIMIT 10\"}"
+            },
+            {
+              "step": 4,
+              "name": "search_docs",
+              "arguments": {
+                "query": "재고 부족 지연 책임",
+                "k": 5
+              },
+              "status": "ok",
+              "result_preview": "{\"query\": \"재고 부족 지연 책임\", \"mode\": \"bm25\", \"hits\": [{\"doc\": \"주문 상태 정의\", \"section\": \"지연 사유 코드\", \"score\": -7.363, \"source\": \"주문 상태 정의 > 지연 사유 코드\", \"text\": \"- 재고 부족: 주문 시점에 안전재고 미달로 출고 불가. 회사 책임 사유.\\n- 배송사 지연: 운송사 사정. 회사 책임 아님.\\n- 주소 오류: 고객 제공 주소 불일치. 고객 책임.\\n- 결제 확인 지연: 입금 확인이 늦어진 경우. 공동 책임.\", \"chars\": ",
+              "result_sources": [
+                {
+                  "doc": "주문 상태 정의",
+                  "section": "지연 사유 코드",
+                  "section_id": ""
+                },
+                {
+                  "doc": "재고 부족 처리 절차",
+                  "section": "기록",
+                  "section_id": ""
+                },
+                {
+                  "doc": "배송 지연 보상 규정",
+                  "section": "보상 비율",
+                  "section_id": ""
+                },
+                {
+                  "doc": "재고 부족 처리 절차",
+                  "section": "(서문)",
+                  "section_id": ""
+                },
+                {
+                  "doc": "재고 부족 처리 절차",
+                  "section": "안전재고 미달 감지",
+                  "section_id": ""
+                }
+              ]
+            }
+          ],
+          "trace": "traces/20261102-005335_local_adr033-m01/m01_run2.jsonl",
+          "trace_summary": {
+            "run_id": "m01_run2",
+            "spans": 10,
+            "llm_calls": 5,
+            "tool_calls": 4,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 24290,
+            "tool_ms": 76,
+            "human_ms": 0,
+            "total_ms": 24423
+          }
+        },
+        {
+          "run": 3,
+          "pass": true,
+          "checks": {
+            "truth_in_answer": true,
+            "tools_all": true,
+            "answer_contains": true,
+            "cite_matches_retrieval": true,
+            "finished": true
+          },
+          "truth": [
+            5
+          ],
+          "executed_tools": [
+            "run_sql",
+            "search_docs"
+          ],
+          "approvals": [],
+          "citations": {
+            "cited": [
+              "주문 상태 정의 > 지연 사유 코드 –",
+              "주문 상태 정의 > 지연 사유 코드"
+            ],
+            "retrieved": [
+              "주문 상태 정의 > 지연 사유 코드",
+              "재고 부족 처리 절차 > 기록",
+              "배송 지연 보상 규정 > 보상 비율",
+              "재고 부족 처리 절차 > (서문)",
+              "재고 부족 처리 절차 > 안전재고 미달 감지"
+            ]
+          },
+          "answer": "지난달(2026‑09) 재고 부족으로 인해 지연된 주문은 **5건**입니다.  \n규정에 따르면 재고 부족은 “회사 책임 사유”로 분류됩니다.  \n> **출처**: 주문 상태 정의 > 지연 사유 코드 – “재고 부족: 주문 시점에 안전재고 미달로 출고 불가. 회사 책임 사유.”",
+          "steps": 3,
+          "latency_s": 16.54,
+          "prompt_tokens": 6549,
+          "completion_tokens": 677,
+          "by_model": {
+            "local-llm": {
+              "prompt_tokens": 6549,
+              "completion_tokens": 677,
+              "calls": 3
+            }
+          },
+          "routes": [],
+          "stopped": "final",
+          "tool_calls": [
+            {
+              "step": 1,
+              "name": "run_sql",
+              "arguments": {
+                "sql": "SELECT COUNT(*) AS delayed_count FROM orders WHERE status='지연' AND delay_reason='재고 부족' AND order_date BETWEEN '2026-09-01' AND '2026-09-30';",
+                "limit": 10
+              },
+              "status": "ok",
+              "result_preview": "{\"columns\": [\"delayed_count\"], \"rows\": [{\"delayed_count\": 5}], \"row_count\": 1, \"truncated\": false, \"sql_executed\": \"SELECT COUNT(*) AS delayed_count FROM orders WHERE status='지연' AND delay_reason='재고 부족' AND order_date BETWEEN '2026-09-01' AND '2026-09-30' LIMIT 10\"}"
+            },
+            {
+              "step": 2,
+              "name": "search_docs",
+              "arguments": {
+                "query": "재고 부족 지연 책임",
+                "k": 5
+              },
+              "status": "ok",
+              "result_preview": "{\"query\": \"재고 부족 지연 책임\", \"mode\": \"bm25\", \"hits\": [{\"doc\": \"주문 상태 정의\", \"section\": \"지연 사유 코드\", \"score\": -7.363, \"source\": \"주문 상태 정의 > 지연 사유 코드\", \"text\": \"- 재고 부족: 주문 시점에 안전재고 미달로 출고 불가. 회사 책임 사유.\\n- 배송사 지연: 운송사 사정. 회사 책임 아님.\\n- 주소 오류: 고객 제공 주소 불일치. 고객 책임.\\n- 결제 확인 지연: 입금 확인이 늦어진 경우. 공동 책임.\", \"chars\": ",
+              "result_sources": [
+                {
+                  "doc": "주문 상태 정의",
+                  "section": "지연 사유 코드",
+                  "section_id": ""
+                },
+                {
+                  "doc": "재고 부족 처리 절차",
+                  "section": "기록",
+                  "section_id": ""
+                },
+                {
+                  "doc": "배송 지연 보상 규정",
+                  "section": "보상 비율",
+                  "section_id": ""
+                },
+                {
+                  "doc": "재고 부족 처리 절차",
+                  "section": "(서문)",
+                  "section_id": ""
+                },
+                {
+                  "doc": "재고 부족 처리 절차",
+                  "section": "안전재고 미달 감지",
+                  "section_id": ""
+                }
+              ]
+            }
+          ],
+          "trace": "traces/20261102-005335_local_adr033-m01/m01_run3.jsonl",
+          "trace_summary": {
+            "run_id": "m01_run3",
+            "spans": 6,
+            "llm_calls": 3,
+            "tool_calls": 2,
+            "tool_errors": 0,
+            "approvals": 0,
+            "llm_ms": 16400,
+            "tool_ms": 91,
+            "human_ms": 0,
+            "total_ms": 16542
+          }
+        }
+      ]
+    }
+  ]
+}
