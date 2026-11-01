@@ -5,13 +5,19 @@ SQLite 는 이름이 겹치면 temp 스키마를 먼저 찾으므로, 모델이 
 
 기본 거부(ADR-033): 범위 뷰(SCOPED_TABLES)도 공용 참조 데이터(SHARED_TABLES)도 아닌 테이블은 범위 사용자에게 빈 뷰로 덮는다.
 실데이터에 나중에 붙는 테이블(payments 같은)이 "아직 분류 안 됨" 상태로 전부 보이는 일을 막는다. 보이게 하려면 두 목록 중 하나에 적는다.
+
+열 마스킹(ADR-035): 같은 뷰가 민감도 등급표(sensitivity.SENSITIVITY)의 열을 가리거나 뺀다. 범위가 없는 사용자에게도 적용된다.
+뷰 하나가 행(범위)과 열(민감도)을 함께 다루므로 두 장치가 서로를 덮어쓰지 않는다.
 """
 
 from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Mapping
+
+from ...tools.sql import build_views
+from .sensitivity import SENSITIVITY
 
 SCOPED_TABLES = ("customers", "orders", "order_items", "shipments", "order_notes", "order_status_history")
 SHARED_TABLES = ("products", "warehouses", "inventory")  # 거래처와 무관한 참조 데이터. 범위 사용자도 전체를 본다
@@ -64,10 +70,9 @@ class Scope:
         return (" AND ".join(conds) or "1=0"), tuple(params)
 
 
-def apply_scope(conn: sqlite3.Connection, scope: Scope) -> None:
-    """연결에 범위 뷰를 씌운다. 반드시 authorizer 설정 전에 호출(뷰 생성 권한 필요)."""
+def scope_where(scope: Scope) -> dict[str, str]:
+    """범위 뷰의 WHERE 절(테이블별). 파라미터를 뷰 정의에 직접 넣을 수 없어 리터럴로 바꾼다(정수·간단 문자열만 허용)."""
     where, params = scope.customer_where()
-    # 파라미터를 뷰 정의에 직접 넣을 수 없으므로 안전하게 리터럴로 바꾼다(정수·간단 문자열만 허용)
     lit = []
     for p in params:
         if isinstance(p, int):
@@ -78,16 +83,25 @@ def apply_scope(conn: sqlite3.Connection, scope: Scope) -> None:
             lit.append("'" + str(p) + "'")
     for l in lit:
         where = where.replace("?", l, 1)
-    conn.executescript(f"""
-        CREATE TEMP VIEW customers AS SELECT * FROM main.customers WHERE {where};
-        CREATE TEMP VIEW orders AS SELECT * FROM main.orders WHERE customer_id IN (SELECT id FROM temp.customers);
-        CREATE TEMP VIEW order_items AS SELECT * FROM main.order_items WHERE order_id IN (SELECT id FROM temp.orders);
-        CREATE TEMP VIEW shipments AS SELECT * FROM main.shipments WHERE order_id IN (SELECT id FROM temp.orders);
-        CREATE TEMP VIEW order_notes AS SELECT * FROM main.order_notes WHERE order_id IN (SELECT id FROM temp.orders);
-        CREATE TEMP VIEW order_status_history AS SELECT * FROM main.order_status_history WHERE order_id IN (SELECT id FROM temp.orders);
-    """)
-    # 기본 거부: 두 목록에 없는 테이블은 빈 뷰. 범위 사용자가 run_sql 로 이름을 맞춰도 0행이다
-    for (name,) in conn.execute("SELECT name FROM main.sqlite_master WHERE type='table'").fetchall():
-        if name in SCOPED_TABLES or name in SHARED_TABLES or name.startswith("sqlite_") or '"' in name:
-            continue
-        conn.execute(f'CREATE TEMP VIEW "{name}" AS SELECT * FROM main."{name}" WHERE 0')
+    by_order = "order_id IN (SELECT id FROM temp.orders)"
+    return {
+        "customers": where,
+        "orders": "customer_id IN (SELECT id FROM temp.customers)",
+        "order_items": by_order,
+        "shipments": by_order,
+        "order_notes": by_order,
+        "order_status_history": by_order,
+    }
+
+
+def apply_scope(
+    conn: sqlite3.Connection, scope: Scope | None, policy: Mapping[str, Mapping[str, str]] | None = None
+) -> list[str]:
+    """연결에 뷰를 씌운다. 민감도 등급표(열 마스킹·비노출)는 모두에게, 범위(행 필터)와 기본 거부는 scope 가 있을 때.
+    반드시 authorizer 설정 전에 호출(뷰 생성 권한 필요). 만든 뷰 이름을 돌려준다."""
+    policy = SENSITIVITY if policy is None else policy
+    if scope is None:
+        return build_views(conn, policy=policy)
+    return build_views(
+        conn, policy=policy, where=scope_where(scope), hide_unlisted_except=SCOPED_TABLES + SHARED_TABLES
+    )

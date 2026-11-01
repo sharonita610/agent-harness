@@ -13,14 +13,14 @@ import threading
 import uuid
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 
 from pydantic import BaseModel, Field
 
 from ...refdate import resolve_reference_date
 from ...retrieval import DocIndex, OpenAIEmbedder, embedder_available
 from ...tools.registry import Tier, Tool
-from ...tools.sql import connect_readonly, guard_select, rows, table_columns
+from ...tools.sql import build_views, connect_readonly, guard_select, rows, sensitivity_labels, table_columns
 from ...viz import Figure, Marker, Series, render_svg
 from .seed import DEFAULT_DB, DEFECTS, PROCESSES, REFERENCE_DATE
 
@@ -28,6 +28,17 @@ PACK_DIR = Path(__file__).parent
 DOCS_DIR = PACK_DIR / "docs"
 SQL_TIMEOUT_S = 10.0  # 한 조회의 상한(초). 넘으면 interrupt
 RUNS_DIR = Path(os.getenv("HARNESS_FACTORY_RUNS", str(DEFAULT_DB.parent / "factory_runs")))
+# 열 민감도 등급표(ADR-035). 가짜 공장에는 개인정보 열이 없어 비어 있다. 실데이터(작업자 이름·연락처·사번)를 붙이면
+# {"테이블": {"열": "phone" | "email" | "full" | "drop"}} 로 적는다. 뷰 단계에서 적용되어 어떤 SQL 로도 원문이 안 나간다
+SENSITIVITY: dict[str, dict[str, str]] = {}
+
+
+def masked_connection(db_path: Path, policy: Mapping[str, Mapping[str, str]] | None = None):
+    """읽기 전용 연결 + 민감도 뷰(등급표가 비어 있으면 뷰 없이). 도구와 데이터 탭이 같이 쓴다."""
+    policy = SENSITIVITY if policy is None else policy
+    return connect_readonly(db_path, setup=(lambda c: build_views(c, policy=policy)) if policy else None)
+
+
 SEED_PERIOD_START = (
     "2026-10-14 00:00:00"  # 시드 데이터 기간. DB 가 없을 때의 대체값이고 실제 기간은 data_period() 가 DB 에서 읽는다
 )
@@ -328,12 +339,14 @@ def build_tools(
     index: DocIndex | None = None,
     scope: Any = None,
     reference_date: date | None = None,
+    sensitivity: Mapping[str, Mapping[str, str]] | None = None,
     **_: Any,
 ) -> list[Tool]:
     db_path, runs_dir = Path(db_path), Path(runs_dir)
     if not db_path.exists():
         raise FileNotFoundError(f"DB 가 없습니다: {db_path}. 먼저 `uv run harness seed --pack factory` 를 실행하세요.")
-    ro = connect_readonly(db_path)
+    policy = SENSITIVITY if sensitivity is None else sensitivity
+    ro = masked_connection(db_path, policy)
     ref = reference_date or resolve_reference_date(REFERENCE_DATE, db_path)[0]  # "오늘"(정비 경과). ADR-034
     period_start, period_end = data_period(db_path)  # 도구의 기본 구간은 데이터에서
     index = index or make_index(docs_dir)
@@ -433,7 +446,9 @@ def build_tools(
         names = {r["name"] for r in query("SELECT name FROM sqlite_master WHERE type='table'")}
         if a.table not in names:
             raise ValueError(f"테이블 없음: {a.table}. 가능한 테이블: {sorted(names)}")
-        cols = [{"name": c["name"], "type": c["type"]} for c in table_columns(db_path, a.table)]
+        cols = sensitivity_labels(
+            policy.get(a.table) or {}, [{"name": c["name"], "type": c["type"]} for c in table_columns(db_path, a.table)]
+        )
         return {
             "table": a.table,
             "columns": cols,
@@ -442,7 +457,11 @@ def build_tools(
 
     def run_sql(a: RunSqlArgs) -> Any:
         sql = guard_select(
-            a.sql, default_limit=a.limit, max_limit=500, write_hint="라벨 확정·티켓·알림 규칙은 전용 도구를 쓰세요."
+            a.sql,
+            default_limit=a.limit,
+            max_limit=500,
+            scoped=bool(policy),  # 마스킹 뷰가 있으면 main. 명시 우회를 막는다
+            write_hint="라벨 확정·티켓·알림 규칙은 전용 도구를 쓰세요.",
         )
         return {**query_rows(sql, limit=a.limit), "sql_executed": sql}
 

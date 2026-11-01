@@ -8,7 +8,7 @@ import sqlite3
 import threading
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 
 from pydantic import BaseModel, Field
 
@@ -18,10 +18,18 @@ from ...retrieval.docgraph import DocGraph
 from ...tools.registry import Tier, Tool
 from .scope import Scope, apply_scope
 from .seed import DEFAULT_DB, REFERENCE_DATE
+from .sensitivity import SENSITIVITY
 
 PACK_DIR = Path(__file__).parent
 DOCS_DIR = PACK_DIR / "docs"
-MASK_COLUMNS = {"phone"}
+
+
+def mask_columns(policy: Mapping[str, Mapping[str, str]]) -> set[str]:
+    """출력 열 이름 기준의 2차 마스킹 대상(전화 등급 열). 1차는 뷰(ADR-035)이고 이 층은 겹쳐도 같은 값이 나온다."""
+    return {col for cols in policy.values() for col, kind in cols.items() if kind == "phone"}
+
+
+MASK_COLUMNS = mask_columns(SENSITIVITY)
 PREVIEW_CHARS = 600  # search_docs 가 보여 주는 절 앞부분(글자). 전문은 read_doc 로(ADR-033)
 RESULT_BUDGET_CHARS = 3600  # 검색 결과 k 개를 합쳐도 루프의 도구 결과 상한(4,000자) 안에 들게 하는 예산
 FILES_DIR = DEFAULT_DB.parent / "enterprise_files"  # 데이터 탭이 그린 문서 관계도 등, /files/enterprise/ 로 서빙
@@ -43,7 +51,7 @@ DOC_CONCEPTS: dict[str, tuple[str, tuple[str, ...]]] = {
     "운송사": ("shipments.carrier", ("운송사", "배송사")),
 }
 
-from ...tools.sql import connect_readonly, table_columns  # noqa: E402
+from ...tools.sql import connect_readonly, sensitivity_labels, table_columns  # noqa: E402
 from ...tools.sql import guard_select as _guard_select_base
 
 
@@ -54,18 +62,25 @@ def guard_select(sql: str, default_limit: int = 200, max_limit: int = 500, scope
     )
 
 
-def connect_ro(db_path: Path, scope: Scope | None = None) -> sqlite3.Connection:
-    return connect_readonly(db_path, setup=(lambda conn: apply_scope(conn, scope)) if scope is not None else None)
+def connect_ro(
+    db_path: Path, scope: Scope | None = None, policy: Mapping[str, Mapping[str, str]] | None = None
+) -> sqlite3.Connection:
+    """읽기 전용 연결 + 뷰(민감도 등급표는 항상, 범위는 scope 가 있을 때). 뷰는 authorizer 전에 만들어진다."""
+    return connect_readonly(db_path, setup=lambda conn: apply_scope(conn, scope, policy))
 
 
 def _mask_phone(v: Any) -> Any:
-    if not isinstance(v, str):
+    """뷰(tools.sql.MASKS['phone'])와 같은 꼴: 국번 + '-****-' + 뒤 4자리. 이미 가려진 값은 그대로(겹쳐도 같은 값)."""
+    if not isinstance(v, str) or "****" in v:
         return v
     digits = re.sub(r"\D", "", v)
-    return f"{v[:3]}-****-{digits[-4:]}" if len(digits) >= 7 else "***"
+    if len(digits) < 7:
+        return "***"
+    prefix = v.split("-", 1)[0] if "-" in v else v[:3]
+    return f"{prefix}-****-{digits[-4:]}"
 
 
-def _rows(cur: sqlite3.Cursor, limit: int | None = None) -> dict[str, Any]:
+def _rows(cur: sqlite3.Cursor, limit: int | None = None, mask_cols: set[str] | None = None) -> dict[str, Any]:
     cols = [d[0] for d in cur.description] if cur.description else []
     fetched = cur.fetchall() if limit is None else cur.fetchmany(limit + 1)
     truncated = limit is not None and len(fetched) > limit
@@ -74,7 +89,7 @@ def _rows(cur: sqlite3.Cursor, limit: int | None = None) -> dict[str, Any]:
     rows = []
     for r in fetched:
         row = dict(zip(cols, tuple(r)))
-        for c in MASK_COLUMNS & set(cols):
+        for c in (MASK_COLUMNS if mask_cols is None else mask_cols) & set(cols):
             row[c] = _mask_phone(row[c])
         rows.append(row)
     return {"columns": cols, "rows": rows, "row_count": len(rows), "truncated": truncated}
@@ -157,17 +172,21 @@ def build_tools(
     scope: Scope | None = None,
     graph: DocGraph | None = None,
     reference_date: date | None = None,
+    sensitivity: Mapping[str, Mapping[str, str]] | None = None,
 ) -> list[Tool]:
     """scope 를 주면 거래처·주문 계열 테이블이 그 범위로 잘린 도구 모음을 만든다(데이터 층 강제).
-    reference_date 는 도구가 "오늘" 로 쓰는 날짜(지연 일수·최근 12개월). 비우면 환경변수 > DB _meta > 시드 날짜(ADR-034)."""
+    reference_date 는 도구가 "오늘" 로 쓰는 날짜(지연 일수·최근 12개월). 비우면 환경변수 > DB _meta > 시드 날짜(ADR-034).
+    sensitivity 는 열 민감도 등급표(기본 sensitivity.SENSITIVITY). 뷰 단계에서 가리므로 어떤 SQL 로도 원문이 안 나간다(ADR-035)."""
     db_path = Path(db_path)
     if not db_path.exists():
         raise FileNotFoundError(f"DB 가 없습니다: {db_path}. 먼저 `uv run harness seed` 를 실행하세요.")
     ref = reference_date or resolve_reference_date(REFERENCE_DATE, db_path)[0]
-    ro = connect_ro(db_path, scope)
+    policy = SENSITIVITY if sensitivity is None else sensitivity
+    ro = connect_ro(db_path, scope, policy)
     index = index or make_index(docs_dir)
     graph = graph or make_graph(docs_dir)
-    scoped = scope is not None
+    scoped = scope is not None or bool(policy)  # 뷰가 하나라도 있으면 main./temp. 명시 우회를 막아야 한다
+    mask_cols = mask_columns(policy)
     lock = threading.Lock()
 
     def query(sql: str, params: tuple = (), limit: int | None = None) -> dict[str, Any]:
@@ -175,7 +194,7 @@ def build_tools(
             timer = threading.Timer(sql_timeout_s, ro.interrupt)
             timer.start()
             try:
-                return _rows(ro.execute(sql, params), limit)
+                return _rows(ro.execute(sql, params), limit, mask_cols)
             finally:
                 timer.cancel()
 
@@ -198,7 +217,7 @@ def build_tools(
         names = {r[0] for r in locked_execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if a.table not in names:
             raise ValueError(f"테이블 없음: {a.table}. 가능한 테이블: {sorted(names)}")
-        cols = table_columns(db_path, a.table)
+        cols = sensitivity_labels(policy.get(a.table) or {}, table_columns(db_path, a.table))
         sample = query(f"SELECT * FROM {a.table} LIMIT 3")
         return {"table": a.table, "columns": cols, "sample_rows": sample["rows"]}
 
@@ -313,7 +332,7 @@ def build_tools(
         return conn
 
     def _assert_in_scope(order_id: int) -> None:
-        if scoped and not query("SELECT 1 FROM orders WHERE id=?", (order_id,))["rows"]:
+        if scope is not None and not query("SELECT 1 FROM orders WHERE id=?", (order_id,))["rows"]:
             raise ValueError(f"주문 {order_id} 은(는) 이 사용자의 조회 범위({scope.describe()}) 밖이거나 없습니다.")
 
     def update_order_status(a: UpdateStatusArgs) -> Any:

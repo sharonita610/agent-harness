@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Any
 
 from ...refdate import resolve_reference_date
-from ...tools.sql import connect_readonly, rows
+from ...tools.sql import rows
 from .seed import DEFAULT_DB, REFERENCE_DATE
-from .tools import _shift, data_period, equipment_rows
+from .tools import _shift, data_period, equipment_rows, masked_connection
 
 WINDOW_DAYS = 14
 
@@ -74,7 +74,7 @@ def _spikes(query, f: str, t: str, multiplier: float = 3.0, limit: int = 6) -> l
 
 
 def dashboard(scope: Any = None, db_path: Path = DEFAULT_DB) -> list[dict[str, Any]]:
-    ro = connect_readonly(db_path)
+    ro = masked_connection(db_path)
     query = lambda sql, params=(): rows(ro.execute(sql, params))["rows"]
     ref = resolve_reference_date(REFERENCE_DATE, db_path)[0]  # "최근 14일" 의 끝 = 오늘(ADR-034)
     period_end = data_period(db_path)[1]
