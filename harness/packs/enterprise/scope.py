@@ -2,6 +2,9 @@
 
 SQLite 는 이름이 겹치면 temp 스키마를 먼저 찾으므로, 모델이 쓰는 임의의 SELECT 도 범위 밖 행을 볼 수 없다.
 `main.orders` 처럼 스키마를 명시한 우회는 SQL 가드가 막는다(tools.guard_select).
+
+기본 거부(ADR-033): 범위 뷰(SCOPED_TABLES)도 공용 참조 데이터(SHARED_TABLES)도 아닌 테이블은 범위 사용자에게 빈 뷰로 덮는다.
+실데이터에 나중에 붙는 테이블(payments 같은)이 "아직 분류 안 됨" 상태로 전부 보이는 일을 막는다. 보이게 하려면 두 목록 중 하나에 적는다.
 """
 
 from __future__ import annotations
@@ -11,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 SCOPED_TABLES = ("customers", "orders", "order_items", "shipments", "order_notes", "order_status_history")
+SHARED_TABLES = ("products", "warehouses", "inventory")  # 거래처와 무관한 참조 데이터. 범위 사용자도 전체를 본다
 
 
 @dataclass(frozen=True)
@@ -82,3 +86,8 @@ def apply_scope(conn: sqlite3.Connection, scope: Scope) -> None:
         CREATE TEMP VIEW order_notes AS SELECT * FROM main.order_notes WHERE order_id IN (SELECT id FROM temp.orders);
         CREATE TEMP VIEW order_status_history AS SELECT * FROM main.order_status_history WHERE order_id IN (SELECT id FROM temp.orders);
     """)
+    # 기본 거부: 두 목록에 없는 테이블은 빈 뷰. 범위 사용자가 run_sql 로 이름을 맞춰도 0행이다
+    for (name,) in conn.execute("SELECT name FROM main.sqlite_master WHERE type='table'").fetchall():
+        if name in SCOPED_TABLES or name in SHARED_TABLES or name.startswith("sqlite_") or '"' in name:
+            continue
+        conn.execute(f'CREATE TEMP VIEW "{name}" AS SELECT * FROM main."{name}" WHERE 0')

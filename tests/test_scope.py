@@ -106,3 +106,31 @@ def test_service_applies_user_scope(tmp_path, seeded_db):
                 else None
             )
         assert counts["busan"] < counts["all"] and counts["all"] == 3000
+
+
+def test_scope_hides_unclassified_tables_by_default(tmp_path, seeded_db):
+    """ADR-033: 범위 뷰(SCOPED_TABLES)도 공용(SHARED_TABLES)도 아닌 테이블은 범위 사용자에게 빈 뷰다.
+    실데이터에 나중에 붙은 테이블이 분류 전에 전부 보이지 않는다."""
+    import shutil
+    import sqlite3
+
+    db, _ = seeded_db
+    copy = tmp_path / "with_payments.db"
+    shutil.copy(db, copy)
+    with sqlite3.connect(copy) as c:
+        c.execute("CREATE TABLE payments(id INTEGER PRIMARY KEY, customer_id INTEGER, amount INTEGER, account_no TEXT)")
+        c.executemany(
+            "INSERT INTO payments(customer_id, amount, account_no) VALUES (?,?,?)",
+            [(1, 100, "110-123-456789"), (2, 200, "110-999-000000")],
+        )
+    full = ToolRegistry(build_tools(copy))
+    busan = ToolRegistry(build_tools(copy, scope=Scope.parse("region=부산")))
+    cnt = lambda reg, sql: reg.get("run_sql").run({"sql": sql})["rows"][0]["n"]
+    assert cnt(full, "SELECT COUNT(*) n FROM payments") == 2
+    assert cnt(busan, "SELECT COUNT(*) n FROM payments") == 0
+    assert cnt(busan, "SELECT COUNT(*) n FROM products") == cnt(
+        full, "SELECT COUNT(*) n FROM products"
+    )  # 공용은 그대로
+    assert cnt(busan, "SELECT COUNT(*) n FROM customers") > 0  # 범위 뷰는 그대로 동작
+    with pytest.raises(ValueError):  # 스키마 명시 우회도 여전히 차단
+        busan.get("run_sql").run({"sql": "SELECT COUNT(*) n FROM main.payments"})
