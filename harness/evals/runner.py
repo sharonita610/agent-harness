@@ -26,6 +26,7 @@ from ..observability.redact import maybe_redact, redact_text
 from ..observability.tracer import TraceCollector, maybe_export, write_jsonl
 from ..packs import load_pack
 from ..packs.enterprise.seed import DEFAULT_DB
+from ..refdate import date_vars, resolve_reference_date
 from ..retrieval.citation import citations_ok, parse_citations, sources_from_tool_calls
 from ..tools.permissions import auto_deny
 from ..tools.registry import ToolRegistry
@@ -295,23 +296,40 @@ def _fill(obj: Any, params: dict[str, str]) -> Any:
     return obj
 
 
-def prepare(task: dict, conn: sqlite3.Connection | None) -> tuple[dict, str, list[Any]]:
-    """params_sql 로 {변수} 를 채운 태스크 사본, 표시용 질문(다중 턴이면 ' → ' 로 이은 것), 정답을 돌려준다."""
-    params: dict[str, str] = {}
+_UNFILLED = re.compile(r"\{([a-z][a-z0-9_+-]*)\}")  # {oid}·{last_month}·{ref_date-9_ko} 꼴. 정규식의 {4}·{1,2} 는 아님
+
+
+def prepare(
+    task: dict, conn: sqlite3.Connection | None, variables: dict[str, str] | None = None
+) -> tuple[dict, str, list[Any]]:
+    """variables(기준일 변수, refdate.date_vars)와 params_sql 로 {변수} 를 채운 태스크 사본, 표시용 질문(다중 턴이면
+    ' → ' 로 이은 것), 정답을 돌려준다. params_sql 자체도 기준일 변수를 쓸 수 있다(julianday('{ref_date}')).
+    질문·turns·truth_sql 에 채우지 못한 {변수} 가 남으면 거절한다: 틀린 SQL 을 조용히 돌려 엉뚱한 정답을 만들지 않게(ADR-034)."""
+    params: dict[str, str] = dict(variables or {})
     for key, sql in (task.get("params_sql") or {}).items():
         if conn is None:
             raise ValueError(f"{task['id']}: params_sql 은 DB 가 있는 팩에서만 쓸 수 있습니다")
-        row = conn.execute(sql).fetchone()
+        row = conn.execute(_fill(sql, params)).fetchone()
         params[key] = str(row[0]) if row else "?"
     filled = _fill({k: v for k, v in task.items() if k != "params_sql"}, params)
+    for field in ("question", "turns", "truth_sql"):
+        if filled.get(field):
+            left = sorted(set(_UNFILLED.findall(json.dumps(filled[field], ensure_ascii=False))))
+            if left:
+                raise ValueError(
+                    f"{task['id']}: 채우지 못한 변수 {left} ({field}). 기준일 변수(last_month 등)는 팩에 reference_date 가 "
+                    "있어야 채워지고, 그 밖은 params_sql 로 줍니다"
+                )
     if filled.get("turns") and not filled.get("question"):
         filled["question"] = " → ".join(filled["turns"])
     return filled, filled["question"], _truth(filled, conn)
 
 
-def resolve(task: dict, conn: sqlite3.Connection | None) -> tuple[str, list[Any]]:
+def resolve(
+    task: dict, conn: sqlite3.Connection | None, variables: dict[str, str] | None = None
+) -> tuple[str, list[Any]]:
     """질문의 {변수} 를 채우고 정답을 만든다(prepare 의 호환용 얼굴). truth_sql(DB) · truth_expr(공식) · truth_value(상수) 순."""
-    _, question, truth = prepare(task, conn)
+    _, question, truth = prepare(task, conn, variables)
     return question, truth
 
 
@@ -390,14 +408,17 @@ def run_eval(
         tasks = tasks[:limit]
     pack_db = db_path if pk.name == "enterprise" else pk.db_path
     conn = sqlite3.connect(f"file:{pack_db}?mode=ro", uri=True) if pack_db else None
+    # 기준일(ADR-034): 평가 DB 의 _meta > 팩 기본. 프롬프트·도구·태스크 변수({last_month} 등)가 같은 값을 본다
+    ref = resolve_reference_date(pk.reference_date, pack_db)[0] if pk.reference_date else None
+    tool_kw = {"reference_date": ref} if ref else {}
     prov = make_provider(provider)
-    registry = ToolRegistry(pk.build_tools(db_path=pack_db) if pack_db else pk.build_tools())
+    registry = ToolRegistry(pk.build_tools(db_path=pack_db, **tool_kw) if pack_db else pk.build_tools())
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     safe_provider = _provider_slug(provider)
     suffix = f"{safe_provider}{('_' + pk.name) if pk.name != 'enterprise' else ''}{('_' + tag) if tag else ''}"
     trace_dir = RESULTS_DIR / "traces" / f"{stamp}_{suffix}"
     collector_box: dict[str, TraceCollector] = {}
-    system_prompt = pk.system_prompts[prompt_version]
+    system_prompt = (pk.system_prompts_for(ref) if ref and pk.system_prompts_for else pk.system_prompts)[prompt_version]
     on_event = lambda ev: collector_box["c"].on_event(ev) if "c" in collector_box else None
     agents: dict[str, Agent] = {}
 
@@ -406,7 +427,7 @@ def run_eval(
         key = scope_spec or ""
         if key not in agents:
             scope = pk.parse_scope(scope_spec) if scope_spec else None
-            reg = registry if scope is None else ToolRegistry(pk.build_tools(db_path=pack_db, scope=scope))
+            reg = registry if scope is None else ToolRegistry(pk.build_tools(db_path=pack_db, scope=scope, **tool_kw))
             note = pk.scope_note(scope) if scope is not None else ""
             agents[key] = Agent(
                 prov, reg, system_prompt + note, approval_handler=auto_deny, max_steps=12, on_event=on_event
@@ -415,7 +436,7 @@ def run_eval(
 
     rows: list[dict[str, Any]] = []
     for raw_task in tasks:
-        task, question, truth = prepare(raw_task, conn)
+        task, question, truth = prepare(raw_task, conn, date_vars(ref) if ref else None)
         turns = task.get("turns") or [question]
         agent = agent_for(task.get("scope"))
         runs = []
@@ -476,6 +497,7 @@ def run_eval(
         prompt_version=prompt_version,
         pack=pk.name,
         tasks_file=(tasks_path or pk.tasks_path).stem,
+        reference_date=ref.isoformat() if ref else None,
     )
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     base = RESULTS_DIR / f"{stamp}_{suffix}"

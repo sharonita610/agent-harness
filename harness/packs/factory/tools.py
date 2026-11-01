@@ -11,12 +11,13 @@ import sqlite3
 import statistics
 import threading
 import uuid
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from ...refdate import resolve_reference_date
 from ...retrieval import DocIndex, OpenAIEmbedder, embedder_available
 from ...tools.registry import Tier, Tool
 from ...tools.sql import connect_readonly, guard_select, rows, table_columns
@@ -27,8 +28,33 @@ PACK_DIR = Path(__file__).parent
 DOCS_DIR = PACK_DIR / "docs"
 SQL_TIMEOUT_S = 10.0  # 한 조회의 상한(초). 넘으면 interrupt
 RUNS_DIR = Path(os.getenv("HARNESS_FACTORY_RUNS", str(DEFAULT_DB.parent / "factory_runs")))
-PERIOD_START = "2026-10-14 00:00:00"
-PERIOD_END = "2026-10-28 00:00:00"
+SEED_PERIOD_START = (
+    "2026-10-14 00:00:00"  # 시드 데이터 기간. DB 가 없을 때의 대체값이고 실제 기간은 data_period() 가 DB 에서 읽는다
+)
+SEED_PERIOD_END = "2026-10-28 00:00:00"
+REFERENCE_DATE_RESOLVED, REFERENCE_DATE_SOURCE = resolve_reference_date(
+    REFERENCE_DATE, DEFAULT_DB
+)  # 비서의 "오늘"(ADR-034)
+
+
+def data_period(db_path: Path | str = DEFAULT_DB) -> tuple[str, str]:
+    """DB 의 검사 기록이 있는 [처음, 끝) 시각. 끝은 마지막 시간대 + 1시간. DB 가 없거나 비었으면 시드 기간.
+    "데이터 기간" 은 오늘(기준일)이 아니라 데이터에서 읽는다: 실데이터 스냅샷은 기간이 다르다(ADR-034)."""
+    row = None
+    try:
+        conn = sqlite3.connect(f"file:{Path(db_path)}?mode=ro", uri=True)
+        try:
+            row = conn.execute("SELECT MIN(hour_start), MAX(hour_start) FROM inspections").fetchone()
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        row = None
+    if not row or not row[0]:
+        return SEED_PERIOD_START, SEED_PERIOD_END
+    start = _parse_ts(str(row[0]), SEED_PERIOD_START)
+    end = datetime.strptime(_parse_ts(str(row[1]), SEED_PERIOD_END), "%Y-%m-%d %H:%M:%S") + timedelta(hours=1)
+    return start, end.strftime("%Y-%m-%d %H:%M:%S")
+
 
 # 문서 PE-003 "공정별 관리 파라미터 범위" 의 관리 범위(하한, 상한, 단위). 설비 상태 판정에 쓴다. 테스트가 문서 표와 대조한다.
 PARAM_RANGES: dict[str, dict[str, tuple[float, float, str]]] = {
@@ -66,9 +92,9 @@ class WindowArgs(BaseModel):
         description="스테이션: 번호(예 23), 라인 내 순서(1~6), 또는 공정 이름(권취, 슬리팅, 전해액 주입 …). 비우면 전체",
     )
     from_ts: str | None = Field(
-        None, description="시작 시각 'YYYY-MM-DD' 또는 'YYYY-MM-DD HH:MM'. 비우면 기간 처음(2026-10-14)"
+        None, description="시작 시각 'YYYY-MM-DD' 또는 'YYYY-MM-DD HH:MM'. 비우면 데이터 기간 처음"
     )
-    to_ts: str | None = Field(None, description="끝 시각(포함 안 함). 비우면 기간 끝(2026-10-28)")
+    to_ts: str | None = Field(None, description="끝 시각(포함 안 함). 비우면 데이터 기간 끝")
 
 
 class SummaryArgs(WindowArgs):
@@ -123,7 +149,7 @@ class EquipmentArgs(BaseModel):
     station: str = Field(description="스테이션 번호(예 23) 또는 '2라인 권취' 처럼 라인+공정 하나")
     line: int | None = Field(None, ge=1, le=4, description="공정 이름으로 줄 때 라인 번호")
     from_ts: str | None = Field(None, description="볼 구간 시작 'YYYY-MM-DD HH:MM'. 비우면 데이터 끝 기준 최근 24시간")
-    to_ts: str | None = Field(None, description="볼 구간 끝. 비우면 데이터 끝(2026-10-28 00:00)")
+    to_ts: str | None = Field(None, description="볼 구간 끝. 비우면 데이터 끝")
 
 
 class LineArgs(BaseModel):
@@ -184,13 +210,13 @@ def _shift(hour: int) -> str:
     return "주간" if 6 <= hour < 14 else "오후" if 14 <= hour < 22 else "야간"
 
 
-def _days_since(date_text: str | None) -> int | None:
+def _days_since(date_text: str | None, ref: date) -> int | None:
     if not date_text:
         return None
-    return (REFERENCE_DATE - datetime.strptime(date_text[:10], "%Y-%m-%d").date()).days
+    return (ref - datetime.strptime(date_text[:10], "%Y-%m-%d").date()).days
 
 
-def equipment_report(query, sid: int, f: str, t: str) -> dict[str, Any]:
+def equipment_report(query, sid: int, f: str, t: str, ref: date | None = None) -> dict[str, Any]:
     """설비 1대의 상태: 구간의 파라미터 평균·최신값을 PE-003 관리 범위와 대조, 정비 경과, 열린 티켓, 알림 규칙, 구간 NG 율.
     비서의 equipment_status 와 데이터 탭의 설비 현황판이 같은 함수를 쓴다."""
     st = query("SELECT id, line_id, seq, name, process FROM stations WHERE id=?", (sid,))[0]
@@ -230,7 +256,7 @@ def equipment_report(query, sid: int, f: str, t: str) -> dict[str, Any]:
         params.append(row)
     out_of_range = [p for p in params if p["status"] in ("높음", "낮음")]
     maint = query("SELECT ts, kind, note FROM maintenance WHERE equipment_id=? ORDER BY ts DESC LIMIT 3", (eq["id"],))
-    days = _days_since(eq["last_maintenance_at"])
+    days = _days_since(eq["last_maintenance_at"], ref or REFERENCE_DATE_RESOLVED)  # 정비 경과는 "오늘" 기준
     open_actions = query(
         "SELECT id, created_at, title, owner, status FROM actions WHERE station_id=? AND status='open' ORDER BY created_at DESC",
         (sid,),
@@ -272,12 +298,12 @@ def equipment_report(query, sid: int, f: str, t: str) -> dict[str, Any]:
     }
 
 
-def equipment_rows(query, f: str, t: str, line: int | None = None) -> list[dict[str, Any]]:
+def equipment_rows(query, f: str, t: str, line: int | None = None, ref: date | None = None) -> list[dict[str, Any]]:
     """라인(또는 전체) 설비 한 줄 요약. 현황판과 list_equipment 가 같이 쓴다."""
     sids = [r["id"] for r in query("SELECT id FROM stations WHERE (? IS NULL OR line_id=?) ORDER BY id", (line, line))]
     out = []
     for sid in sids:
-        r = equipment_report(query, sid, f, t)
+        r = equipment_report(query, sid, f, t, ref=ref)
         out.append(
             {
                 "station": r["station"],
@@ -301,12 +327,15 @@ def build_tools(
     runs_dir: Path = RUNS_DIR,
     index: DocIndex | None = None,
     scope: Any = None,
+    reference_date: date | None = None,
     **_: Any,
 ) -> list[Tool]:
     db_path, runs_dir = Path(db_path), Path(runs_dir)
     if not db_path.exists():
         raise FileNotFoundError(f"DB 가 없습니다: {db_path}. 먼저 `uv run harness seed --pack factory` 를 실행하세요.")
     ro = connect_readonly(db_path)
+    ref = reference_date or resolve_reference_date(REFERENCE_DATE, db_path)[0]  # "오늘"(정비 경과). ADR-034
+    period_start, period_end = data_period(db_path)  # 도구의 기본 구간은 데이터에서
     index = index or make_index(docs_dir)
     lock = threading.Lock()  # SQLite 연결 하나를 채팅·잡·MCP 스레드가 같이 쓴다. 잠금 없이는 "Recursive use of cursors"
 
@@ -369,7 +398,7 @@ def build_tools(
 
     # ---- read: 설비 상태
     def _window(a: EquipmentArgs | None) -> tuple[str, str]:
-        t = _parse_ts(getattr(a, "to_ts", None), PERIOD_END)
+        t = _parse_ts(getattr(a, "to_ts", None), period_end)
         default_from = (datetime.strptime(t, "%Y-%m-%d %H:%M:%S") - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
         return _parse_ts(getattr(a, "from_ts", None), default_from), t
 
@@ -380,13 +409,13 @@ def build_tools(
                 f"설비 하나만 지정하세요(현재 {len(sids)}개). 예: station='23' 또는 line=4, station='전해액 주입'. 여러 대는 list_equipment."
             )
         f, t = _window(a)
-        r = equipment_report(query, sids[0], f, t)
+        r = equipment_report(query, sids[0], f, t, ref=ref)
         r["note"] = "관리 범위는 PE-003, 정기 점검 주기 30일은 PE-007. 구간을 안 주면 데이터 끝 기준 최근 24시간."
         return r
 
     def list_equipment(a: LineArgs) -> Any:
         f, t = _window(None)
-        rows_ = equipment_rows(query, f, t, a.line)
+        rows_ = equipment_rows(query, f, t, a.line, ref=ref)
         return {
             "window": [f, t],
             "count": len(rows_),
@@ -419,7 +448,7 @@ def build_tools(
 
     # ---- read: 분석
     def ng_summary(a: SummaryArgs) -> Any:
-        f, t = _parse_ts(a.from_ts, PERIOD_START), _parse_ts(a.to_ts, PERIOD_END)
+        f, t = _parse_ts(a.from_ts, period_start), _parse_ts(a.to_ts, period_end)
         sids = resolve_station(a.station, a.line)
         ph = ",".join("?" * len(sids))
         if a.group_by == "defect":
@@ -470,7 +499,7 @@ def build_tools(
         }
 
     def detect_spikes(a: SpikeArgs) -> Any:
-        f, t = _parse_ts(a.from_ts, PERIOD_START), _parse_ts(a.to_ts, PERIOD_END)
+        f, t = _parse_ts(a.from_ts, period_start), _parse_ts(a.to_ts, period_end)
         sids = resolve_station(a.station, a.line)
         segments = []
         for sid in sids:
@@ -546,7 +575,7 @@ def build_tools(
                 f"스테이션 하나만 지정하세요(현재 {len(sids)}개). 예: station='23' 또는 line=2, station='권취'"
             )
         sid = sids[0]
-        f, t = _parse_ts(a.from_ts, PERIOD_START), _parse_ts(a.to_ts, PERIOD_END)
+        f, t = _parse_ts(a.from_ts, period_start), _parse_ts(a.to_ts, period_end)
         eq = query("SELECT id, code, model, last_maintenance_at FROM equipment WHERE station_id=?", (sid,))[0]
         candidates = []
         for p in [r["param"] for r in query("SELECT DISTINCT param FROM param_logs WHERE equipment_id=?", (eq["id"],))]:
@@ -610,7 +639,7 @@ def build_tools(
         }
 
     def list_ng_events(a: EventsArgs) -> Any:
-        f, t = _parse_ts(a.from_ts, PERIOD_START), _parse_ts(a.to_ts, PERIOD_END)
+        f, t = _parse_ts(a.from_ts, period_start), _parse_ts(a.to_ts, period_end)
         where, params = ["e.ts>=?", "e.ts<?"], [f, t]
         if a.line is not None:
             where.append("e.line_id=?")
@@ -719,7 +748,7 @@ def build_tools(
         }
 
     def plot_ng_rate(a: PlotArgs) -> Any:
-        f, t = _parse_ts(a.from_ts, PERIOD_START), _parse_ts(a.to_ts, PERIOD_END)
+        f, t = _parse_ts(a.from_ts, period_start), _parse_ts(a.to_ts, period_end)
         sids = resolve_station(a.station, a.line)
         ph = ",".join("?" * len(sids))
         key = "hour_start" if a.group_by == "hour" else "substr(hour_start,1,10)"
@@ -990,9 +1019,15 @@ def build_tools(
     ]
 
 
-SYSTEM_PROMPT = f"""당신은 배터리 셀 공장의 공정 NG(불량) 분석 비서입니다. 검사에서 NG 로 판정된 이미지 기록과 설비 파라미터, 정비·조치 기록을 도구로 조회해 공정 엔지니어의 질문에 답합니다.
+def system_prompts_for(ref: date, period: tuple[str, str] | None = None) -> dict[str, str]:
+    """기준일 ref("오늘")와 데이터 기간(DB 의 검사 기록 범위, 비우면 DEFAULT_DB 에서)으로 렌더한 시스템 프롬프트(ADR-034)."""
+    start, end = period or data_period(DEFAULT_DB)
+    first = start[:10]
+    last = (datetime.strptime(end, "%Y-%m-%d %H:%M:%S") - timedelta(seconds=1)).date()
+    days = (last - date.fromisoformat(first)).days + 1
+    v1 = f"""당신은 배터리 셀 공장의 공정 NG(불량) 분석 비서입니다. 검사에서 NG 로 판정된 이미지 기록과 설비 파라미터, 정비·조치 기록을 도구로 조회해 공정 엔지니어의 질문에 답합니다.
 
-오늘 날짜: {REFERENCE_DATE.isoformat()}. 데이터 기간은 2026-10-14 ~ 2026-10-27 (14일). 교대: 주간 06~14시, 오후 14~22시, 야간 22~06시.
+오늘 날짜: {ref.isoformat()}. 데이터 기간은 {first} ~ {last.isoformat()} ({days}일). 교대: 주간 06~14시, 오후 14~22시, 야간 22~06시.
 
 원칙
 0. 도구는 반드시 함수 호출(tool call)로 실행합니다. 답변 본문에 SQL 이나 함수 호출 코드를 쓰지 않습니다. 계획만 말하고 끝내지 않습니다.
@@ -1009,7 +1044,11 @@ SYSTEM_PROMPT = f"""당신은 배터리 셀 공장의 공정 NG(불량) 분석 �
 - inspections(시간별 검사 수량·NG 수 → NG 율 분모) · ng_events(NG 이미지 1건=1행: ts, line_id, station_id, lot_id, image_path, suggested_label, suggested_confidence, label_status, confirmed_label)
 - param_logs(설비별 시간별 temp_c / tension_n / speed_mpm / pressure_kpa) · maintenance · lots(material_batch) · actions(조치 티켓, applied_at) · alert_rules
 """
-SYSTEM_PROMPTS = {"v1": SYSTEM_PROMPT, "v2": SYSTEM_PROMPT}
+    return {"v1": v1, "v2": v1}
+
+
+SYSTEM_PROMPTS = system_prompts_for(REFERENCE_DATE_RESOLVED)  # 서비스·CLI 의 기본 렌더
+SYSTEM_PROMPT = SYSTEM_PROMPTS["v1"]
 
 TOOL_LABELS = {
     "list_tables": "테이블 목록 확인",

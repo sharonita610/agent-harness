@@ -2,11 +2,23 @@
 
 from __future__ import annotations
 
+from ...refdate import month_label, previous_month
 from .. import Pack
 from .dashboard import dashboard
 from .scope import Scope
 from .seed import DEFAULT_DB
-from .tools import DOCS_DIR, FILES_DIR, SYSTEM_PROMPTS, build_tools, make_graph, make_index, scope_note
+from .tools import (
+    DOCS_DIR,
+    FILES_DIR,
+    REFERENCE_DATE_RESOLVED,
+    REFERENCE_DATE_SOURCE,
+    SYSTEM_PROMPTS,
+    build_tools,
+    make_graph,
+    make_index,
+    scope_note,
+    system_prompts_for,
+)
 
 TOOL_LABELS = {
     "list_tables": "테이블 목록 확인",
@@ -53,12 +65,15 @@ PACK = Pack(
     ),
     aliases=["회사", "회사 데이터", "주문", "재고", "거래처", "규정", "한빛"],
     dashboard=dashboard,
+    reference_date=REFERENCE_DATE_RESOLVED,
+    reference_date_source=REFERENCE_DATE_SOURCE,
+    system_prompts_for=system_prompts_for,
     welcome="주문과 재고를 조회하고 규정을 찾아 답합니다. 데이터를 바꾸는 일은 결재를 받은 뒤에만 합니다.",
     examples=[
         ["지연 주문 몇 건", "현재 상태가 '지연'인 주문은 총 몇 건이야?"],
         [
             "재고 부족 지연과 책임",
-            "지난달(2026년 9월) 재고 부족 사유로 지연된 주문은 몇 건이고, 규정상 그 지연은 회사 책임이야 고객 책임이야?",
+            f"지난달({month_label(previous_month(REFERENCE_DATE_RESOLVED))}) 재고 부족 사유로 지연된 주문은 몇 건이고, 규정상 그 지연은 회사 책임이야 고객 책임이야?",
         ],
         ["할인 승인자", "할인 금액이 200만 원이면 누가 승인해야 해?"],
         ["개정 영향", "배송 지연 보상 규정을 개정하면 같이 검토해야 하는 문서는?"],

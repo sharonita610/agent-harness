@@ -52,7 +52,7 @@
   type: workflow
   question: "주문 {oid}번이 며칠 지연됐는지 확인하고 보상 규정에 맞는 보상 비율을 알려줘. 그리고 그 비율을 '보상 n% 안내' 형식으로 주문 메모에 남겨줘"
   params_sql:
-    oid: "SELECT o.id FROM orders o JOIN shipments s ON s.order_id=o.id WHERE o.status='지연' AND o.delay_reason='배송사 지연' AND s.shipped_date IS NULL AND julianday('2026-10-27')-julianday(s.planned_date) BETWEEN 7 AND 9 ORDER BY o.id LIMIT 1"
+    oid: "SELECT o.id FROM orders o JOIN shipments s ON s.order_id=o.id WHERE o.status='지연' AND o.delay_reason='배송사 지연' AND s.shipped_date IS NULL AND julianday('{ref_date}')-julianday(s.planned_date) BETWEEN 7 AND 9 ORDER BY o.id LIMIT 1"
   expect_tools_all: [search_docs]
   expect_tools_any: [get_order, run_sql]
   expect_citation: true
@@ -65,8 +65,8 @@
   type: workflow
   question: "지연 11일 이상이고 지연 사유가 재고 부족이며 아직 출고되지 않은 주문은 몇 건이야? 규정상 보상 비율은 얼마인지도 알려주고, 그 주문들 중 금액이 가장 큰 주문에 '장기 지연 보상 검토' 라고 메모 남겨줘"
   params_sql:
-    big: "SELECT o.id FROM orders o JOIN shipments s ON s.order_id=o.id WHERE o.status='지연' AND o.delay_reason='재고 부족' AND s.shipped_date IS NULL AND julianday('2026-10-27')-julianday(s.planned_date) >= 11 ORDER BY o.total_amount DESC LIMIT 1"
-  truth_sql: "SELECT COUNT(*) FROM orders o JOIN shipments s ON s.order_id=o.id WHERE o.status='지연' AND o.delay_reason='재고 부족' AND s.shipped_date IS NULL AND julianday('2026-10-27')-julianday(s.planned_date) >= 11"
+    big: "SELECT o.id FROM orders o JOIN shipments s ON s.order_id=o.id WHERE o.status='지연' AND o.delay_reason='재고 부족' AND s.shipped_date IS NULL AND julianday('{ref_date}')-julianday(s.planned_date) >= 11 ORDER BY o.total_amount DESC LIMIT 1"
+  truth_sql: "SELECT COUNT(*) FROM orders o JOIN shipments s ON s.order_id=o.id WHERE o.status='지연' AND o.delay_reason='재고 부족' AND s.shipped_date IS NULL AND julianday('{ref_date}')-julianday(s.planned_date) >= 11"
   expect_tools_all: [run_sql, search_docs]
   expect_citation: true
   answer_contains_any: ["12%", "12 %", "12퍼센트"]
@@ -77,8 +77,8 @@
 
 - id: wf03
   type: workflow
-  question: "지난달(2026년 9월) 주문 중 할인율이 10% 를 넘는 주문은 몇 건이야? 그 주문들에 승인 기록이 있어야 하는 근거를 월말 마감 절차 문서에서 찾아서 같이 알려줘"
-  truth_sql: "SELECT COUNT(*) FROM orders WHERE order_date LIKE '2026-09%' AND discount_rate > 0.10"
+  question: "지난달({last_month_label}) 주문 중 할인율이 10% 를 넘는 주문은 몇 건이야? 그 주문들에 승인 기록이 있어야 하는 근거를 월말 마감 절차 문서에서 찾아서 같이 알려줘"
+  truth_sql: "SELECT COUNT(*) FROM orders WHERE order_date LIKE '{last_month}%' AND discount_rate > 0.10"
   expect_tools_all: [run_sql, search_docs]
   expect_citation: true
   answer_contains_any: ["승인 기록", "마감"]
@@ -95,10 +95,10 @@
 
 - id: tr01
   type: trend
-  question: "최근 4개월(2026년 7월~10월) 월별 주문 수와 지연 주문 수를 보여주고, 지연율이 가장 높았던 달이 언제인지 말해줘"
-  truth_sql: "SELECT SUM(status='지연') FROM orders WHERE order_date LIKE '2026-10%'"
+  question: "최근 4개월({month-3_label}~{this_month_short}) 월별 주문 수와 지연 주문 수를 보여주고, 지연율이 가장 높았던 달이 언제인지 말해줘"
+  truth_sql: "SELECT SUM(status='지연') FROM orders WHERE order_date LIKE '{this_month}%'"
   expect_tools_any: [run_sql]
-  answer_regex_all: ["10월|2026-10"]
+  answer_regex_all: ["{this_month_short}|{this_month}"]
   note: "지연율은 10월(24/230, 10.4%)이 가장 높다"
 
 - id: tr02

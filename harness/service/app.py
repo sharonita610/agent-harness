@@ -232,6 +232,8 @@ def create_app(
                 "empty_hint": pk.empty_hint,
                 "tool_labels": pk.tool_labels,
                 "dashboard": pk.dashboard is not None,
+                "reference_date": pk.reference_date.isoformat() if pk.reference_date else None,
+                "reference_date_source": pk.reference_date_source,
             },
             "a2a": {"card": "/.well-known/agent-card.json", "rpc": "/a2a"},
             "mcp": {"url": "/mcp/", "transport": "streamable-http"},

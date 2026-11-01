@@ -1,4 +1,5 @@
-# 평가 태스크. type: query(조회) | doc(규정) | mixed(조회+규정) | write(승인 필요) | trap(함정). expect_citation: 답의 "출처: 문서 > 절" 이 검색 결과의 절과 맞는지(cite_matches_retrieval, ADR-031)
+# 평가 태스크. 날짜는 기준일 변수({last_month}, {this_month_start}, {ref_date} …, harness/refdate.py date_vars)로 적는다: 기준일을 바꾸면 질문·정답이 같이 움직인다(ADR-034).
+# type: query(조회) | doc(규정) | mixed(조회+규정) | write(승인 필요) | trap(함정). expect_citation: 답의 "출처: 문서 > 절" 이 검색 결과의 절과 맞는지(cite_matches_retrieval, ADR-031)
 # truth_sql 결과값(숫자/문자)이 답변에 모두 등장해야 통과. params_sql 은 질문의 {변수} 를 DB 에서 채운다.
 - id: q01
   type: query
@@ -8,14 +9,14 @@
 
 - id: q02
   type: query
-  question: "지난달(2026년 9월) 주문 건수는 몇 건이야? 취소된 주문은 빼고."
-  truth_sql: "SELECT COUNT(*) FROM orders WHERE order_date >= '2026-09-01' AND order_date < '2026-10-01' AND status != '취소'"
+  question: "지난달({last_month_label}) 주문 건수는 몇 건이야? 취소된 주문은 빼고."
+  truth_sql: "SELECT COUNT(*) FROM orders WHERE order_date >= '{last_month_start}' AND order_date < '{this_month_start}' AND status != '취소'"
   expect_tools_any: [run_sql]
 
 - id: q03
   type: query
-  question: "등급 A 거래처 중 지난달(2026년 9월) 주문 금액 합계가 가장 큰 거래처 1곳의 이름은?"
-  truth_sql: "SELECT c.name FROM orders o JOIN customers c ON c.id=o.customer_id WHERE c.grade='A' AND o.order_date LIKE '2026-09%' AND o.status!='취소' GROUP BY c.id ORDER BY SUM(o.total_amount) DESC LIMIT 1"
+  question: "등급 A 거래처 중 지난달({last_month_label}) 주문 금액 합계가 가장 큰 거래처 1곳의 이름은?"
+  truth_sql: "SELECT c.name FROM orders o JOIN customers c ON c.id=o.customer_id WHERE c.grade='A' AND o.order_date LIKE '{last_month}%' AND o.status!='취소' GROUP BY c.id ORDER BY SUM(o.total_amount) DESC LIMIT 1"
   expect_tools_any: [run_sql]
 
 - id: q04
@@ -32,8 +33,8 @@
 
 - id: m01
   type: mixed
-  question: "지난달(2026년 9월) 재고 부족 사유로 지연된 주문은 몇 건이고, 규정상 그 지연은 회사 책임이야 고객 책임이야?"
-  truth_sql: "SELECT COUNT(*) FROM orders WHERE status='지연' AND delay_reason='재고 부족' AND order_date LIKE '2026-09%'"
+  question: "지난달({last_month_label}) 재고 부족 사유로 지연된 주문은 몇 건이고, 규정상 그 지연은 회사 책임이야 고객 책임이야?"
+  truth_sql: "SELECT COUNT(*) FROM orders WHERE status='지연' AND delay_reason='재고 부족' AND order_date LIKE '{last_month}%'"
   expect_tools_all: [run_sql, search_docs]
   expect_citation: true
   answer_contains_any: ["회사 책임", "회사의 책임", "회사 책임 사유"]

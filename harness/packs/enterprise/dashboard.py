@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from ...refdate import resolve_reference_date
 from ...tools.sql import rows
 from .scope import Scope
 from .seed import DEFAULT_DB, REFERENCE_DATE
@@ -16,16 +17,17 @@ def dashboard(
 ) -> list[dict[str, Any]]:
     ro = connect_ro(db_path, scope)
     query = lambda sql, params=(): rows(ro.execute(sql, params))["rows"]
+    ref = resolve_reference_date(REFERENCE_DATE, db_path)[0]  # "최근 7일"·"최근 6개월" 의 기준(ADR-034)
     total = query("SELECT COUNT(*) AS n FROM orders")[0]["n"]
     delayed = query("SELECT COUNT(*) AS n FROM orders WHERE status='지연'")[0]["n"]
     short = query("SELECT COUNT(*) AS n FROM inventory WHERE on_hand < safety_stock")[0]["n"]
     open_notes = query(
-        "SELECT COUNT(*) AS n FROM order_notes WHERE created_at >= date(?, '-7 days')", (REFERENCE_DATE.isoformat(),)
+        "SELECT COUNT(*) AS n FROM order_notes WHERE created_at >= date(?, '-7 days')", (ref.isoformat(),)
     )[0]["n"]
     status = query("SELECT status, COUNT(*) AS n FROM orders GROUP BY status ORDER BY n DESC")
     monthly = query(
         "SELECT substr(order_date,1,7) AS m, COUNT(*) AS n, SUM(status='지연') AS d FROM orders WHERE order_date >= date(?, '-6 months') GROUP BY m ORDER BY m",
-        (REFERENCE_DATE.isoformat(),),
+        (ref.isoformat(),),
     )
     reasons = query(
         "SELECT delay_reason AS 사유, COUNT(*) AS 건수 FROM orders WHERE status='지연' GROUP BY 1 ORDER BY 2 DESC"

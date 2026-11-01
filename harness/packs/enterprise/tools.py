@@ -6,12 +6,13 @@ import os
 import re
 import sqlite3
 import threading
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from ...refdate import previous_month, resolve_reference_date
 from ...retrieval import DocIndex, OpenAIEmbedder, embedder_available
 from ...retrieval.docgraph import DocGraph
 from ...tools.registry import Tier, Tool
@@ -155,11 +156,14 @@ def build_tools(
     index: DocIndex | None = None,
     scope: Scope | None = None,
     graph: DocGraph | None = None,
+    reference_date: date | None = None,
 ) -> list[Tool]:
-    """scope 를 주면 거래처·주문 계열 테이블이 그 범위로 잘린 도구 모음을 만든다(데이터 층 강제)."""
+    """scope 를 주면 거래처·주문 계열 테이블이 그 범위로 잘린 도구 모음을 만든다(데이터 층 강제).
+    reference_date 는 도구가 "오늘" 로 쓰는 날짜(지연 일수·최근 12개월). 비우면 환경변수 > DB _meta > 시드 날짜(ADR-034)."""
     db_path = Path(db_path)
     if not db_path.exists():
         raise FileNotFoundError(f"DB 가 없습니다: {db_path}. 먼저 `uv run harness seed` 를 실행하세요.")
+    ref = reference_date or resolve_reference_date(REFERENCE_DATE, db_path)[0]
     ro = connect_ro(db_path, scope)
     index = index or make_index(docs_dir)
     graph = graph or make_graph(docs_dir)
@@ -233,7 +237,7 @@ def build_tools(
         delay_days = None
         if ship:
             planned = datetime.fromisoformat(ship[0]["planned_date"]).date()
-            end = datetime.fromisoformat(ship[0]["shipped_date"]).date() if ship[0]["shipped_date"] else REFERENCE_DATE
+            end = datetime.fromisoformat(ship[0]["shipped_date"]).date() if ship[0]["shipped_date"] else ref
             delay_days = max(0, (end - planned).days)
         return {
             "order": o,
@@ -242,7 +246,7 @@ def build_tools(
             "delay_days": delay_days,
             "notes": notes,
             "history": hist,
-            "reference_date": REFERENCE_DATE.isoformat(),
+            "reference_date": ref.isoformat(),
         }
 
     def get_customer(a: CustomerArgs) -> Any:
@@ -262,7 +266,7 @@ def build_tools(
         c = rows[0]
         summary = query(
             "SELECT COUNT(*) AS orders, COALESCE(SUM(CASE WHEN status!='취소' THEN total_amount END),0) AS amount_12m, SUM(status='지연') AS delayed FROM orders WHERE customer_id=? AND order_date >= date(?, '-12 months')",
-            (c["id"], REFERENCE_DATE.isoformat()),
+            (c["id"], ref.isoformat()),
         )["rows"][0]
         return {"customer": c, "last_12m": summary}
 
@@ -458,9 +462,12 @@ def build_tools(
     ]
 
 
-SYSTEM_PROMPT = f"""당신은 '한빛상사' 의 운영 데이터 비서입니다. 주문·재고·거래처 데이터베이스와 사내 규정 문서를 도구로 조회해 직원의 질문에 답합니다.
+def system_prompts_for(ref: date) -> dict[str, str]:
+    """기준일 ref 로 렌더한 시스템 프롬프트 v1·v2. "오늘"·"지난달"·지연 일수 예시가 전부 ref 에서 나온다(ADR-034)."""
+    last_month = f"{previous_month(ref):%Y-%m}"
+    v1 = f"""당신은 '한빛상사' 의 운영 데이터 비서입니다. 주문·재고·거래처 데이터베이스와 사내 규정 문서를 도구로 조회해 직원의 질문에 답합니다.
 
-오늘 날짜: {REFERENCE_DATE.isoformat()} (SQL 에서 date('now') 대신 이 날짜를 문자열로 쓰세요. "지난달" 은 {REFERENCE_DATE.year}-{REFERENCE_DATE.month - 1:02d} 입니다)
+오늘 날짜: {ref.isoformat()} (SQL 에서 date('now') 대신 이 날짜를 문자열로 쓰세요. "지난달" 은 {last_month} 입니다)
 
 원칙
 0. 도구는 반드시 함수 호출(tool call)로 실행합니다. 답변 본문에 SQL 문이나 함수 호출 코드를 쓰지 않습니다. 계획만 말하고 끝내지 않습니다.
@@ -477,11 +484,10 @@ SYSTEM_PROMPT = f"""당신은 '한빛상사' 의 운영 데이터 비서입니�
 - orders(id, customer_id, order_date, status: 접수/출고/배송중/완료/지연/취소, total_amount, delay_reason, discount_rate: 0~1 소수, 0.1 = 10%)
 - order_items(order_id, product_id, qty, unit_price) · shipments(order_id, warehouse_id, carrier, planned_date, shipped_date, delivered_date)
 - inventory(warehouse_id, product_id, on_hand, safety_stock) · warehouses(id, name, region) · order_notes · order_status_history
-- 지연 일수 = 출고 예정일(planned_date) 다음 날부터 실제 출고일(없으면 오늘)까지 = julianday(shipped_date 또는 오늘) - julianday(planned_date). 예: 예정 10-16, 오늘 10-27 이면 11일
+- 지연 일수 = 출고 예정일(planned_date) 다음 날부터 실제 출고일(없으면 오늘)까지 = julianday(shipped_date 또는 오늘) - julianday(planned_date). 예: 예정 {ref - timedelta(days=11):%m-%d}, 오늘 {ref:%m-%d} 이면 11일
 """
 
-
-SYSTEM_PROMPT_V2 = f"""당신은 '한빛상사' 운영 데이터 비서입니다. 도구로 주문·재고·거래처 DB 와 규정 문서를 조회해 답합니다. 오늘은 {REFERENCE_DATE.isoformat()} 이고 "지난달" 은 {REFERENCE_DATE.year}-{REFERENCE_DATE.month - 1:02d} 입니다.
+    v2 = f"""당신은 '한빛상사' 운영 데이터 비서입니다. 도구로 주문·재고·거래처 DB 와 규정 문서를 조회해 답합니다. 오늘은 {ref.isoformat()} 이고 "지난달" 은 {last_month} 입니다.
 
 행동 규칙
 - 사실은 도구로만 확인합니다. 도구는 반드시 함수 호출로 실행하고, SQL 이나 함수 이름을 답변에 쓰지 않습니다. 계획만 말하고 끝내지 않습니다.
@@ -505,7 +511,14 @@ SYSTEM_PROMPT_V2 = f"""당신은 '한빛상사' 운영 데이터 비서입니다
 - 지연 일수 = planned_date 다음 날부터 shipped_date(없으면 오늘)까지 = julianday(shipped_date 또는 오늘) - julianday(planned_date)
 """
 
-SYSTEM_PROMPTS = {"v1": SYSTEM_PROMPT, "v2": SYSTEM_PROMPT_V2}
+    return {"v1": v1, "v2": v2}
+
+
+REFERENCE_DATE_RESOLVED, REFERENCE_DATE_SOURCE = resolve_reference_date(REFERENCE_DATE, DEFAULT_DB)
+SYSTEM_PROMPTS = system_prompts_for(
+    REFERENCE_DATE_RESOLVED
+)  # 서비스·CLI 의 기본 렌더. 기준일: 환경변수 > DB _meta > 시드
+SYSTEM_PROMPT, SYSTEM_PROMPT_V2 = SYSTEM_PROMPTS["v1"], SYSTEM_PROMPTS["v2"]
 
 
 def scope_note(scope: Scope | None) -> str:

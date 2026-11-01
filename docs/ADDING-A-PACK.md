@@ -40,6 +40,8 @@ PACK = Pack(
     description="한 줄",
     build_tools=build_tools,
     system_prompts=SYSTEM_PROMPTS,
+    # 날짜 개념이 있는 팩이면("오늘"·"지난달"): reference_date=harness.refdate.resolve_reference_date(시드 날짜, DB)[0],
+    # reference_date_source=…[1], system_prompts_for=기준일로 프롬프트를 다시 렌더하는 함수. 평가 yaml 은 {last_month} 같은 변수로(ADR-034)
     parse_scope=lambda spec: None,
     scope_note=lambda scope: "",  # 사용자별 범위가 있으면 enterprise/scope.py 처럼
     shared_kwargs=lambda: {"index": make_index()},  # 서비스가 한 번 만들어 공유하는 자원

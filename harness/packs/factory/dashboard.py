@@ -7,9 +7,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from ...refdate import resolve_reference_date
 from ...tools.sql import connect_readonly, rows
 from .seed import DEFAULT_DB, REFERENCE_DATE
-from .tools import PERIOD_END, _shift, equipment_rows
+from .tools import _shift, data_period, equipment_rows
 
 WINDOW_DAYS = 14
 
@@ -75,7 +76,9 @@ def _spikes(query, f: str, t: str, multiplier: float = 3.0, limit: int = 6) -> l
 def dashboard(scope: Any = None, db_path: Path = DEFAULT_DB) -> list[dict[str, Any]]:
     ro = connect_readonly(db_path)
     query = lambda sql, params=(): rows(ro.execute(sql, params))["rows"]
-    t = datetime.combine(REFERENCE_DATE, datetime.min.time()) + timedelta(days=1)
+    ref = resolve_reference_date(REFERENCE_DATE, db_path)[0]  # "최근 14일" 의 끝 = 오늘(ADR-034)
+    period_end = data_period(db_path)[1]
+    t = datetime.combine(ref, datetime.min.time()) + timedelta(days=1)
     f = t - timedelta(days=WINDOW_DAYS)
     fs, ts = f.strftime("%Y-%m-%d %H:%M:%S"), t.strftime("%Y-%m-%d %H:%M:%S")
     tot = query(
@@ -119,13 +122,13 @@ def dashboard(scope: Any = None, db_path: Path = DEFAULT_DB) -> list[dict[str, A
         "SELECT a.id AS 번호, substr(a.created_at,1,16) AS 생성, (s.line_id || '라인 ' || s.name) AS 스테이션, COALESCE(NULLIF(a.title,''), a.description) AS 내용, a.owner AS 담당, a.status AS 상태 "
         "FROM actions a JOIN stations s ON s.id=a.station_id ORDER BY a.status='open' DESC, a.created_at DESC LIMIT 8"
     )
-    day_ago = (datetime.strptime(PERIOD_END, "%Y-%m-%d %H:%M:%S") - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
-    equipment = equipment_rows(query, day_ago, PERIOD_END)
+    day_ago = (datetime.strptime(period_end, "%Y-%m-%d %H:%M:%S") - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+    equipment = equipment_rows(query, day_ago, period_end, ref=ref)
     attention = [e for e in equipment if e["verdict"] != "정상"]
     panels = [
         {
             "id": "stats",
-            "title": f"최근 {WINDOW_DAYS}일 한눈에 ({f:%m-%d} ~ {REFERENCE_DATE:%m-%d})",
+            "title": f"최근 {WINDOW_DAYS}일 한눈에 ({f:%m-%d} ~ {ref:%m-%d})",
             "kind": "stats",
             "span": 2,
             "data": [

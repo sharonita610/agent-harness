@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib
 import os
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any, Callable
 
@@ -40,6 +41,13 @@ class Pack:
     aliases: list[str] = field(default_factory=list)  # 총괄 비서가 위임 대상을 고를 때 쓰는 별칭(한국어)
     dashboard: Callable[..., list[dict[str, Any]]] | None = (
         None  # (scope=None) -> 패널 목록. 화면 "데이터" 탭이 모양대로 그린다(아래 PANEL_KINDS)
+    )
+    reference_date: date | None = (
+        None  # 비서가 "오늘" 로 삼는 데이터 기준일(환경변수 > DB _meta > 시드, harness.refdate). 날짜 개념이 없는 팩은 None
+    )
+    reference_date_source: str = ""  # "env" | "env:today" | "db" | "default"
+    system_prompts_for: Callable[[date], dict[str, str]] | None = (
+        None  # 다른 기준일로 프롬프트를 다시 렌더한다(평가 러너가 평가 DB 의 _meta 기준일을 따를 때)
     )
 
     @property
