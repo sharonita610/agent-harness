@@ -30,7 +30,7 @@ Where to start depends on who you are.
 
 **How trustworthy is it**
 - [Evaluation](#evaluation): score table per model, and how closely it agrees with human grading
-- [Failure mode catalog](#failure-mode-catalog): 16 mistakes the AI actually made and how they were stopped
+- [Failure mode catalog](#failure-mode-catalog): 21 mistakes the AI actually made and how they were stopped
 - [Authentication, roles, audit](#authentication-roles-audit): who can do what, and where the record is kept
 - [Without internet (air-gapped)](#without-internet-air-gapped): `HARNESS_OFFLINE=1`, zero outbound calls proven by a test, install bundle
 - [Observability: tracing](#observability-tracing): seeing where the time went in one question
@@ -53,7 +53,7 @@ Where to start depends on who you are.
 | What the postings ask | What is shown here | Where |
 |---|---|---|
 | Do you understand the agent loop | A loop written without a framework (plan → tool → verify → answer), context budget, corrections for small-model failure modes | `harness/agent/`, ADR-004 |
-| Do you compensate for LLM limits and failure modes by design | 16 failures actually encountered → code fixes → pinned by tests. A cycle of observe (traces, evals) → fix (in code, not prompts) → pin (tests) | the "Failure mode catalog" section below |
+| Do you compensate for LLM limits and failure modes by design | 21 failures actually encountered → code fixes → pinned by tests. A cycle of observe (traces, evals) → fix (in code, not prompts) → pin (tests) | the "Failure mode catalog" section below |
 | Tool design an LLM can call correctly | pydantic validation, error messages the model can act on, double defense for read-only SQL, personal-data masking on the tool side | `harness/packs/enterprise/tools.py`, ADR-001 |
 | Human approval, permissions, security | Three tiers read/write/destructive, only the approver role approves, audit log, per-user data scope (temporary views), prompt injection treated as data | ADR-002, ADR-010, ADR-012 |
 | Evaluation system | 128 tasks (70 across the 4 packs + 58 in extra sets) × models × n repeats, scoring the process too (tools, approvals, approval arguments), asking multi-turn, user-scope, false-premise and phrasing-variant questions, with a record of scorer bugs caught and re-scored | `harness/evals/`, ADR-003, ADR-025 |
@@ -575,7 +575,7 @@ This is a summary. Details are the 35 ADRs in `docs/decisions/`.
 - **Loop and operations layer separated**: tools, policy and scorers know nothing about the loop. That is why they plugged into a LangGraph graph unchanged and produced the same scores. The hand-written loop's share is approval, failure-mode fixes, context budget and traces (`docs/experiments/langgraph/`).
 
 ## Evaluation
-Every result file is in the repo: per-run json (per-task pass, tool calls, tokens) and md summaries in [`harness/evals/results/`](harness/evals/results/), human grades (`human-*.json`) and agreement (`agreement_*.json`), retrieval evals (`retrieval_*.json`), and [`report.html`](harness/evals/results/report.html), which shows the model × pack table on one page (download and open it, or `python3 -m http.server --directory harness/evals/results 8765`). Only the 343 traces are left out, for size.
+Every result file is in the repo: per-run json (per-task pass, tool calls, tokens) and md summaries in [`harness/evals/results/`](harness/evals/results/), human grades (`human-*.json`) and agreement (`agreement_*.json`), retrieval evals (`retrieval_*.json`), and [`report.html`](harness/evals/results/report.html), which shows the model × pack table on one page (download and open it, or `python3 -m http.server --directory harness/evals/results 8765`). Only the traces are left out, for size (`traces/`, 1,297 jsonl files from 50 runs).
 
 The 16 tasks in `harness/evals/tasks.yaml` are repeated n times per model to compare pass rate, steps, latency, tokens and cost. Types: query (5) · policy (3) · mixed (2) · write → approval request (2) · trap (4: prompt injection, bulk personal data request, delete request, ambiguous question). Dates are not hard-coded but written as reference-date variables (`{last_month_label}`, `{last_month}`, `{this_month_start}`, `{ref_date}` …, `harness/refdate.py`): changing the reference date (`HARNESS_REFERENCE_DATE` or the eval DB's `_meta`) moves the questions and the ground-truth SQL together, and the runner refuses if any variable is left unfilled. The result file keeps that day's reference date in `summary.reference_date` (ADR-034).
 

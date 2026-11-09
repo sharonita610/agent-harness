@@ -44,7 +44,7 @@ All data is synthetic. Personal project, Oct 2026, MIT.
 
 **얼마나 믿을 만한가**
 - [평가](#평가): 모델별 점수표, 사람 채점과 얼마나 일치하는지
-- [실패 모드 카탈로그](#실패-모드-카탈로그): AI 가 실제로 저지른 실수 16개와 그걸 막은 방법
+- [실패 모드 카탈로그](#실패-모드-카탈로그): AI 가 실제로 저지른 실수 21개와 그걸 막은 방법
 - [인증, 역할, 감사](#인증-역할-감사): 누가 무엇을 할 수 있고 기록은 어디에 남는지
 - [인터넷 없이 쓰기 (에어갭)](#인터넷-없이-쓰기-에어갭): `HARNESS_OFFLINE=1`, 바깥 호출 0 을 테스트로, 설치 묶음
 - [관측성: 트레이싱](#관측성-트레이싱): 한 질문에 시간이 어디에 쓰였는지 보는 법
@@ -67,7 +67,7 @@ All data is synthetic. Personal project, Oct 2026, MIT.
 | 공고가 묻는 것 | 여기서 보여주는 것 | 어디서 |
 |---|---|---|
 | 에이전트 루프를 이해하는가 | 프레임워크 없이 직접 쓴 루프(계획 → 도구 → 검증 → 답), 컨텍스트 예산, 소형 모델 실패 모드 보정 | `harness/agent/`, ADR-004 |
-| LLM 의 한계와 실패 모드를 설계로 보완하는가 | 실제로 겪은 실패 16개 → 코드 보정 → 고정 테스트. 관찰(트레이스·평가) → 보정(프롬프트가 아니라 코드) → 고정(테스트) 의 반복 | 아래 "실패 모드 카탈로그" 절 |
+| LLM 의 한계와 실패 모드를 설계로 보완하는가 | 실제로 겪은 실패 21개 → 코드 보정 → 고정 테스트. 관찰(트레이스·평가) → 보정(프롬프트가 아니라 코드) → 고정(테스트) 의 반복 | 아래 "실패 모드 카탈로그" 절 |
 | LLM 이 올바르게 부를 수 있는 도구 설계 | pydantic 검증, 모델이 고칠 수 있는 에러 문장, 읽기 전용 SQL 이중 방어, 개인정보 마스킹을 도구 쪽에서 | `harness/packs/enterprise/tools.py`, ADR-001 |
 | 사람 승인, 권한, 보안 | read/write/destructive 3등급, 결재자 역할만 승인, 감사 기록, 사용자별 데이터 범위(임시 뷰), 지시문 주입을 데이터로 취급 | ADR-002, ADR-010, ADR-012 |
 | 평가 체계 | 128문제(팩 4개 70 + 추가 묶음 58) × 모델 × n회 반복, 과정(도구·승인·승인 인자)까지 채점, 다중 턴·사용자 범위·틀린 전제·표현 변형까지 묻고, 채점기 버그를 잡아 재채점한 기록 | `harness/evals/`, ADR-003, ADR-025 |
@@ -589,7 +589,7 @@ Hermes 는 64K 미만 컨텍스트를 거부하고, 자체 프롬프트가 1.8�
 - **루프와 운영 층을 분리**: 도구·정책·채점기는 루프를 모른다. 그래서 LangGraph 그래프에도 그대로 꽂혀 같은 점수가 나왔다. 직접 쓴 루프의 몫은 결재·실패 모드 보정·컨텍스트 예산·트레이스다(`docs/experiments/langgraph/`).
 
 ## 평가
-결과 파일은 전부 레포에 있다: [`harness/evals/results/`](harness/evals/results/) 의 실행별 json(문제별 통과·도구 호출·토큰)과 md 요약, 사람 채점(`human-*.json`)과 일치도(`agreement_*.json`), 검색 평가(`retrieval_*.json`), 그리고 모델×팩 표를 한 장으로 보는 [`report.html`](harness/evals/results/report.html)(내려받아 열거나 `python3 -m http.server --directory harness/evals/results 8765`). 트레이스 343개만 용량 때문에 제외했다.
+결과 파일은 전부 레포에 있다: [`harness/evals/results/`](harness/evals/results/) 의 실행별 json(문제별 통과·도구 호출·토큰)과 md 요약, 사람 채점(`human-*.json`)과 일치도(`agreement_*.json`), 검색 평가(`retrieval_*.json`), 그리고 모델×팩 표를 한 장으로 보는 [`report.html`](harness/evals/results/report.html)(내려받아 열거나 `python3 -m http.server --directory harness/evals/results 8765`). 트레이스(`traces/`, 실행 50회분 jsonl 1,297개)만 용량 때문에 제외했다.
 
 `harness/evals/tasks.yaml` 의 16개 태스크를 모델별로 n회 반복해 통과율·스텝·지연·토큰·비용을 비교한다. 유형: 조회(5) · 규정(3) · 복합(2) · 변경→승인 요청(2) · 함정(4: 지시문 주입, 개인정보 일괄 요청, 삭제 요청, 모호한 질문). 날짜는 박아 두지 않고 기준일 변수로 적는다(`{last_month_label}`, `{last_month}`, `{this_month_start}`, `{ref_date}` …, `harness/refdate.py`): 기준일을 바꾸면(`HARNESS_REFERENCE_DATE` 또는 평가 DB 의 `_meta`) 질문과 정답 SQL 이 같이 움직이고, 채우지 못한 변수가 남으면 러너가 거절한다. 결과 파일의 `summary.reference_date` 에 그날의 기준일이 남는다(ADR-034).
 
