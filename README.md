@@ -141,7 +141,7 @@ LLM 에이전트를 실무에 쓰려면 답 자체보다 세 가지가 필요하
 ## 전체 구조
 <img src="docs/img/architecture.svg" alt="agent-harness 구조: 클라이언트(화면·CLI·외부 에이전트 MCP/A2A) → FastAPI 서비스 → 플랫폼 코어 → 팩 인터페이스 → 도메인 팩 4개 → 외부 프로세스" width="100%">
 
-위에서 아래로 한 질문이 내려갔다 올라온다. 화면·CLI·외부 에이전트(MCP)가 서비스를 부르고, 플랫폼 코어의 루프가 모델에게 묻고 도구를 권한에 따라 실행하며, 도구의 실제 구현은 팩 안에 있다. **보라색 플랫폼 층은 팩 폴더 안을 모르고 회색 인터페이스만 본다.** 그래서 팩을 둘째·셋째로 늘릴 때 플랫폼에서 바뀐 것은 팩을 고르는 지점뿐이었고, 화면 머리말·예시·도구 라벨까지 팩이 공급한다. 네 번째 팩인 총괄 비서는 다른 비서 서비스를 A2A 로 부르므로 그림에서는 "외부 에이전트" 자리에 있다. 팩을 만드는 법은 `docs/ADDING-A-PACK.md`.
+위에서 아래로 한 질문이 내려갔다 올라온다. 화면·CLI·외부 에이전트(MCP)가 서비스를 부르고, 플랫폼 코어의 루프가 모델에게 묻고 도구를 권한에 따라 실행하며, 도구의 실제 구현은 팩 안에 있다. **보라색 플랫폼 층은 팩 폴더 안을 모르고 회색 인터페이스만 본다.** 그래서 팩을 둘째·셋째로 늘릴 때 플랫폼에서 바뀐 것은 팩을 고르는 지점뿐이었고, 화면 머리말·예시·도구 라벨까지 팩이 공급한다. 네 번째 팩인 총괄 비서도 같은 팩 행에 있지만, 다른 비서 서비스를 A2A 로 부르므로 그 비서들에게는 오른쪽 위 "외부 에이전트" 이기도 하다. 팩을 만드는 법은 `docs/ADDING-A-PACK.md`.
 
 ## 구성
 | 디렉터리 | 역할 |
@@ -241,7 +241,7 @@ HARNESS_PACK=spice uv run uvicorn harness.service.app:app --port 8787    # 화�
 
 <img src="docs/img/experiment-graph.svg" alt="실험 추적 그래프: 회로 변형(점선, 값 차이 표시) → 실행 → 측정값" width="100%">
 
-**매뉴얼 지식 베이스.** 비서의 `search_manual` 은 직접 쓴 요약 문서 6개 대신 ngspice 공식 매뉴얼 PDF 765쪽을 통째로 검색할 수 있다. 책갈피의 절 번호를 경계로 1,174개 청크를 만들어 SQLite 에 넣고(BM25 + 벡터, 임베딩은 청크 해시 단위 증분), `read_manual(절 번호)` 로 절 전체를 읽는다. "`.tran` 의 TMAX 는 무슨 뜻이야?" 같은 질문에 11.3.10 절 원문을 인용해 답한다(3스텝 12초). 검색 품질 32문항 비교는 "문서 검색" 절, 설계는 ADR-014.
+**매뉴얼 지식 베이스.** 비서의 `search_manual` 은 직접 쓴 요약 문서 7개 대신 ngspice 공식 매뉴얼 PDF 765쪽을 통째로 검색할 수 있다. 책갈피의 절 번호를 경계로 1,174개 청크를 만들어 SQLite 에 넣고(BM25 + 벡터, 임베딩은 청크 해시 단위 증분), `read_manual(절 번호)` 로 절 전체를 읽는다. "`.tran` 의 TMAX 는 무슨 뜻이야?" 같은 질문에 11.3.10 절 원문을 인용해 답한다(3스텝 12초). 검색 품질 32문항 비교는 "문서 검색" 절, 설계는 ADR-014.
 
 **시뮬레이터 상태.** `engine_status` 는 ngspice 설치·버전, 최근 24시간 실행·스윕·실패 수와 평균 소요 시간, 저장 회로 수, 실험 기록 수를 돌려준다. "시뮬레이터 괜찮아?", "오늘 실패한 실행 있어?" 에 답하고, 대기 중인 잡은 화면의 큐 보드로 안내한다(ADR-026).
 평가 3문항 × 3(상태 조회, 실패 비율 계산, 상태 확인 뒤 시뮬레이션): 100%. 결과: [`20261030-022804_local_spice_engine-n3.json`](harness/evals/results/20261030-022804_local_spice_engine-n3.json).
@@ -524,7 +524,8 @@ uv run harness retrieval-eval     # bm25 / vector / hybrid 의 hit@1, hit@3, MRR
 HTTP 는 서비스 포트에 같이 열린다. 부산 담당자 키로 부르면 부산 주문만 보이고, `create_note` 를 부르면 결재자 화면에 "[MCP · ops] create_note …" 전표가 뜬다. 승인하면 그때 실행되어 결과가 돌아가고, 반려하면 실행하지 않는다. 실행 기록(kind `mcp`)과 감사 기록에 남는다.
 ```json
 {"mcpServers": {"hanbit-enterprise-http": {"url": "http://127.0.0.1:8787/mcp/", "headers": {"Authorization": "Bearer hk_..."}}}}
-``` 확인한 클라이언트: Hermes Agent(아래), Hugging Face **Tiny Agents**(`huggingface_hub[mcp]`, 70줄짜리 최소 루프). Tiny Agents 는 `docs/experiments/tiny-agents/` 의 `agent.json` 하나로 로컬 gpt-oss-20b + 우리 MCP 서버에 붙어 회사 팩 "지연 주문 몇 건" 을 6회 도구 호출 12.9초, 회로 팩 "RC 차단 주파수" 를 1회 호출 14.9초에 맞혔다. 우리 루프와의 차이는 승인 단계·실패 모드 보정·평가가 없다는 것이고, 그 차이가 이 프로젝트의 플랫폼 부분이다.
+```
+확인한 클라이언트: Hermes Agent(아래), Hugging Face **Tiny Agents**(`huggingface_hub[mcp]`, 70줄짜리 최소 루프). Tiny Agents 는 `docs/experiments/tiny-agents/` 의 `agent.json` 하나로 로컬 gpt-oss-20b + 우리 MCP 서버에 붙어 회사 팩 "지연 주문 몇 건" 을 6회 도구 호출 12.9초, 회로 팩 "RC 차단 주파수" 를 1회 호출 14.9초에 맞혔다. 우리 루프와의 차이는 승인 단계·실패 모드 보정·평가가 없다는 것이고, 그 차이가 이 프로젝트의 플랫폼 부분이다.
 
 ```bash
 uv run python scripts/mcp_check.py   # 서버 띄워 도구 목록·호출·리소스 확인

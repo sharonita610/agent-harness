@@ -91,7 +91,7 @@ User ──▶ FastAPI(SSE) ──▶ agent loop (LLM) ──▶ tools: SQL (rea
 ```
 
 ## Screens without the assistant
-The sidebar's "views" are five: worksheet, approval inbox, jobs, history and data. Only asking goes through the assistant.
+The sidebar has five "views": worksheet, approval inbox, jobs, history and data. Only asking goes through the assistant.
 
 | Tab | What you see |
 |---|---|
@@ -127,7 +127,7 @@ Each of the four packs has its reason.
 ## Overall architecture
 <img src="docs/img/architecture.svg" alt="agent-harness architecture: clients (screen, CLI, external agents over MCP/A2A) → FastAPI service → platform core → pack interface → 4 domain packs → external processes" width="100%">
 
-One question goes down and comes back up. The screen, the CLI and external agents (MCP) call the service, the platform core's loop asks the model and runs tools according to permissions, and the actual tool implementations live inside the pack. **The purple platform layer knows nothing inside the pack folders and sees only the grey interface.** So when the second and third packs were added, the only platform change was the point where the pack is chosen, and even the screen header, examples and tool labels are supplied by the pack. The fourth pack, the supervisor assistant, calls the other assistant services over A2A, so in the picture it sits in the "external agent" position. How to build a pack: `docs/ADDING-A-PACK.md`.
+One question goes down and comes back up. The screen, the CLI and external agents (MCP) call the service, the platform core's loop asks the model and runs tools according to permissions, and the actual tool implementations live inside the pack. **The purple platform layer knows nothing inside the pack folders and sees only the grey interface.** So when the second and third packs were added, the only platform change was the point where the pack is chosen, and even the screen header, examples and tool labels are supplied by the pack. The fourth pack, the supervisor assistant, sits in the same pack row, but it calls the other assistant services over A2A, so to them it is also one of the "external agents" at the top right. How to build a pack: `docs/ADDING-A-PACK.md`.
 
 ## Layout
 | Directory | Role |
@@ -227,7 +227,7 @@ Evaluation results are in the Evaluation section below; design is ADR-013.
 
 <img src="docs/img/experiment-graph.svg" alt="Experiment tracking graph: circuit variants (dotted, with value differences) → runs → measurements" width="100%">
 
-**Manual knowledge base.** Instead of the 6 hand-written summary documents, the assistant's `search_manual` can search the whole 765-page official ngspice manual PDF. 1,174 chunks are cut at the section-number boundaries from the bookmarks and stored in SQLite (BM25 + vectors; embeddings are incremental per chunk hash), and `read_manual(section number)` reads a whole section. A question like "what does TMAX mean in `.tran`?" is answered by quoting the original text of section 11.3.10 (3 steps, 12 s). The 32-question retrieval quality comparison is in the "Document search" section; design is ADR-014.
+**Manual knowledge base.** Instead of the 7 hand-written summary documents, the assistant's `search_manual` can search the whole 765-page official ngspice manual PDF. 1,174 chunks are cut at the section-number boundaries from the bookmarks and stored in SQLite (BM25 + vectors; embeddings are incremental per chunk hash), and `read_manual(section number)` reads a whole section. A question like "what does TMAX mean in `.tran`?" is answered by quoting the original text of section 11.3.10 (3 steps, 12 s). The 32-question retrieval quality comparison is in the "Document search" section; design is ADR-014.
 
 **Simulator status.** `engine_status` returns the ngspice installation and version, the number of runs, sweeps and failures in the last 24 hours with their average duration, the number of saved circuits and the number of experiment records. It answers "is the simulator OK?" and "did any run fail today?", and points to the screen's queue board for waiting jobs (ADR-026).
 Evaluation, 3 questions × 3 (status query, failure ratio calculation, simulate after checking status): 100%. Results: [`20261030-022804_local_spice_engine-n3.json`](harness/evals/results/20261030-022804_local_spice_engine-n3.json).
@@ -510,7 +510,8 @@ The same tools are exposed as an MCP server, so external agents use them as they
 HTTP is served on the same port as the service. Called with the Busan rep's key, only Busan orders are visible, and calling `create_note` puts a "[MCP · ops] create_note …" slip on the approver's screen. On approval it runs and the result goes back; on rejection it does not run. It is kept in the run records (kind `mcp`) and the audit log.
 ```json
 {"mcpServers": {"hanbit-enterprise-http": {"url": "http://127.0.0.1:8787/mcp/", "headers": {"Authorization": "Bearer hk_..."}}}}
-``` Verified clients: Hermes Agent (below) and Hugging Face **Tiny Agents** (`huggingface_hub[mcp]`, a 70-line minimal loop). With a single `agent.json` in `docs/experiments/tiny-agents/`, Tiny Agents connected local gpt-oss-20b to our MCP server and got the company pack's "how many delayed orders" right in 6 tool calls and 12.9 s, and the circuit pack's "RC cutoff frequency" in 1 call and 14.9 s. The difference from our loop is that it has no approval step, no failure-mode corrections and no evaluation, and that difference is the platform part of this project.
+```
+Verified clients: Hermes Agent (below) and Hugging Face **Tiny Agents** (`huggingface_hub[mcp]`, a 70-line minimal loop). With a single `agent.json` in `docs/experiments/tiny-agents/`, Tiny Agents connected local gpt-oss-20b to our MCP server and got the company pack's "how many delayed orders" right in 6 tool calls and 12.9 s, and the circuit pack's "RC cutoff frequency" in 1 call and 14.9 s. The difference from our loop is that it has no approval step, no failure-mode corrections and no evaluation, and that difference is the platform part of this project.
 
 ```bash
 uv run python scripts/mcp_check.py   # start the server and check the tool list, calls and resources
